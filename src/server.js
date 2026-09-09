@@ -180,6 +180,13 @@ app.post('/api/dispatch', upload.single('file'), (req, res) => {
   if (!labelIds) labelIds = []
   else if (!Array.isArray(labelIds)) labelIds = [labelIds]
 
+  // naturalidade do envio e etiqueta automática pós-envio — todos opcionais
+  const simulateTyping = req.body.simulateTyping !== 'false' // true por padrão
+  const skipBlocked = req.body.skipBlocked !== 'false' // true por padrão
+  const markAsRead = req.body.markAsRead === 'true' // false por padrão
+  const applyLabelId = req.body.applyLabelId || null
+  const removeLabelId = req.body.removeLabelId || null
+
   // enquete/localização/cartão de contato não têm um "texto livre" obrigatório — cada um tem
   // sua própria validação abaixo. Só o tipo "media" (o padrão) exige mensagem.
   if (messageType === 'media' && (!message || !message.trim())) {
@@ -241,6 +248,16 @@ app.post('/api/dispatch', upload.single('file'), (req, res) => {
     labelName = selectedLabels.map((l) => l.name).join(', ')
   }
 
+  if (applyLabelId || removeLabelId) {
+    const labels = store.listLabels()
+    if (applyLabelId && !labels.some((l) => l.id === applyLabelId)) {
+      return res.status(400).json({ error: 'Etiqueta para aplicar após envio não encontrada.' })
+    }
+    if (removeLabelId && !labels.some((l) => l.id === removeLabelId)) {
+      return res.status(400).json({ error: 'Etiqueta para remover após envio não encontrada.' })
+    }
+  }
+
   try {
     whatsapp.getSock()
   } catch (err) {
@@ -266,7 +283,12 @@ app.post('/api/dispatch', upload.single('file'), (req, res) => {
       messageType,
       asVoiceNote,
       pollQuestion,
-      pollOptions
+      pollOptions,
+      simulateTyping,
+      skipBlocked,
+      markAsRead,
+      applyLabelId,
+      removeLabelId
     })
   } catch (err) {
     return res.status(409).json({ error: err.message })

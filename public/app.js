@@ -41,6 +41,11 @@ const locationSummary = document.getElementById('location-summary')
 const contactCardSummary = document.getElementById('contact-card-summary')
 const configureLocationBtn = document.getElementById('configure-location-btn')
 const configureContactBtn = document.getElementById('configure-contact-btn')
+const applyLabelSelect = document.getElementById('apply-label-select')
+const removeLabelSelect = document.getElementById('remove-label-select')
+const simulateTypingToggle = document.getElementById('simulate-typing-toggle')
+const skipBlockedToggle = document.getElementById('skip-blocked-toggle')
+const markReadToggle = document.getElementById('mark-read-toggle')
 
 const profileModal = document.getElementById('profile-modal')
 const profileCloseBtn = document.getElementById('profile-close-btn')
@@ -366,9 +371,26 @@ async function refreshLabels() {
     if (!labels.some((l) => l.id === id)) selectedLabelIds.delete(id)
   }
   renderLabels(labels)
+  renderLabelSelects(labels)
   if (labels.length > 0) setScreen('main')
   if (selectedLabelIds.size > 0) updateDispatchPanelForLabels()
   refreshStats()
+}
+
+// Popula os selects de "aplicar/remover etiqueta após o envio", preservando a seleção atual
+// se a etiqueta escolhida ainda existir na lista nova.
+function renderLabelSelects(labels) {
+  for (const select of [applyLabelSelect, removeLabelSelect]) {
+    const current = select.value
+    select.innerHTML = '<option value="">Nenhuma</option>'
+    for (const label of labels) {
+      const option = document.createElement('option')
+      option.value = label.id
+      option.textContent = label.name
+      select.appendChild(option)
+    }
+    if (labels.some((l) => l.id === current)) select.value = current
+  }
 }
 
 function renderLabels(labels) {
@@ -951,6 +973,11 @@ dispatchBtn.addEventListener('click', async () => {
       formData.append('pollOptions', opt)
     }
   }
+  formData.append('simulateTyping', simulateTypingToggle.checked ? 'true' : 'false')
+  formData.append('skipBlocked', skipBlockedToggle.checked ? 'true' : 'false')
+  formData.append('markAsRead', markReadToggle.checked ? 'true' : 'false')
+  if (applyLabelSelect.value) formData.append('applyLabelId', applyLabelSelect.value)
+  if (removeLabelSelect.value) formData.append('removeLabelId', removeLabelSelect.value)
 
   try {
     const res = await fetch('/api/dispatch', { method: 'POST', body: formData })

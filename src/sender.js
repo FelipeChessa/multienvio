@@ -73,7 +73,7 @@ function personalizeMessage(message, contactName) {
   return message.replace(/\{\{\s*nome\s*\}\}/gi, contactName || 'cliente')
 }
 
-function startDispatch({ labelIds, labelName, message, file, contacts: explicitContacts, messageType, asVoiceNote, pollQuestion, pollOptions }) {
+function startDispatch({ labelIds, labelName, message, file, contacts: explicitContacts, messageType, asVoiceNote, pollQuestion, pollOptions, simulateTyping, skipBlocked, markAsRead, applyLabelId, removeLabelId }) {
   if (activeJobId) {
     throw new Error('Já existe um disparo em andamento. Aguarde ele terminar antes de iniciar outro.')
   }
@@ -114,28 +114,49 @@ function startDispatch({ labelIds, labelName, message, file, contacts: explicitC
     if (activeJobId === jobId) activeJobId = null
   }
 
-  const usageBefore = store.countSendsInWindow(24)
-  const dailyRemaining = settings.dailyLimit > 0 ? Math.max(0, settings.dailyLimit - usageBefore.total) : null
-
-  emit({
-    type: 'start',
-    total: contacts.length,
-    labelName: effectiveLabelName,
-    delayMinMs,
-    delayMaxMs,
-    batchSize: settings.batchSize,
-    batchPauseMs,
-    dailyLimit: settings.dailyLimit,
-    dailyRemaining
-  })
-
   ;(async () => {
     const sock = getSock()
+
+    // Filtra bloqueados ANTES de emitir o evento "start" — precisa do await de
+    // fetchBlocklist(), por isso esse cálculo (e o "start", que reporta o total já
+    // filtrado) ficam dentro do IIFE assíncrono, não antes dele.
+    let dispatchContacts = contacts
+    let skippedBlockedCount = 0
+    if (skipBlocked) {
+      try {
+        const blocked = new Set(await sock.fetchBlocklist())
+        dispatchContacts = contacts.filter((contact) => {
+          if (!blocked.has(contact.jid)) return true
+          skippedBlockedCount += 1
+          store.logSend(jobId, logLabelId, effectiveLabelName, contact.jid, contact.name, 'skipped', 'Contato bloqueado')
+          return false
+        })
+      } catch (err) {
+        console.error('Falha ao buscar lista de bloqueados:', err.message)
+      }
+    }
+
+    const usageBefore = store.countSendsInWindow(24)
+    const dailyRemaining = settings.dailyLimit > 0 ? Math.max(0, settings.dailyLimit - usageBefore.total) : null
+
+    emit({
+      type: 'start',
+      total: dispatchContacts.length,
+      labelName: effectiveLabelName,
+      delayMinMs,
+      delayMaxMs,
+      batchSize: settings.batchSize,
+      batchPauseMs,
+      dailyLimit: settings.dailyLimit,
+      dailyRemaining,
+      skippedBlocked: skippedBlockedCount
+    })
+
     let sent = 0
     let failed = 0
     let consecutiveFailures = 0
 
-    for (const contact of contacts) {
+    for (const contact of dispatchContacts) {
       if (settings.dailyLimit > 0 && store.countSendsInWindow(24).total >= settings.dailyLimit) {
         emit({
           type: 'aborted',
@@ -143,15 +164,28 @@ function startDispatch({ labelIds, labelName, message, file, contacts: explicitC
           message: `Limite diário de ${settings.dailyLimit} envios atingido. O restante não foi enviado.`,
           sent,
           failed,
-          total: contacts.length
+          total: dispatchContacts.length
         })
-        job.summary = { sent, failed, total: contacts.length, aborted: true, reason: 'daily_limit' }
+        job.summary = { sent, failed, total: dispatchContacts.length, aborted: true, reason: 'daily_limit' }
         finish()
         return
       }
 
       const label = contact.name || contact.jid
       const personalizedMessage = personalizeMessage(message || '', contact.name)
+
+      // Simula digitação antes de enviar — best-effort, não interrompe o envio se falhar.
+      if (simulateTyping) {
+        try {
+          await sock.presenceSubscribe(contact.jid)
+          await sock.sendPresenceUpdate('composing', contact.jid)
+          await sleep(1200 + Math.floor(Math.random() * 800))
+          await sock.sendPresenceUpdate('paused', contact.jid)
+        } catch (err) {
+          console.error(`Falha ao simular digitação para ${contact.jid}:`, err.message)
+        }
+      }
+
       try {
         const payloads = buildMessagePayloads({
           messageType: effectiveMessageType,
@@ -165,13 +199,38 @@ function startDispatch({ labelIds, labelName, message, file, contacts: explicitC
         await sendPayloads(sock, contact.jid, payloads)
         sent += 1
         consecutiveFailures = 0
+
+        // Aplicar/remover etiqueta e marcar como lida — sempre best-effort, um erro aqui
+        // nunca conta como falha de envio.
+        if (applyLabelId) {
+          try {
+            await sock.addChatLabel(contact.jid, applyLabelId)
+          } catch (err) {
+            console.error(`Falha ao aplicar etiqueta em ${contact.jid}:`, err.message)
+          }
+        }
+        if (removeLabelId) {
+          try {
+            await sock.removeChatLabel(contact.jid, removeLabelId)
+          } catch (err) {
+            console.error(`Falha ao remover etiqueta de ${contact.jid}:`, err.message)
+          }
+        }
+        if (markAsRead) {
+          try {
+            await sock.chatModify({ markRead: true }, contact.jid)
+          } catch (err) {
+            console.error(`Falha ao marcar conversa como lida ${contact.jid}:`, err.message)
+          }
+        }
+
         store.logSend(jobId, logLabelId, effectiveLabelName, contact.jid, contact.name, 'sent', null)
-        emit({ type: 'progress', jid: contact.jid, name: label, status: 'sent', sent, failed, total: contacts.length })
+        emit({ type: 'progress', jid: contact.jid, name: label, status: 'sent', sent, failed, total: dispatchContacts.length })
       } catch (err) {
         failed += 1
         consecutiveFailures += 1
         store.logSend(jobId, logLabelId, effectiveLabelName, contact.jid, contact.name, 'failed', String(err?.message || err))
-        emit({ type: 'progress', jid: contact.jid, name: label, status: 'failed', error: String(err?.message || err), sent, failed, total: contacts.length })
+        emit({ type: 'progress', jid: contact.jid, name: label, status: 'failed', error: String(err?.message || err), sent, failed, total: dispatchContacts.length })
       }
 
       if (cb.enabled) {
@@ -185,14 +244,14 @@ function startDispatch({ labelIds, labelName, message, file, contacts: explicitC
           const message = reason === 'consecutive_failures'
             ? `Envio interrompido automaticamente: ${consecutiveFailures} mensagens seguidas falharam. Isso costuma indicar um problema de conexão ou de bloqueio — verifique antes de tentar de novo.`
             : `Envio interrompido automaticamente: muitas falhas entre os envios (${failed} de ${attempts}). Isso costuma indicar um problema de conexão ou de bloqueio — verifique antes de tentar de novo.`
-          emit({ type: 'aborted', reason, message, sent, failed, total: contacts.length })
-          job.summary = { sent, failed, total: contacts.length, aborted: true, reason }
+          emit({ type: 'aborted', reason, message, sent, failed, total: dispatchContacts.length })
+          job.summary = { sent, failed, total: dispatchContacts.length, aborted: true, reason }
           finish()
           return
         }
       }
 
-      if (contact !== contacts[contacts.length - 1]) {
+      if (contact !== dispatchContacts[dispatchContacts.length - 1]) {
         const attemptsSoFar = sent + failed
         if (attemptsSoFar > 0 && attemptsSoFar % settings.batchSize === 0) {
           emit({ type: 'batch_pause', pauseMs: batchPauseMs, afterCount: attemptsSoFar })
@@ -205,8 +264,8 @@ function startDispatch({ labelIds, labelName, message, file, contacts: explicitC
       }
     }
 
-    job.summary = { sent, failed, total: contacts.length }
-    emit({ type: 'done', sent, failed, total: contacts.length })
+    job.summary = { sent, failed, total: dispatchContacts.length }
+    emit({ type: 'done', sent, failed, total: dispatchContacts.length })
     finish()
   })().catch((err) => {
     emit({ type: 'error', error: String(err?.message || err) })

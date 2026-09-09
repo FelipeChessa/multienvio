@@ -157,6 +157,29 @@
             <button type="button" id="configure-contact-btn" class="secondary small">Configurar cartão de contato</button>
           </div>
 
+          <label for="apply-label-select">Aplicar etiqueta após o envio — opcional</label>
+          <select id="apply-label-select">
+            <option value="">Nenhuma</option>
+          </select>
+
+          <label for="remove-label-select">Remover etiqueta após o envio — opcional</label>
+          <select id="remove-label-select">
+            <option value="">Nenhuma</option>
+          </select>
+
+          <label class="checkbox-field">
+            <input type="checkbox" id="simulate-typing-toggle" checked />
+            Simular digitação antes de enviar (recomendado)
+          </label>
+          <label class="checkbox-field">
+            <input type="checkbox" id="skip-blocked-toggle" checked />
+            Pular contatos bloqueados (recomendado)
+          </label>
+          <label class="checkbox-field">
+            <input type="checkbox" id="mark-read-toggle" />
+            Marcar conversa como lida após enviar
+          </label>
+
           <div id="pacing-summary" class="pacing-summary"></div>
 
           <p id="dispatch-notice" class="notice hidden"></p>
