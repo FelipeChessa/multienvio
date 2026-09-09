@@ -206,6 +206,10 @@ function removeOptOut(jid) {
   persist()
 }
 
+function isOptedOut(jid) {
+  return !!state.optOuts[jid]
+}
+
 function listOptOuts() {
   return Object.entries(state.optOuts)
     .map(([jid, info]) => ({
@@ -381,5 +385,6 @@ export {
   RECOMMENDED_RANGES,
   addOptOut,
   removeOptOut,
+  isOptedOut,
   listOptOuts
 }

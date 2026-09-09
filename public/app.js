@@ -25,6 +25,27 @@ const allContactsBulkActions = document.getElementById('all-contacts-bulk-action
 const allContactsFilteredCount = document.getElementById('all-contacts-filtered-count')
 const selectAllContactsBtn = document.getElementById('select-all-contacts-btn')
 const clearContactsSelectionBtn = document.getElementById('clear-contacts-selection-btn')
+
+const coldContactsPanel = document.getElementById('cold-contacts-panel')
+const ccStageUpload = document.getElementById('cc-stage-upload')
+const ccStageMapping = document.getElementById('cc-stage-mapping')
+const ccStageResults = document.getElementById('cc-stage-results')
+const ccDropzone = document.getElementById('cc-dropzone')
+const ccDropzoneText = document.getElementById('cc-dropzone-text')
+const ccFileInput = document.getElementById('cc-file-input')
+const ccUploadNotice = document.getElementById('cc-upload-notice')
+const ccMappingFilename = document.getElementById('cc-mapping-filename')
+const ccPhoneColumnSelect = document.getElementById('cc-phone-column-select')
+const ccNameColumnSelect = document.getElementById('cc-name-column-select')
+const ccValidateBtn = document.getElementById('cc-validate-btn')
+const ccChangeFileBtn = document.getElementById('cc-change-file-btn')
+const ccMappingNotice = document.getElementById('cc-mapping-notice')
+const ccResultsSummary = document.getElementById('cc-results-summary')
+const ccSelectAllBtn = document.getElementById('cc-select-all-btn')
+const ccClearSelectionBtn = document.getElementById('cc-clear-selection-btn')
+const ccResultsList = document.getElementById('cc-results-list')
+const ccRestartBtn = document.getElementById('cc-restart-btn')
+const coldContactsRiskBanner = document.getElementById('cold-contacts-risk-banner')
 const dispatchPanel = document.getElementById('dispatch-panel')
 const dispatchTitle = document.getElementById('dispatch-title')
 const dispatchCount = document.getElementById('dispatch-count')
@@ -144,9 +165,14 @@ let awaitingConfirm = false
 let recommendedRanges = null
 let currentTutorialStep = 1
 let adHocContacts = null
-let activeContactSource = 'labels' // 'labels' | 'allContacts'
+let activeContactSource = 'labels' // 'labels' | 'allContacts' | 'coldContacts'
 let allContactsCache = null // null = ainda não buscado
 let selectedContactJids = new Set()
+let coldContactsFile = null
+let coldContactsHeaders = []
+let coldContactsPreviewRows = []
+let coldContactsValidRows = [] // [{ jid, name, rawPhone }] — só as linhas 'valid' da última validação
+let selectedColdContactJids = new Set()
 let currentProfile = { businessCard: { name: '', phone: '' }, location: { lat: null, lng: null, name: '', address: '' } }
 
 // ===== ícones, toasts e diálogo de confirmação (substituem alert()/confirm() nativos) =====
@@ -451,18 +477,24 @@ function switchSidebarTab(tab) {
   if (tab === activeContactSource) return
   activeContactSource = tab
   for (const btn of sidebarTabs) btn.classList.toggle('active', btn.dataset.tab === tab)
-  labelsPanelTitle.textContent = tab === 'allContacts' ? 'Todos os contatos' : 'Etiquetas'
+  labelsPanelTitle.textContent = tab === 'allContacts' ? 'Todos os contatos' : tab === 'coldContacts' ? 'Clientes frios' : 'Etiquetas'
   allContactsSearchInput.classList.toggle('hidden', tab !== 'allContacts')
   allContactsBulkActions.classList.toggle('hidden', tab !== 'allContacts')
+  labelsContainer.classList.toggle('hidden', tab === 'coldContacts')
+  coldContactsPanel.classList.toggle('hidden', tab !== 'coldContacts')
+  coldContactsRiskBanner.classList.toggle('hidden', tab !== 'coldContacts')
 
   selectedLabelIds.clear()
   selectedContactJids.clear()
+  selectedColdContactJids.clear()
   adHocContacts = null
   allContactsSearchInput.value = ''
 
   if (tab === 'allContacts') {
     renderAllContactsList()
     fetchAllContactsIfNeeded()
+  } else if (tab === 'coldContacts') {
+    syncColdContactsCheckboxes()
   } else {
     labelsSearchInput.value = ''
     renderLabels(lastLabelsFetch)
@@ -558,6 +590,202 @@ clearContactsSelectionBtn.addEventListener('click', () => {
   renderAllContactsList()
   updateDispatchPanelForContacts()
 })
+
+// ===== aba "Clientes frios" =====
+//
+// Assistente de 3 etapas (upload -> mapear coluna -> validar) que termina alimentando o MESMO
+// adHocContacts já usado por "Todos os contatos" e por reenvio de falhas. Nenhuma etapa aqui
+// envia mensagem — só /api/cold-contacts/validate, que confere os números no WhatsApp de
+// verdade antes de qualquer um virar selecionável.
+
+function ccSetStage(stage) {
+  ccStageUpload.classList.toggle('hidden', stage !== 'upload')
+  ccStageMapping.classList.toggle('hidden', stage !== 'mapping')
+  ccStageResults.classList.toggle('hidden', stage !== 'results')
+}
+
+function resetColdContactsWizard() {
+  coldContactsFile = null
+  coldContactsHeaders = []
+  coldContactsPreviewRows = []
+  coldContactsValidRows = []
+  selectedColdContactJids.clear()
+  ccFileInput.value = ''
+  ccDropzone.classList.remove('has-file')
+  ccDropzoneText.textContent = 'Arraste uma planilha (.xlsx ou .csv) aqui, ou clique para selecionar'
+  ccUploadNotice.classList.add('hidden')
+  ccMappingNotice.classList.add('hidden')
+  ccSetStage('upload')
+  updateDispatchPanelForColdContacts()
+}
+
+ccDropzone.addEventListener('click', () => ccFileInput.click())
+ccDropzone.addEventListener('dragover', (e) => {
+  e.preventDefault()
+  ccDropzone.classList.add('dragover')
+})
+ccDropzone.addEventListener('dragleave', () => ccDropzone.classList.remove('dragover'))
+ccDropzone.addEventListener('drop', (e) => {
+  e.preventDefault()
+  ccDropzone.classList.remove('dragover')
+  if (e.dataTransfer.files.length > 0) handleColdContactsFile(e.dataTransfer.files[0])
+})
+ccFileInput.addEventListener('change', () => {
+  if (ccFileInput.files.length > 0) handleColdContactsFile(ccFileInput.files[0])
+})
+
+async function handleColdContactsFile(file) {
+  coldContactsFile = file
+  ccDropzone.classList.add('has-file')
+  ccDropzoneText.textContent = `Arquivo selecionado: ${file.name} (clique para trocar)`
+  ccUploadNotice.classList.add('hidden')
+
+  const formData = new FormData()
+  formData.append('file', file)
+  try {
+    const res = await fetch('/api/cold-contacts/preview', { method: 'POST', body: formData })
+    const data = await res.json()
+    if (!res.ok) {
+      ccUploadNotice.textContent = data.error || 'Erro ao ler a planilha.'
+      ccUploadNotice.classList.remove('hidden')
+      return
+    }
+    coldContactsHeaders = data.headers
+    coldContactsPreviewRows = data.previewRows
+    populateColdContactsColumnSelects()
+    ccMappingFilename.textContent = `${file.name} — ${data.totalRows} linha(s) de dado(s)`
+    ccSetStage('mapping')
+  } catch (err) {
+    ccUploadNotice.textContent = 'Erro ao enviar a planilha: ' + err.message
+    ccUploadNotice.classList.remove('hidden')
+  }
+}
+
+function populateColdContactsColumnSelects() {
+  const sample = coldContactsPreviewRows[0] || []
+  ccPhoneColumnSelect.innerHTML = ''
+  ccNameColumnSelect.innerHTML = '<option value="">Nenhuma</option>'
+  coldContactsHeaders.forEach((header, idx) => {
+    const label = `${header || 'Coluna ' + (idx + 1)}${sample[idx] ? ' — ex: ' + sample[idx] : ''}`
+
+    const phoneOption = document.createElement('option')
+    phoneOption.value = String(idx)
+    phoneOption.textContent = label
+    ccPhoneColumnSelect.appendChild(phoneOption)
+
+    const nameOption = document.createElement('option')
+    nameOption.value = String(idx)
+    nameOption.textContent = label
+    ccNameColumnSelect.appendChild(nameOption)
+  })
+  // Só um atalho de conveniência (tenta achar uma coluna com nome que sugira telefone) — o
+  // usuário ainda vê e confirma qual coluna foi escolhida antes de validar.
+  const guessIdx = coldContactsHeaders.findIndex((h) => /telefone|celular|phone|whatsapp|numero|número/i.test(h || ''))
+  if (guessIdx !== -1) ccPhoneColumnSelect.value = String(guessIdx)
+}
+
+ccChangeFileBtn.addEventListener('click', resetColdContactsWizard)
+ccRestartBtn.addEventListener('click', resetColdContactsWizard)
+
+ccValidateBtn.addEventListener('click', async () => {
+  if (!coldContactsFile) return
+  ccMappingNotice.classList.add('hidden')
+  ccValidateBtn.disabled = true
+  ccValidateBtn.textContent = 'Validando...'
+
+  const formData = new FormData()
+  formData.append('file', coldContactsFile)
+  formData.append('phoneColumn', ccPhoneColumnSelect.value)
+  if (ccNameColumnSelect.value !== '') formData.append('nameColumn', ccNameColumnSelect.value)
+
+  try {
+    const res = await fetch('/api/cold-contacts/validate', { method: 'POST', body: formData })
+    const data = await res.json()
+    if (!res.ok) {
+      ccMappingNotice.textContent = data.error || 'Erro ao validar contatos.'
+      ccMappingNotice.classList.remove('hidden')
+      return
+    }
+    coldContactsValidRows = data.results.filter((r) => r.status === 'valid')
+    selectedColdContactJids = new Set(coldContactsValidRows.map((r) => r.jid))
+    renderColdContactsResults(data.summary)
+    ccSetStage('results')
+    updateDispatchPanelForColdContacts()
+  } catch (err) {
+    ccMappingNotice.textContent = 'Erro ao validar contatos: ' + err.message
+    ccMappingNotice.classList.remove('hidden')
+  } finally {
+    ccValidateBtn.disabled = false
+    ccValidateBtn.textContent = 'Validar contatos'
+  }
+})
+
+function renderColdContactsResults(summary) {
+  const parts = [`${summary.valid} válido(s) no WhatsApp`, `${summary.invalid} não encontrado(s)`]
+  if (summary.optedOut > 0) parts.push(`${summary.optedOut} já pediram pra não receber mais`)
+  parts.push(`${summary.unparseable} sem telefone legível`)
+  ccResultsSummary.textContent = `${parts.join(', ')} — de ${summary.total} linha(s) no total.`
+
+  if (coldContactsValidRows.length === 0) {
+    ccResultsList.innerHTML = '<p class="empty-state">Nenhum número válido encontrado nessa planilha.</p>'
+    return
+  }
+
+  ccResultsList.innerHTML = ''
+  for (const row of coldContactsValidRows) {
+    const checked = selectedColdContactJids.has(row.jid)
+    const card = document.createElement('div')
+    card.className = 'label-card' + (checked ? ' active' : '')
+    card.innerHTML = `<div class="select-check"></div><div class="name">${escapeHtml(row.name || row.rawPhone)}</div><div class="count">${escapeHtml(row.rawPhone)}</div>`
+    card.addEventListener('click', () => toggleColdContact(row))
+    ccResultsList.appendChild(card)
+  }
+}
+
+function syncColdContactsCheckboxes() {
+  const cards = ccResultsList.querySelectorAll('.label-card')
+  cards.forEach((card, idx) => {
+    const row = coldContactsValidRows[idx]
+    if (!row) return
+    card.classList.toggle('active', selectedColdContactJids.has(row.jid))
+  })
+}
+
+function toggleColdContact(row) {
+  if (selectedColdContactJids.has(row.jid)) selectedColdContactJids.delete(row.jid)
+  else selectedColdContactJids.add(row.jid)
+  syncColdContactsCheckboxes()
+  updateDispatchPanelForColdContacts()
+}
+
+ccSelectAllBtn.addEventListener('click', () => {
+  selectedColdContactJids = new Set(coldContactsValidRows.map((r) => r.jid))
+  syncColdContactsCheckboxes()
+  updateDispatchPanelForColdContacts()
+})
+
+ccClearSelectionBtn.addEventListener('click', () => {
+  selectedColdContactJids.clear()
+  syncColdContactsCheckboxes()
+  updateDispatchPanelForColdContacts()
+})
+
+function updateDispatchPanelForColdContacts() {
+  if (activeContactSource !== 'coldContacts' || selectedColdContactJids.size === 0) {
+    adHocContacts = null
+    if (activeContactSource === 'coldContacts') dispatchPanel.classList.add('hidden')
+    return
+  }
+  adHocContacts = coldContactsValidRows
+    .filter((r) => selectedColdContactJids.has(r.jid))
+    .map((r) => ({ jid: r.jid, name: r.name || null }))
+  dispatchPanel.classList.remove('hidden')
+  dispatchTitle.textContent = `Disparar: ${adHocContacts.length} contato(s) da planilha`
+  dispatchCount.textContent = `${adHocContacts.length} contato(s) receberão esta mensagem.`
+  progressPanel.classList.add('hidden')
+  dispatchBtn.disabled = false
+  resetConfirmState()
+}
 
 // Marca/desmarca uma etiqueta — várias podem ficar selecionadas ao mesmo tempo, com dedupe
 // de contatos repetidos feito no backend (store.listContactsForLabels).

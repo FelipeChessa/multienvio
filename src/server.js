@@ -9,6 +9,8 @@ import * as whatsapp from './whatsapp.js'
 import * as store from './db.js'
 import * as license from './license.js'
 import { startDispatch, subscribeToJob } from './sender.js'
+import { parseSpreadsheetRows } from './spreadsheet.js'
+import { normalizePhoneCandidates } from './phone.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -70,6 +72,117 @@ app.get('/api/labels/contacts-count', (req, res) => {
 
 app.get('/api/contacts', (req, res) => {
   res.json(store.listAllContacts({ q: req.query.q }))
+})
+
+// "Clientes frios" — disparo pra quem ainda não é contato, a partir de uma planilha. Lê a
+// planilha só pra mostrar as primeiras linhas e os nomes das colunas — não valida nada ainda.
+// Deixa o usuário escolher à mão qual coluna é o telefone, em vez de adivinhar (adivinhar
+// errado aqui significa mandar mensagem pro número errado).
+const PREVIEW_ROW_LIMIT = 5
+
+app.post('/api/cold-contacts/preview', upload.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'Envie um arquivo de planilha (.xlsx ou .csv).' })
+  }
+  try {
+    const { headers, rows } = await parseSpreadsheetRows(req.file.buffer, req.file.originalname)
+    if (headers.length === 0) {
+      return res.status(400).json({ error: 'Não encontrei nenhuma linha com dados nessa planilha.' })
+    }
+    res.json({ headers, previewRows: rows.slice(0, PREVIEW_ROW_LIMIT), totalRows: rows.length })
+  } catch (err) {
+    res.status(400).json({ error: 'Não consegui ler essa planilha (use .xlsx ou .csv): ' + err.message })
+  }
+})
+
+// Lê a planilha de novo (o front reenvia o mesmo arquivo — nada fica salvo no servidor entre
+// o preview e a validação), normaliza cada telefone e confere no WhatsApp de verdade via
+// sock.onWhatsApp antes de deixar qualquer linha selecionável pra disparo. NÃO envia nada.
+app.post('/api/cold-contacts/validate', upload.single('file'), async (req, res) => {
+  if (!license.isActivated()) {
+    return res.status(403).json({ error: 'Licença não ativada.' })
+  }
+  if (!req.file) {
+    return res.status(400).json({ error: 'Envie um arquivo de planilha (.xlsx ou .csv).' })
+  }
+  const phoneColumn = Number(req.body.phoneColumn)
+  if (!Number.isInteger(phoneColumn) || phoneColumn < 0) {
+    return res.status(400).json({ error: 'Selecione qual coluna é o telefone.' })
+  }
+  const nameColumn = req.body.nameColumn !== undefined && req.body.nameColumn !== ''
+    ? Number(req.body.nameColumn)
+    : null
+
+  let sock
+  try {
+    sock = whatsapp.getSock()
+  } catch (err) {
+    return res.status(409).json({ error: err.message })
+  }
+
+  let parsed
+  try {
+    parsed = await parseSpreadsheetRows(req.file.buffer, req.file.originalname)
+  } catch (err) {
+    return res.status(400).json({ error: 'Não consegui ler essa planilha (use .xlsx ou .csv): ' + err.message })
+  }
+
+  const rowInfo = parsed.rows.map((row) => {
+    const rawPhone = (row[phoneColumn] || '').trim()
+    const name = nameColumn != null ? (row[nameColumn] || '').trim() || null : null
+    return { rawPhone, name, candidates: normalizePhoneCandidates(rawPhone) }
+  })
+
+  const allCandidates = Array.from(new Set(rowInfo.flatMap((r) => r.candidates)))
+
+  // onWhatsApp só devolve os números que EXISTEM de verdade (os inexistentes somem da
+  // resposta, não voltam como {exists:false}) — por isso montamos um mapa dos que vieram e
+  // tratamos "não apareceu" como inválido.
+  const existingByDigits = new Map()
+  if (allCandidates.length > 0) {
+    let results
+    try {
+      results = await sock.onWhatsApp(...allCandidates)
+    } catch (err) {
+      return res.status(502).json({ error: 'Falha ao validar números no WhatsApp: ' + err.message })
+    }
+    for (const r of results || []) {
+      if (!r?.exists || !r.jid) continue
+      const digits = r.jid.split('@')[0].replace(/^\+/, '')
+      existingByDigits.set(digits, r.jid)
+    }
+  }
+
+  let validCount = 0
+  let invalidCount = 0
+  let unparseableCount = 0
+  let optedOutCount = 0
+
+  const results = rowInfo.map((info) => {
+    if (info.candidates.length === 0) {
+      unparseableCount += 1
+      return { rawPhone: info.rawPhone, name: info.name, status: 'unparseable', jid: null }
+    }
+    const matchedCandidate = info.candidates.find((c) => existingByDigits.has(c))
+    if (!matchedCandidate) {
+      invalidCount += 1
+      return { rawPhone: info.rawPhone, name: info.name, status: 'invalid', jid: null }
+    }
+    const jid = existingByDigits.get(matchedCandidate)
+    // não sugere como selecionável quem já pediu pra não receber mais — mesmo que o número
+    // exista de verdade no WhatsApp.
+    if (store.isOptedOut(jid)) {
+      optedOutCount += 1
+      return { rawPhone: info.rawPhone, name: info.name, status: 'opted_out', jid: null }
+    }
+    validCount += 1
+    return { rawPhone: info.rawPhone, name: info.name, status: 'valid', jid }
+  })
+
+  res.json({
+    results,
+    summary: { total: results.length, valid: validCount, invalid: invalidCount, unparseable: unparseableCount, optedOut: optedOutCount }
+  })
 })
 
 app.post('/api/labels/resync', async (req, res) => {
