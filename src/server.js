@@ -158,18 +158,57 @@ app.get('/api/settings/usage', (req, res) => {
   res.json({ last24h, dailyLimit: settings.dailyLimit, remaining })
 })
 
+// Perfil usado pelos tipos de mensagem "localização" e "cartão de contato" — separado de
+// /api/settings (ritmo de envio/disjuntor) de propósito.
+app.get('/api/messaging-profile', (req, res) => {
+  res.json(store.getMessagingProfile())
+})
+
+app.put('/api/messaging-profile', (req, res) => {
+  res.json(store.updateMessagingProfile(req.body || {}))
+})
+
 app.post('/api/dispatch', upload.single('file'), (req, res) => {
   if (!license.isActivated()) {
     return res.status(403).json({ error: 'Licença não ativada.' })
   }
 
   const { message, contactsJson } = req.body
+  const messageType = req.body.messageType || 'media'
+  const asVoiceNote = req.body.asVoiceNote === 'true'
   let labelIds = req.body.labelIds
   if (!labelIds) labelIds = []
   else if (!Array.isArray(labelIds)) labelIds = [labelIds]
 
-  if (!message || !message.trim()) {
+  // enquete/localização/cartão de contato não têm um "texto livre" obrigatório — cada um tem
+  // sua própria validação abaixo. Só o tipo "media" (o padrão) exige mensagem.
+  if (messageType === 'media' && (!message || !message.trim())) {
     return res.status(400).json({ error: 'Mensagem é obrigatória.' })
+  }
+
+  let pollQuestion = null
+  let pollOptions = []
+  if (messageType === 'poll') {
+    pollQuestion = (req.body.pollQuestion || '').trim()
+    pollOptions = req.body.pollOptions
+    if (!pollOptions) pollOptions = []
+    else if (!Array.isArray(pollOptions)) pollOptions = [pollOptions]
+    pollOptions = pollOptions.map((o) => String(o).trim()).filter(Boolean)
+    if (!pollQuestion || pollOptions.length < 2) {
+      return res.status(400).json({ error: 'Enquete precisa de uma pergunta e pelo menos 2 opções.' })
+    }
+  }
+  if (messageType === 'location') {
+    const loc = store.getMessagingProfile().location
+    if (loc.lat == null || loc.lng == null) {
+      return res.status(400).json({ error: 'Configure a localização antes de disparar.' })
+    }
+  }
+  if (messageType === 'contact') {
+    const card = store.getMessagingProfile().businessCard
+    if (!card.name || !card.phone) {
+      return res.status(400).json({ error: 'Configure o cartão de contato antes de disparar.' })
+    }
   }
 
   // reenvio rápido a partir da tabela de falhas (ou as abas "Todos os contatos"/"Clientes
@@ -221,9 +260,13 @@ app.post('/api/dispatch', upload.single('file'), (req, res) => {
     jobId = startDispatch({
       labelIds: explicitContacts ? null : labelIds,
       labelName,
-      message: message.trim(),
+      message: (message || '').trim(),
       file: req.file || null,
-      contacts: explicitContacts
+      contacts: explicitContacts,
+      messageType,
+      asVoiceNote,
+      pollQuestion,
+      pollOptions
     })
   } catch (err) {
     return res.status(409).json({ error: err.message })

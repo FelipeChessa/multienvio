@@ -115,16 +115,47 @@
           <h2 id="dispatch-title">Disparar mensagem</h2>
           <p id="dispatch-count" class="muted"></p>
 
-          <label>Arquivo (PDF ou imagem) — opcional</label>
-          <div id="dropzone" class="dropzone">
-            <span id="dropzone-text">Arraste um arquivo aqui ou clique para selecionar</span>
-            <button id="remove-file-btn" class="remove-file-btn hidden" type="button" title="Remover anexo">&times;</button>
-            <input type="file" id="file-input" accept=".pdf,image/*" hidden />
+          <label for="message-type-select">Tipo de mensagem</label>
+          <select id="message-type-select">
+            <option value="media">Arquivo/texto</option>
+            <option value="poll">Enquete</option>
+            <option value="location">Localização</option>
+            <option value="contact">Cartão de contato</option>
+          </select>
+
+          <div id="media-fields">
+            <label>Arquivo (PDF, imagem, vídeo ou áudio) — opcional</label>
+            <div id="dropzone" class="dropzone">
+              <span id="dropzone-text">Arraste um arquivo aqui ou clique para selecionar</span>
+              <button id="remove-file-btn" class="remove-file-btn hidden" type="button" title="Remover anexo">&times;</button>
+              <input type="file" id="file-input" accept=".pdf,image/*,video/*,audio/*" hidden />
+            </div>
+            <label id="voice-note-label" class="checkbox-field hidden">
+              <input type="checkbox" id="voice-note-toggle" />
+              Enviar como nota de voz (sem legenda — se houver mensagem, ela vai separada, como texto)
+            </label>
+
+            <label for="message-input">Mensagem</label>
+            <textarea id="message-input" rows="5" placeholder="Ex: Olá! Passando para avisar sobre uma novidade importante para você."></textarea>
+            <p class="field-hint">Dica: use <code>{{nome}}</code> na mensagem para personalizar com o nome de cada contato.</p>
           </div>
 
-          <label for="message-input">Mensagem</label>
-          <textarea id="message-input" rows="5" placeholder="Ex: Olá! Passando para avisar sobre uma novidade importante para você."></textarea>
-          <p class="field-hint">Dica: use <code>{{nome}}</code> na mensagem para personalizar com o nome de cada contato.</p>
+          <div id="poll-fields" class="hidden">
+            <label for="poll-question-input">Pergunta da enquete</label>
+            <input type="text" id="poll-question-input" placeholder="Ex: Qual horário prefere?" />
+            <label for="poll-options-input">Opções (uma por linha, mínimo 2)</label>
+            <textarea id="poll-options-input" rows="4" placeholder="Opção A&#10;Opção B&#10;Opção C"></textarea>
+          </div>
+
+          <div id="location-fields" class="hidden">
+            <p class="field-hint" id="location-summary">Nenhuma localização configurada ainda.</p>
+            <button type="button" id="configure-location-btn" class="secondary small">Configurar localização</button>
+          </div>
+
+          <div id="contact-fields" class="hidden">
+            <p class="field-hint" id="contact-card-summary">Nenhum cartão de contato configurado ainda.</p>
+            <button type="button" id="configure-contact-btn" class="secondary small">Configurar cartão de contato</button>
+          </div>
 
           <div id="pacing-summary" class="pacing-summary"></div>
 
@@ -273,6 +304,54 @@
       <div class="modal-actions">
         <button id="settings-save-btn">Salvar</button>
         <button id="settings-cancel-btn" class="secondary">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="profile-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Cartão de contato e localização</h2>
+        <button id="profile-close-btn" class="icon-btn" title="Fechar">&times;</button>
+      </div>
+
+      <p class="modal-intro">
+        Usados pelos tipos de mensagem "Cartão de contato" e "Localização" — configure uma vez,
+        fica salvo pros próximos disparos.
+      </p>
+
+      <div class="settings-grid">
+        <div class="field">
+          <label for="profile-business-name">Nome do negócio</label>
+          <input type="text" id="profile-business-name" placeholder="Ex: Empresa X" />
+        </div>
+        <div class="field">
+          <label for="profile-business-phone">Telefone (com DDI)</label>
+          <input type="text" id="profile-business-phone" placeholder="+5511999999999" />
+        </div>
+        <div class="field">
+          <label for="profile-location-name">Nome do local — opcional</label>
+          <input type="text" id="profile-location-name" placeholder="Ex: Loja Centro" />
+        </div>
+        <div class="field">
+          <label for="profile-location-address">Endereço — opcional</label>
+          <input type="text" id="profile-location-address" placeholder="Rua Exemplo, 123" />
+        </div>
+        <div class="field">
+          <label for="profile-location-lat">Latitude</label>
+          <input type="text" id="profile-location-lat" placeholder="Ex: -23.55052" />
+        </div>
+        <div class="field">
+          <label for="profile-location-lng">Longitude</label>
+          <input type="text" id="profile-location-lng" placeholder="Ex: -46.633308" />
+        </div>
+      </div>
+
+      <p id="profile-error" class="notice error hidden"></p>
+
+      <div class="modal-actions">
+        <button id="profile-save-btn">Salvar</button>
+        <button id="profile-cancel-btn" class="secondary">Cancelar</button>
       </div>
     </div>
   </div>

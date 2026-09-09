@@ -50,10 +50,39 @@ function mergeSettings(saved) {
   return { settings: merged, migrated }
 }
 
+// Perfil usado pelos tipos de mensagem "localização" e "cartão de contato" — separado de
+// `settings` (ritmo de envio/disjuntor) de propósito, pra não arriscar a validação estrita
+// que já existe em updateSettings().
+function buildDefaultMessagingProfile() {
+  return {
+    businessCard: { name: '', phone: '' },
+    location: { lat: null, lng: null, name: '', address: '' }
+  }
+}
+
+function mergeMessagingProfile(saved) {
+  const defaults = buildDefaultMessagingProfile()
+  if (!saved || typeof saved !== 'object') return { profile: defaults, migrated: true }
+  const merged = {
+    businessCard: { ...defaults.businessCard, ...(saved.businessCard || {}) },
+    location: { ...defaults.location, ...(saved.location || {}) }
+  }
+  const migrated = JSON.stringify(merged) !== JSON.stringify(saved)
+  return { profile: merged, migrated }
+}
+
 fs.mkdirSync(dataDir, { recursive: true })
 
 function emptyState() {
-  return { labels: {}, associations: [], contacts: {}, sendLogs: [], settings: buildDefaultSettings(), optOuts: {} }
+  return {
+    labels: {},
+    associations: [],
+    contacts: {},
+    sendLogs: [],
+    settings: buildDefaultSettings(),
+    optOuts: {},
+    messagingProfile: buildDefaultMessagingProfile()
+  }
 }
 
 function loadState() {
@@ -63,15 +92,17 @@ function loadState() {
   try {
     const parsed = JSON.parse(fs.readFileSync(dataFile, 'utf8'))
     const { settings, migrated } = mergeSettings(parsed.settings)
+    const { profile, migrated: profileMigrated } = mergeMessagingProfile(parsed.messagingProfile)
     return {
-      migrated: migrated || !parsed.optOuts,
+      migrated: migrated || profileMigrated || !parsed.optOuts,
       state: {
         labels: parsed.labels || {},
         associations: parsed.associations || [],
         contacts: parsed.contacts || {},
         sendLogs: parsed.sendLogs || [],
         settings,
-        optOuts: parsed.optOuts || {}
+        optOuts: parsed.optOuts || {},
+        messagingProfile: profile
       }
     }
   } catch (err) {
@@ -211,6 +242,19 @@ function getSettings() {
   return JSON.parse(JSON.stringify(state.settings))
 }
 
+function getMessagingProfile() {
+  return JSON.parse(JSON.stringify(state.messagingProfile))
+}
+
+function updateMessagingProfile(partial) {
+  state.messagingProfile = {
+    businessCard: { ...state.messagingProfile.businessCard, ...(partial.businessCard || {}) },
+    location: { ...state.messagingProfile.location, ...(partial.location || {}) }
+  }
+  persist()
+  return getMessagingProfile()
+}
+
 function updateSettings(partial) {
   const next = { ...state.settings, ...partial }
   next.circuitBreaker = { ...state.settings.circuitBreaker, ...(partial.circuitBreaker || {}) }
@@ -319,6 +363,8 @@ export {
   resetPairingData,
   getSettings,
   updateSettings,
+  getMessagingProfile,
+  updateMessagingProfile,
   countSendsInWindow,
   RECOMMENDED_RANGES,
   addOptOut,

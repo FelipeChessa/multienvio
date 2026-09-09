@@ -22,16 +22,50 @@ function randomDelay(minMs, maxMs) {
   return min + Math.floor(Math.random() * (max - min + 1))
 }
 
-function buildMessagePayload(message, file) {
-  if (!file) return { text: message }
-  if (file.mimetype.startsWith('image/')) {
-    return { image: file.buffer, caption: message }
+function buildVCard(name, phone) {
+  const digits = String(phone).replace(/[^\d+]/g, '').replace(/^\+/, '')
+  return `BEGIN:VCARD\nVERSION:3.0\nFN:${name}\nTEL;type=CELL;waid=${digits}:${phone}\nEND:VCARD`
+}
+
+// Devolve uma lista de payloads a enviar (na maioria dos casos só um). O caso de dois é a nota
+// de voz: o Baileys não aceita legenda em áudio, então se tiver mensagem de texto junto, ela
+// vai como uma segunda mensagem de texto separada.
+function buildMessagePayloads({ messageType, message, file, asVoiceNote, pollQuestion, pollOptions, profile }) {
+  if (messageType === 'poll') {
+    return [{ poll: { name: pollQuestion, values: pollOptions, selectableCount: 1 } }]
   }
-  return {
+  if (messageType === 'location') {
+    const loc = profile.location
+    return [{ location: { degreesLatitude: loc.lat, degreesLongitude: loc.lng, name: loc.name || undefined, address: loc.address || undefined } }]
+  }
+  if (messageType === 'contact') {
+    const card = profile.businessCard
+    return [{ contacts: { displayName: card.name, contacts: [{ vcard: buildVCard(card.name, card.phone) }] } }]
+  }
+  // messageType === 'media' (ou ausente)
+  if (!file) return [{ text: message }]
+  if (file.mimetype.startsWith('image/')) {
+    return [{ image: file.buffer, caption: message }]
+  }
+  if (file.mimetype.startsWith('video/')) {
+    return [{ video: file.buffer, caption: message }]
+  }
+  if (file.mimetype.startsWith('audio/') && asVoiceNote) {
+    const payloads = [{ audio: file.buffer, mimetype: file.mimetype, ptt: true }]
+    if (message) payloads.push({ text: message })
+    return payloads
+  }
+  return [{
     document: file.buffer,
     mimetype: file.mimetype,
     fileName: file.originalname,
     caption: message
+  }]
+}
+
+async function sendPayloads(sock, jid, payloads) {
+  for (const payload of payloads) {
+    await sock.sendMessage(jid, payload)
   }
 }
 
@@ -39,7 +73,7 @@ function personalizeMessage(message, contactName) {
   return message.replace(/\{\{\s*nome\s*\}\}/gi, contactName || 'cliente')
 }
 
-function startDispatch({ labelIds, labelName, message, file, contacts: explicitContacts }) {
+function startDispatch({ labelIds, labelName, message, file, contacts: explicitContacts, messageType, asVoiceNote, pollQuestion, pollOptions }) {
   if (activeJobId) {
     throw new Error('Já existe um disparo em andamento. Aguarde ele terminar antes de iniciar outro.')
   }
@@ -59,6 +93,8 @@ function startDispatch({ labelIds, labelName, message, file, contacts: explicitC
   activeJobId = jobId
 
   const settings = store.getSettings()
+  const profile = store.getMessagingProfile()
+  const effectiveMessageType = messageType || 'media'
   const delayMinMs = settings.delayMinSec * 1000
   const delayMaxMs = settings.delayMaxSec * 1000
   const batchPauseMs = settings.batchPauseMinutes * 60 * 1000
@@ -115,9 +151,18 @@ function startDispatch({ labelIds, labelName, message, file, contacts: explicitC
       }
 
       const label = contact.name || contact.jid
-      const personalizedMessage = personalizeMessage(message, contact.name)
+      const personalizedMessage = personalizeMessage(message || '', contact.name)
       try {
-        await sock.sendMessage(contact.jid, buildMessagePayload(personalizedMessage, file))
+        const payloads = buildMessagePayloads({
+          messageType: effectiveMessageType,
+          message: personalizedMessage,
+          file,
+          asVoiceNote,
+          pollQuestion,
+          pollOptions,
+          profile
+        })
+        await sendPayloads(sock, contact.jid, payloads)
         sent += 1
         consecutiveFailures = 0
         store.logSend(jobId, logLabelId, effectiveLabelName, contact.jid, contact.name, 'sent', null)

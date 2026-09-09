@@ -28,6 +28,34 @@ const dropzoneText = document.getElementById('dropzone-text')
 const fileInput = document.getElementById('file-input')
 const removeFileBtn = document.getElementById('remove-file-btn')
 
+const messageTypeSelect = document.getElementById('message-type-select')
+const mediaFields = document.getElementById('media-fields')
+const pollFields = document.getElementById('poll-fields')
+const locationFields = document.getElementById('location-fields')
+const contactFields = document.getElementById('contact-fields')
+const voiceNoteLabel = document.getElementById('voice-note-label')
+const voiceNoteToggle = document.getElementById('voice-note-toggle')
+const pollQuestionInput = document.getElementById('poll-question-input')
+const pollOptionsInput = document.getElementById('poll-options-input')
+const locationSummary = document.getElementById('location-summary')
+const contactCardSummary = document.getElementById('contact-card-summary')
+const configureLocationBtn = document.getElementById('configure-location-btn')
+const configureContactBtn = document.getElementById('configure-contact-btn')
+
+const profileModal = document.getElementById('profile-modal')
+const profileCloseBtn = document.getElementById('profile-close-btn')
+const profileCancelBtn = document.getElementById('profile-cancel-btn')
+const profileSaveBtn = document.getElementById('profile-save-btn')
+const profileError = document.getElementById('profile-error')
+const profileFields = {
+  businessName: document.getElementById('profile-business-name'),
+  businessPhone: document.getElementById('profile-business-phone'),
+  locationName: document.getElementById('profile-location-name'),
+  locationAddress: document.getElementById('profile-location-address'),
+  locationLat: document.getElementById('profile-location-lat'),
+  locationLng: document.getElementById('profile-location-lng')
+}
+
 const dispatchNotice = document.getElementById('dispatch-notice')
 const dispatchCancelBtn = document.getElementById('dispatch-cancel-btn')
 
@@ -97,6 +125,7 @@ let awaitingConfirm = false
 let recommendedRanges = null
 let currentTutorialStep = 1
 let adHocContacts = null
+let currentProfile = { businessCard: { name: '', phone: '' }, location: { lat: null, lng: null, name: '', address: '' } }
 
 // ===== ícones, toasts e diálogo de confirmação (substituem alert()/confirm() nativos) =====
 
@@ -749,6 +778,9 @@ function setFile(file) {
   dropzone.classList.add('has-file')
   dropzoneText.textContent = `Arquivo selecionado: ${file.name} (clique para trocar)`
   removeFileBtn.classList.remove('hidden')
+  const isAudio = file.type.startsWith('audio/')
+  voiceNoteLabel.classList.toggle('hidden', !isAudio)
+  if (!isAudio) voiceNoteToggle.checked = false
 }
 
 function clearFile() {
@@ -757,11 +789,98 @@ function clearFile() {
   dropzone.classList.remove('has-file')
   dropzoneText.textContent = 'Arraste um arquivo aqui ou clique para selecionar'
   removeFileBtn.classList.add('hidden')
+  voiceNoteLabel.classList.add('hidden')
+  voiceNoteToggle.checked = false
 }
 
 removeFileBtn.addEventListener('click', (e) => {
   e.stopPropagation()
   clearFile()
+})
+
+// tipo de mensagem (arquivo/texto, enquete, localização, cartão de contato)
+
+function updateMessageTypeFields() {
+  const type = messageTypeSelect.value
+  mediaFields.classList.toggle('hidden', type !== 'media')
+  pollFields.classList.toggle('hidden', type !== 'poll')
+  locationFields.classList.toggle('hidden', type !== 'location')
+  contactFields.classList.toggle('hidden', type !== 'contact')
+}
+messageTypeSelect.addEventListener('change', updateMessageTypeFields)
+
+function renderProfileSummaries() {
+  locationSummary.textContent = currentProfile.location.lat != null
+    ? `Configurado: ${currentProfile.location.name || currentProfile.location.address || (currentProfile.location.lat + ', ' + currentProfile.location.lng)}`
+    : 'Nenhuma localização configurada ainda.'
+  contactCardSummary.textContent = currentProfile.businessCard.name
+    ? `Configurado: ${currentProfile.businessCard.name} — ${currentProfile.businessCard.phone}`
+    : 'Nenhum cartão de contato configurado ainda.'
+}
+
+async function refreshProfile() {
+  try {
+    const res = await fetch('/api/messaging-profile')
+    currentProfile = await res.json()
+  } catch (err) {
+    // perfil é usado só quando o tipo de mensagem exigir — não bloqueia o resto da tela
+  }
+  renderProfileSummaries()
+}
+
+function openProfileModal() {
+  profileFields.businessName.value = currentProfile.businessCard.name || ''
+  profileFields.businessPhone.value = currentProfile.businessCard.phone || ''
+  profileFields.locationName.value = currentProfile.location.name || ''
+  profileFields.locationAddress.value = currentProfile.location.address || ''
+  profileFields.locationLat.value = currentProfile.location.lat ?? ''
+  profileFields.locationLng.value = currentProfile.location.lng ?? ''
+  profileError.classList.add('hidden')
+  profileModal.classList.remove('hidden')
+}
+
+function closeProfileModal() {
+  profileModal.classList.add('hidden')
+}
+
+configureLocationBtn.addEventListener('click', openProfileModal)
+configureContactBtn.addEventListener('click', openProfileModal)
+profileCloseBtn.addEventListener('click', closeProfileModal)
+profileCancelBtn.addEventListener('click', closeProfileModal)
+profileModal.addEventListener('click', (e) => { if (e.target === profileModal) closeProfileModal() })
+
+profileSaveBtn.addEventListener('click', async () => {
+  const lat = profileFields.locationLat.value.trim()
+  const lng = profileFields.locationLng.value.trim()
+  const payload = {
+    businessCard: {
+      name: profileFields.businessName.value.trim(),
+      phone: profileFields.businessPhone.value.trim()
+    },
+    location: {
+      lat: lat ? Number(lat) : null,
+      lng: lng ? Number(lng) : null,
+      name: profileFields.locationName.value.trim(),
+      address: profileFields.locationAddress.value.trim()
+    }
+  }
+  profileError.classList.add('hidden')
+  profileSaveBtn.disabled = true
+  try {
+    const res = await fetch('/api/messaging-profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    currentProfile = await res.json()
+    renderProfileSummaries()
+    closeProfileModal()
+    showToast('Salvo!', 'success')
+  } catch (err) {
+    profileError.textContent = 'Erro ao salvar: ' + err.message
+    profileError.classList.remove('hidden')
+  }
+  profileSaveBtn.disabled = false
 })
 
 dispatchCancelBtn.addEventListener('click', () => {
@@ -773,9 +892,26 @@ dispatchBtn.addEventListener('click', async () => {
     showNotice('error', 'Selecione uma etiqueta ou contatos para disparar.')
     return
   }
+  const messageType = messageTypeSelect.value
   const message = messageInput.value.trim()
-  if (!message) {
+  if (messageType === 'media' && !message) {
     showNotice('error', 'Escreva a mensagem antes de disparar.')
+    return
+  }
+  if (messageType === 'poll') {
+    const question = pollQuestionInput.value.trim()
+    const options = pollOptionsInput.value.split('\n').map((s) => s.trim()).filter(Boolean)
+    if (!question || options.length < 2) {
+      showNotice('error', 'Escreva a pergunta e pelo menos 2 opções da enquete.')
+      return
+    }
+  }
+  if (messageType === 'location' && currentProfile.location.lat == null) {
+    showNotice('error', 'Configure a localização antes de disparar.')
+    return
+  }
+  if (messageType === 'contact' && !currentProfile.businessCard.name) {
+    showNotice('error', 'Configure o cartão de contato antes de disparar.')
     return
   }
 
@@ -805,8 +941,16 @@ dispatchBtn.addEventListener('click', async () => {
   } else {
     for (const labelId of selectedLabelIds) formData.append('labelIds', labelId)
   }
+  formData.append('messageType', messageType)
   formData.append('message', message)
   if (selectedFile) formData.append('file', selectedFile)
+  formData.append('asVoiceNote', voiceNoteToggle.checked ? 'true' : 'false')
+  if (messageType === 'poll') {
+    formData.append('pollQuestion', pollQuestionInput.value.trim())
+    for (const opt of pollOptionsInput.value.split('\n').map((s) => s.trim()).filter(Boolean)) {
+      formData.append('pollOptions', opt)
+    }
+  }
 
   try {
     const res = await fetch('/api/dispatch', { method: 'POST', body: formData })
@@ -916,6 +1060,8 @@ function listenToJob(jobId) {
   }
 }
 
+updateMessageTypeFields()
+refreshProfile()
 pollStatus()
 refreshFailures()
 refreshOptOuts()
