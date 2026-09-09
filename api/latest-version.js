@@ -1,17 +1,19 @@
-// GET /api/latest-version — checado pelo app do cliente (disparo/) pra saber se tem
-// atualização disponível. Mesma convenção do resto do projeto (ver ARQUITETURA.md do
-// workspace disparo/): valores hardcoded aqui, atualizados manualmente a cada release.
+// GET /api/latest-version — checado pelo app do cliente pra saber se tem atualização
+// disponível.
 //
-// IMPORTANTE: downloadUrl precisa apontar pra um asset .zip publicado num GitHub Release
-// deste repositório (github.com/FelipeChessa/multienvio/releases) contendo só
-// src/, public/, package.json e package-lock.json do projeto disparo/ (não é o mesmo
-// .zip/.exe/.msi do instalador completo — é um pacote menor, só de código, pensado pra
-// sobrescrever uma instalação já existente).
-
+// PAUSADO EM 2026-09-09: o app real distribuído (instalador Electron, releases v1.0.0 —
+// Disparo.em.Massa.Setup.1.0.0.exe/.msi) é um codebase DIFERENTE e mais avançado do que o
+// projeto disparo/ deste workspace (que é um protótipo/dev separado, sem dashboard,
+// configurações de envio, disjuntor, etc.). O pacote de atualização v1.2.0 publicado aqui
+// foi gerado a partir do disparo/ deste workspace e foi aplicado por engano sobre uma
+// instalação real, sobrescrevendo src/public dela e apagando recursos que só existiam lá.
+// Version travada bem abaixo de qualquer instalação real pra isNewerVersion() nunca
+// retornar true — ninguém mais recebe esse "update" até isso ser investigado e corrigido
+// com uma origem correta (o codebase real do app empacotado, não este protótipo).
 const LATEST_VERSION = {
-  version: '1.2.0',
-  downloadUrl: 'https://github.com/FelipeChessa/multienvio/releases/download/v1.2.0/disparo-update-v1.2.0.zip',
-  notes: 'Agora também dá pra disparar para todos os seus contatos (não só por etiqueta) e para quem ainda não é contato, a partir de uma planilha — cada número é conferido no WhatsApp antes de qualquer envio. Redesenho visual completo.'
+  version: '0.0.1',
+  downloadUrl: '',
+  notes: ''
 }
 
 export default function handler(req, res) {
