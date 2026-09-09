@@ -13,7 +13,12 @@ import { startDispatch, subscribeToJob } from './sender.js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const PORT = Number(process.env.PORT || 3210)
+const MAX_ALBUM_FILES = 5
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 30 * 1024 * 1024 } })
+const uploadDispatchFiles = upload.fields([
+  { name: 'file', maxCount: 1 },
+  { name: 'files', maxCount: MAX_ALBUM_FILES }
+])
 
 let whatsappStarted = false
 
@@ -168,7 +173,7 @@ app.put('/api/messaging-profile', (req, res) => {
   res.json(store.updateMessagingProfile(req.body || {}))
 })
 
-app.post('/api/dispatch', upload.single('file'), (req, res) => {
+app.post('/api/dispatch', uploadDispatchFiles, (req, res) => {
   if (!license.isActivated()) {
     return res.status(403).json({ error: 'Licença não ativada.' })
   }
@@ -209,6 +214,16 @@ app.post('/api/dispatch', upload.single('file'), (req, res) => {
     const loc = store.getMessagingProfile().location
     if (loc.lat == null || loc.lng == null) {
       return res.status(400).json({ error: 'Configure a localização antes de disparar.' })
+    }
+  }
+  const albumFiles = req.files?.files || []
+  if (messageType === 'album') {
+    if (albumFiles.length < 2) {
+      return res.status(400).json({ error: 'Selecione pelo menos 2 fotos/vídeos para o álbum.' })
+    }
+    const invalid = albumFiles.find((f) => !f.mimetype.startsWith('image/') && !f.mimetype.startsWith('video/'))
+    if (invalid) {
+      return res.status(400).json({ error: 'Álbum só aceita imagens e vídeos.' })
     }
   }
   if (messageType === 'contact') {
@@ -278,7 +293,8 @@ app.post('/api/dispatch', upload.single('file'), (req, res) => {
       labelIds: explicitContacts ? null : labelIds,
       labelName,
       message: (message || '').trim(),
-      file: req.file || null,
+      file: req.files?.file?.[0] || null,
+      albumFiles,
       contacts: explicitContacts,
       messageType,
       asVoiceNote,
@@ -319,6 +335,15 @@ app.get('/api/dispatch/:jobId/stream', (req, res) => {
   }
 
   req.on('close', () => unsubscribe())
+})
+
+// Erros do multer (arquivo grande demais, mais arquivos que o permitido no álbum, etc.) não
+// devem virar uma página de erro HTML — o front sempre espera JSON de volta.
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({ error: 'Erro no arquivo enviado: ' + err.message })
+  }
+  next(err)
 })
 
 app.listen(PORT, () => {

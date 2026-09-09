@@ -30,6 +30,11 @@ const removeFileBtn = document.getElementById('remove-file-btn')
 
 const messageTypeSelect = document.getElementById('message-type-select')
 const mediaFields = document.getElementById('media-fields')
+const albumFields = document.getElementById('album-fields')
+const albumDropzone = document.getElementById('album-dropzone')
+const albumDropzoneText = document.getElementById('album-dropzone-text')
+const albumFileInput = document.getElementById('album-file-input')
+const albumMessageInput = document.getElementById('album-message-input')
 const pollFields = document.getElementById('poll-fields')
 const locationFields = document.getElementById('location-fields')
 const contactFields = document.getElementById('contact-fields')
@@ -125,6 +130,8 @@ const tutorialSteps = Array.from(document.querySelectorAll('.tutorial-step'))
 let selectedLabelIds = new Set()
 let lastLabelsContactCount = 0
 let selectedFile = null
+let selectedAlbumFiles = []
+const MAX_ALBUM_FILES = 5
 let lastLabelsFetch = []
 let awaitingConfirm = false
 let recommendedRanges = null
@@ -820,11 +827,49 @@ removeFileBtn.addEventListener('click', (e) => {
   clearFile()
 })
 
+// dropzone do álbum (multi-arquivo)
+albumDropzone.addEventListener('click', () => albumFileInput.click())
+albumDropzone.addEventListener('dragover', (e) => {
+  e.preventDefault()
+  albumDropzone.classList.add('dragover')
+})
+albumDropzone.addEventListener('dragleave', () => albumDropzone.classList.remove('dragover'))
+albumDropzone.addEventListener('drop', (e) => {
+  e.preventDefault()
+  albumDropzone.classList.remove('dragover')
+  if (e.dataTransfer.files.length > 0) addAlbumFiles(e.dataTransfer.files)
+})
+albumFileInput.addEventListener('change', () => {
+  if (albumFileInput.files.length > 0) addAlbumFiles(albumFileInput.files)
+  albumFileInput.value = ''
+})
+
+function addAlbumFiles(fileList) {
+  const incoming = Array.from(fileList).filter((f) => f.type.startsWith('image/') || f.type.startsWith('video/'))
+  const rejected = fileList.length - incoming.length
+  selectedAlbumFiles = [...selectedAlbumFiles, ...incoming].slice(0, MAX_ALBUM_FILES)
+  renderAlbumSummary()
+  if (rejected > 0) {
+    showToast('Álbum só aceita imagens e vídeos — algum arquivo foi ignorado.', 'error')
+  }
+}
+
+function renderAlbumSummary() {
+  albumDropzone.classList.toggle('has-file', selectedAlbumFiles.length > 0)
+  if (selectedAlbumFiles.length === 0) {
+    albumDropzoneText.textContent = 'Arraste 2 a 5 imagens ou vídeos aqui, ou clique para selecionar'
+    return
+  }
+  const names = selectedAlbumFiles.map((f) => f.name).join(', ')
+  albumDropzoneText.textContent = `${selectedAlbumFiles.length} arquivo(s) selecionado(s): ${names} (clique para adicionar mais, até ${MAX_ALBUM_FILES})`
+}
+
 // tipo de mensagem (arquivo/texto, enquete, localização, cartão de contato)
 
 function updateMessageTypeFields() {
   const type = messageTypeSelect.value
   mediaFields.classList.toggle('hidden', type !== 'media')
+  albumFields.classList.toggle('hidden', type !== 'album')
   pollFields.classList.toggle('hidden', type !== 'poll')
   locationFields.classList.toggle('hidden', type !== 'location')
   contactFields.classList.toggle('hidden', type !== 'contact')
@@ -920,6 +965,10 @@ dispatchBtn.addEventListener('click', async () => {
     showNotice('error', 'Escreva a mensagem antes de disparar.')
     return
   }
+  if (messageType === 'album' && selectedAlbumFiles.length < 2) {
+    showNotice('error', 'Selecione pelo menos 2 fotos/vídeos para o álbum.')
+    return
+  }
   if (messageType === 'poll') {
     const question = pollQuestionInput.value.trim()
     const options = pollOptionsInput.value.split('\n').map((s) => s.trim()).filter(Boolean)
@@ -964,7 +1013,12 @@ dispatchBtn.addEventListener('click', async () => {
     for (const labelId of selectedLabelIds) formData.append('labelIds', labelId)
   }
   formData.append('messageType', messageType)
-  formData.append('message', message)
+  if (messageType === 'album') {
+    formData.append('message', albumMessageInput.value.trim())
+    for (const albumFile of selectedAlbumFiles) formData.append('files', albumFile)
+  } else {
+    formData.append('message', message)
+  }
   if (selectedFile) formData.append('file', selectedFile)
   formData.append('asVoiceNote', voiceNoteToggle.checked ? 'true' : 'false')
   if (messageType === 'poll') {

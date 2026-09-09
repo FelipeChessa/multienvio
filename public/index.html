@@ -118,6 +118,7 @@
           <label for="message-type-select">Tipo de mensagem</label>
           <select id="message-type-select">
             <option value="media">Arquivo/texto</option>
+            <option value="album">Álbum (várias fotos/vídeos)</option>
             <option value="poll">Enquete</option>
             <option value="location">Localização</option>
             <option value="contact">Cartão de contato</option>
@@ -138,6 +139,20 @@
             <label for="message-input">Mensagem</label>
             <textarea id="message-input" rows="5" placeholder="Ex: Olá! Passando para avisar sobre uma novidade importante para você."></textarea>
             <p class="field-hint">Dica: use <code>{{nome}}</code> na mensagem para personalizar com o nome de cada contato.</p>
+          </div>
+
+          <div id="album-fields" class="hidden">
+            <label>Fotos/vídeos do álbum (2 a 5 arquivos)</label>
+            <div id="album-dropzone" class="dropzone">
+              <span id="album-dropzone-text">Arraste 2 a 5 imagens ou vídeos aqui, ou clique para selecionar</span>
+              <input type="file" id="album-file-input" accept="image/*,video/*" multiple hidden />
+            </div>
+            <p class="field-hint">Álbum manda 1 mensagem "moldura" + 1 por arquivo — um álbum de 5
+              fotos vira 6 mensagens por contato, o que aumenta bastante o tempo total do disparo (o
+              intervalo entre mensagens se aplica entre cada item também, não só entre contatos).</p>
+
+            <label for="album-message-input">Legenda (vai só na primeira foto/vídeo) — opcional</label>
+            <textarea id="album-message-input" rows="3" placeholder="Ex: Confira as novidades desta semana."></textarea>
           </div>
 
           <div id="poll-fields" class="hidden">

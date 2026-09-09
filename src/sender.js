@@ -69,11 +69,37 @@ async function sendPayloads(sock, jid, payloads) {
   }
 }
 
+// Álbum é protocolo de duas etapas do Baileys: primeiro manda a "moldura" (só avisa quantas
+// imagens/vídeos vêm por aí), depois cada mídia referencia a key da moldura via
+// albumParentKey. Isso significa 1 + N mensagens por contato — por isso aplicamos o mesmo
+// randomDelay() entre cada item do álbum também, não só entre contatos.
+async function sendAlbum(sock, jid, albumFiles, message, delayMinMs, delayMaxMs) {
+  const imageCount = albumFiles.filter((f) => f.mimetype.startsWith('image/')).length
+  const videoCount = albumFiles.filter((f) => f.mimetype.startsWith('video/')).length
+
+  const albumMsg = await sock.sendMessage(jid, { album: { expectedImageCount: imageCount, expectedVideoCount: videoCount } })
+
+  for (let i = 0; i < albumFiles.length; i++) {
+    const albumFile = albumFiles[i]
+    const isVideo = albumFile.mimetype.startsWith('video/')
+    const payload = {
+      [isVideo ? 'video' : 'image']: albumFile.buffer,
+      albumParentKey: albumMsg.key,
+      ...(i === 0 && message ? { caption: message } : {})
+    }
+    await sock.sendMessage(jid, payload)
+
+    if (i < albumFiles.length - 1) {
+      await sleep(randomDelay(delayMinMs, delayMaxMs))
+    }
+  }
+}
+
 function personalizeMessage(message, contactName) {
   return message.replace(/\{\{\s*nome\s*\}\}/gi, contactName || 'cliente')
 }
 
-function startDispatch({ labelIds, labelName, message, file, contacts: explicitContacts, messageType, asVoiceNote, pollQuestion, pollOptions, simulateTyping, skipBlocked, markAsRead, applyLabelId, removeLabelId }) {
+function startDispatch({ labelIds, labelName, message, file, contacts: explicitContacts, messageType, asVoiceNote, pollQuestion, pollOptions, simulateTyping, skipBlocked, markAsRead, applyLabelId, removeLabelId, albumFiles }) {
   if (activeJobId) {
     throw new Error('Já existe um disparo em andamento. Aguarde ele terminar antes de iniciar outro.')
   }
@@ -187,16 +213,22 @@ function startDispatch({ labelIds, labelName, message, file, contacts: explicitC
       }
 
       try {
-        const payloads = buildMessagePayloads({
-          messageType: effectiveMessageType,
-          message: personalizedMessage,
-          file,
-          asVoiceNote,
-          pollQuestion,
-          pollOptions,
-          profile
-        })
-        await sendPayloads(sock, contact.jid, payloads)
+        if (effectiveMessageType === 'album') {
+          // conta como 1 envio (pro disjuntor/limite diário), mesmo sendo 1+N mensagens no
+          // protocolo — é 1 disparo do ponto de vista do usuário.
+          await sendAlbum(sock, contact.jid, albumFiles, personalizedMessage, delayMinMs, delayMaxMs)
+        } else {
+          const payloads = buildMessagePayloads({
+            messageType: effectiveMessageType,
+            message: personalizedMessage,
+            file,
+            asVoiceNote,
+            pollQuestion,
+            pollOptions,
+            profile
+          })
+          await sendPayloads(sock, contact.jid, payloads)
+        }
         sent += 1
         consecutiveFailures = 0
 
