@@ -356,6 +356,30 @@ h3 { font-family: var(--font-heading); font-weight: 700; }
 .secondary.small:hover:not(:disabled) { background: var(--border); border-color: var(--border-strong); }
 .secondary.small:disabled { opacity: 0.55; cursor: not-allowed; }
 
+.sidebar-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.sidebar-tab {
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s, color .15s;
+}
+
+.sidebar-tab.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+.sidebar-tab:hover:not(.active) { border-color: var(--border-strong); }
+
 /* ===== Labels list ===== */
 
 .labels-search {

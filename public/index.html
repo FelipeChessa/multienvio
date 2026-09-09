@@ -104,10 +104,23 @@
       <div class="layout">
         <aside id="labels-list">
           <div class="panel-header">
-            <h2>Etiquetas</h2>
+            <h2 id="labels-panel-title">Etiquetas</h2>
             <button id="labels-refresh-btn" class="secondary small">Atualizar</button>
           </div>
+
+          <div class="sidebar-tabs">
+            <button type="button" class="sidebar-tab active" data-tab="labels">Etiquetas</button>
+            <button type="button" class="sidebar-tab" data-tab="allContacts">Todos os contatos</button>
+          </div>
+
           <input type="text" id="labels-search" class="labels-search hidden" placeholder="Buscar etiqueta..." />
+          <input type="text" id="all-contacts-search" class="labels-search hidden" placeholder="Buscar contato por nome ou número..." />
+
+          <div id="all-contacts-bulk-actions" class="panel-header-actions hidden" style="margin-bottom: 10px;">
+            <button type="button" id="select-all-contacts-btn" class="secondary small">Selecionar todos (<span id="all-contacts-filtered-count">0</span>)</button>
+            <button type="button" id="clear-contacts-selection-btn" class="secondary small">Limpar seleção</button>
+          </div>
+
           <div id="labels-container"></div>
         </aside>
 

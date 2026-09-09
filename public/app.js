@@ -15,9 +15,16 @@ const resetSessionBtn = document.getElementById('reset-session-btn')
 const mainScreen = document.getElementById('main-screen')
 const qrImage = document.getElementById('qr-image')
 
+const labelsPanelTitle = document.getElementById('labels-panel-title')
 const labelsRefreshBtn = document.getElementById('labels-refresh-btn')
 const labelsSearchInput = document.getElementById('labels-search')
 const labelsContainer = document.getElementById('labels-container')
+const sidebarTabs = document.querySelectorAll('.sidebar-tab')
+const allContactsSearchInput = document.getElementById('all-contacts-search')
+const allContactsBulkActions = document.getElementById('all-contacts-bulk-actions')
+const allContactsFilteredCount = document.getElementById('all-contacts-filtered-count')
+const selectAllContactsBtn = document.getElementById('select-all-contacts-btn')
+const clearContactsSelectionBtn = document.getElementById('clear-contacts-selection-btn')
 const dispatchPanel = document.getElementById('dispatch-panel')
 const dispatchTitle = document.getElementById('dispatch-title')
 const dispatchCount = document.getElementById('dispatch-count')
@@ -137,6 +144,9 @@ let awaitingConfirm = false
 let recommendedRanges = null
 let currentTutorialStep = 1
 let adHocContacts = null
+let activeContactSource = 'labels' // 'labels' | 'allContacts'
+let allContactsCache = null // null = ainda não buscado
+let selectedContactJids = new Set()
 let currentProfile = { businessCard: { name: '', phone: '' }, location: { lat: null, lng: null, name: '', address: '' } }
 
 // ===== ícones, toasts e diálogo de confirmação (substituem alert()/confirm() nativos) =====
@@ -377,10 +387,12 @@ async function refreshLabels() {
   for (const id of Array.from(selectedLabelIds)) {
     if (!labels.some((l) => l.id === id)) selectedLabelIds.delete(id)
   }
-  renderLabels(labels)
   renderLabelSelects(labels)
+  if (activeContactSource === 'labels') {
+    renderLabels(labels)
+    if (selectedLabelIds.size > 0) updateDispatchPanelForLabels()
+  }
   if (labels.length > 0) setScreen('main')
-  if (selectedLabelIds.size > 0) updateDispatchPanelForLabels()
   refreshStats()
 }
 
@@ -428,6 +440,124 @@ function renderLabels(labels) {
 }
 
 labelsSearchInput.addEventListener('input', () => renderLabels(lastLabelsFetch))
+
+// ===== aba "Todos os contatos" =====
+//
+// Reaproveita o MESMO mecanismo já usado pelo reenvio de falhas selecionadas: preenche
+// adHocContacts (em vez de labelIds) e deixa o handler de disparo/FormData já existentes
+// cuidarem do resto — não precisa duplicar validação nem envio.
+
+function switchSidebarTab(tab) {
+  if (tab === activeContactSource) return
+  activeContactSource = tab
+  for (const btn of sidebarTabs) btn.classList.toggle('active', btn.dataset.tab === tab)
+  labelsPanelTitle.textContent = tab === 'allContacts' ? 'Todos os contatos' : 'Etiquetas'
+  allContactsSearchInput.classList.toggle('hidden', tab !== 'allContacts')
+  allContactsBulkActions.classList.toggle('hidden', tab !== 'allContacts')
+
+  selectedLabelIds.clear()
+  selectedContactJids.clear()
+  adHocContacts = null
+  allContactsSearchInput.value = ''
+
+  if (tab === 'allContacts') {
+    renderAllContactsList()
+    fetchAllContactsIfNeeded()
+  } else {
+    labelsSearchInput.value = ''
+    renderLabels(lastLabelsFetch)
+  }
+  dispatchPanel.classList.add('hidden')
+  resetConfirmState()
+}
+
+for (const btn of sidebarTabs) {
+  btn.addEventListener('click', () => switchSidebarTab(btn.dataset.tab))
+}
+
+async function fetchAllContactsIfNeeded() {
+  if (allContactsCache !== null) return
+  try {
+    const res = await fetch('/api/contacts')
+    allContactsCache = await res.json()
+  } catch (err) {
+    allContactsCache = []
+  }
+  if (activeContactSource === 'allContacts') renderAllContactsList()
+}
+
+function filteredAllContacts() {
+  const list = allContactsCache || []
+  const query = allContactsSearchInput.value.trim().toLowerCase()
+  if (!query) return list
+  return list.filter((c) => (c.name || '').toLowerCase().includes(query) || c.jid.toLowerCase().includes(query))
+}
+
+function renderAllContactsList() {
+  const filtered = filteredAllContacts()
+  allContactsFilteredCount.textContent = filtered.length
+
+  if (allContactsCache === null) {
+    labelsContainer.innerHTML = `<p class="empty-state">Carregando contatos...</p>`
+    return
+  }
+  if (filtered.length === 0) {
+    labelsContainer.innerHTML = `<p class="empty-state">Nenhum contato encontrado.</p>`
+    return
+  }
+
+  labelsContainer.innerHTML = ''
+  for (const contact of filtered) {
+    const checked = selectedContactJids.has(contact.jid)
+    const card = document.createElement('div')
+    card.className = 'label-card' + (checked ? ' active' : '')
+    card.innerHTML = `<div class="select-check"></div><div class="name">${escapeHtml(contact.name || contact.jid)}</div>`
+    card.addEventListener('click', () => toggleContact(contact))
+    labelsContainer.appendChild(card)
+  }
+}
+
+function toggleContact(contact) {
+  if (selectedContactJids.has(contact.jid)) selectedContactJids.delete(contact.jid)
+  else selectedContactJids.add(contact.jid)
+  renderAllContactsList()
+  updateDispatchPanelForContacts()
+}
+
+function updateDispatchPanelForContacts() {
+  if (selectedContactJids.size === 0) {
+    adHocContacts = null
+    dispatchPanel.classList.add('hidden')
+    return
+  }
+  const jids = Array.from(selectedContactJids)
+  adHocContacts = jids.map((jid) => {
+    const c = (allContactsCache || []).find((x) => x.jid === jid)
+    return { jid, name: c?.name || null }
+  })
+  dispatchPanel.classList.remove('hidden')
+  dispatchTitle.textContent = adHocContacts.length === 1
+    ? `Disparar: ${adHocContacts[0].name || adHocContacts[0].jid}`
+    : `Disparar: ${adHocContacts.length} contatos selecionados`
+  dispatchCount.textContent = `${adHocContacts.length} contato(s) receberão esta mensagem.`
+  progressPanel.classList.add('hidden')
+  dispatchBtn.disabled = false
+  resetConfirmState()
+}
+
+allContactsSearchInput.addEventListener('input', renderAllContactsList)
+
+selectAllContactsBtn.addEventListener('click', () => {
+  for (const contact of filteredAllContacts()) selectedContactJids.add(contact.jid)
+  renderAllContactsList()
+  updateDispatchPanelForContacts()
+})
+
+clearContactsSelectionBtn.addEventListener('click', () => {
+  selectedContactJids.clear()
+  renderAllContactsList()
+  updateDispatchPanelForContacts()
+})
 
 // Marca/desmarca uma etiqueta — várias podem ficar selecionadas ao mesmo tempo, com dedupe
 // de contatos repetidos feito no backend (store.listContactsForLabels).
@@ -535,6 +665,10 @@ failuresSelectAll.addEventListener('change', () => {
 failuresResendBtn.addEventListener('click', () => {
   const checked = Array.from(document.querySelectorAll('.failure-select:checked'))
   if (checked.length === 0) return
+  // troca pra aba "Etiquetas" primeiro (limpa qualquer seleção anterior, inclusive
+  // adHocContacts) — só depois preenche adHocContacts com quem foi marcado aqui, senão a
+  // troca de aba apagaria a seleção que acabamos de montar.
+  if (activeContactSource !== 'labels') switchSidebarTab('labels')
   adHocContacts = checked.map((cb) => ({ jid: cb.dataset.jid, name: cb.dataset.name || null }))
   selectedLabelIds.clear()
   renderLabels(lastLabelsFetch)
