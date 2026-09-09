@@ -56,6 +56,10 @@
   th { color: var(--muted); font-size: 11px; text-transform: uppercase; }
   td.actions { display: flex; gap: 6px; }
   .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 20px; }
+  .status-badge { padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .status-badge.ativa { background: #f0fdf4; color: var(--brand-dark); }
+  .status-badge.expirada { background: var(--warning-bg); color: var(--warning); }
+  .status-badge.revogada { background: var(--danger-bg); color: var(--danger); }
   .gate { max-width: 380px; margin: 60px auto; text-align: center; }
   .hidden { display: none !important; }
 </style>
@@ -98,7 +102,7 @@
         <div style="overflow-x:auto;">
           <table id="activations-table" class="hidden">
             <thead>
-              <tr><th>Cliente</th><th>Dispositivo</th><th>Desde</th><th>Status</th><th></th></tr>
+              <tr><th>Cliente</th><th>Dispositivo</th><th>Desde</th><th>Expira em</th><th>Status</th><th></th></tr>
             </thead>
             <tbody id="activations-body"></tbody>
           </table>
@@ -234,11 +238,15 @@
         .forEach(([key, info]) => {
           const tr = document.createElement('tr')
           const date = info.firstActivatedAt ? new Date(info.firstActivatedAt).toLocaleDateString('pt-BR') : '-'
+          const expiraEm = info.expiresAt ? new Date(info.expiresAt).toLocaleDateString('pt-BR') : 'Vitalícia'
+          const status = info.status || (info.revoked ? 'revogada' : 'ativa')
+          const statusLabel = { ativa: 'Ativa', expirada: 'Expirada', revogada: 'Revogada' }[status] || status
           tr.innerHTML =
             '<td>' + escapeHtml(info.customer || '-') + '</td>' +
             '<td>' + escapeHtml((info.deviceId || '').slice(0, 12)) + '...</td>' +
             '<td>' + date + '</td>' +
-            '<td>' + (info.revoked ? 'Revogada' : 'Ativa') + '</td>' +
+            '<td>' + expiraEm + '</td>' +
+            '<td><span class="status-badge ' + status + '">' + statusLabel + '</span></td>' +
             '<td class="actions"></td>'
           const actionsCell = tr.querySelector('.actions')
 
