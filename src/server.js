@@ -68,6 +68,10 @@ app.get('/api/labels/contacts-count', (req, res) => {
   res.json({ count: store.listContactsForLabels(ids).length })
 })
 
+app.get('/api/contacts', (req, res) => {
+  res.json(store.listAllContacts({ q: req.query.q }))
+})
+
 app.post('/api/labels/resync', async (req, res) => {
   try {
     await whatsapp.resyncLabels()

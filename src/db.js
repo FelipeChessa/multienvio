@@ -170,6 +170,17 @@ function listContactsForLabel(labelId) {
     .sort((a, b) => (a.name || a.jid).localeCompare(b.name || b.jid, 'pt-BR', { sensitivity: 'base' }))
 }
 
+// Todos os contatos individuais já sincronizados, não só os que estão em alguma etiqueta —
+// usado pela aba "Todos os contatos". Exclui grupos, broadcast e quem já pediu pra sair.
+function listAllContacts({ q } = {}) {
+  let contacts = Object.values(state.contacts).filter((c) => !c.jid.endsWith('@g.us') && !c.jid.endsWith('@broadcast') && !state.optOuts[c.jid])
+  if (q) {
+    const needle = q.toLowerCase()
+    contacts = contacts.filter((c) => (c.name && c.name.toLowerCase().includes(needle)) || c.jid.toLowerCase().includes(needle))
+  }
+  return contacts.sort((a, b) => (a.name || a.jid).localeCompare(b.name || b.jid, 'pt-BR', { sensitivity: 'base' }))
+}
+
 // Combina os contatos de várias etiquetas, sem duplicar quem está em mais de uma
 // (listContactsForLabel já filtra opt-outs).
 function listContactsForLabels(labelIds) {
@@ -357,6 +368,7 @@ export {
   listLabels,
   listContactsForLabel,
   listContactsForLabels,
+  listAllContacts,
   logSend,
   listFailedSends,
   listSendLogsForExport,
