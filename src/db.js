@@ -139,6 +139,19 @@ function listContactsForLabel(labelId) {
     .sort((a, b) => (a.name || a.jid).localeCompare(b.name || b.jid, 'pt-BR', { sensitivity: 'base' }))
 }
 
+// Combina os contatos de várias etiquetas, sem duplicar quem está em mais de uma
+// (listContactsForLabel já filtra opt-outs).
+function listContactsForLabels(labelIds) {
+  const seen = new Map()
+  for (const labelId of labelIds) {
+    for (const contact of listContactsForLabel(labelId)) {
+      if (!seen.has(contact.jid)) seen.set(contact.jid, contact)
+    }
+  }
+  return Array.from(seen.values())
+    .sort((a, b) => (a.name || a.jid).localeCompare(b.name || b.jid, 'pt-BR', { sensitivity: 'base' }))
+}
+
 function addOptOut(jid) {
   if (!jid || state.optOuts[jid]) return
   state.optOuts[jid] = { at: new Date().toISOString() }
@@ -299,6 +312,7 @@ export {
   upsertContact,
   listLabels,
   listContactsForLabel,
+  listContactsForLabels,
   logSend,
   listFailedSends,
   listSendLogsForExport,

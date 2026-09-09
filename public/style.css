@@ -408,8 +408,29 @@ h3 { font-family: var(--font-heading); font-weight: 700; }
   background: var(--brand);
 }
 
-.label-card .name { font-weight: 600; font-size: 14px; color: var(--ink); }
+.label-card .name { font-weight: 600; font-size: 14px; color: var(--ink); padding-right: 20px; }
 .label-card .count { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+/* seleção múltipla: cada card marca/desmarca independente, então usa um check no canto em
+   vez do padrão antigo de "só um card ativo por vez". */
+.label-card .select-check {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid var(--border);
+  background: #fff;
+}
+.label-card.active .select-check {
+  border-color: var(--brand);
+  background: var(--brand);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 12px;
+}
 
 .muted { color: var(--muted); font-size: 13px; }
 

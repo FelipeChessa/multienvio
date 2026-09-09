@@ -58,6 +58,11 @@ app.get('/api/labels/:id/contacts', (req, res) => {
   res.json(store.listContactsForLabel(req.params.id))
 })
 
+app.get('/api/labels/contacts-count', (req, res) => {
+  const ids = String(req.query.ids || '').split(',').map((s) => s.trim()).filter(Boolean)
+  res.json({ count: store.listContactsForLabels(ids).length })
+})
+
 app.post('/api/labels/resync', async (req, res) => {
   try {
     await whatsapp.resyncLabels()
@@ -158,39 +163,43 @@ app.post('/api/dispatch', upload.single('file'), (req, res) => {
     return res.status(403).json({ error: 'Licença não ativada.' })
   }
 
-  const { labelId, message, contactsJson } = req.body
+  const { message, contactsJson } = req.body
+  let labelIds = req.body.labelIds
+  if (!labelIds) labelIds = []
+  else if (!Array.isArray(labelIds)) labelIds = [labelIds]
+
   if (!message || !message.trim()) {
     return res.status(400).json({ error: 'Mensagem é obrigatória.' })
   }
 
-  // reenvio rápido a partir da tabela de falhas manda uma lista explícita de contatos
-  // (contactsJson), em vez de uma etiqueta inteira
+  // reenvio rápido a partir da tabela de falhas (ou as abas "Todos os contatos"/"Clientes
+  // frios") manda uma lista explícita de contatos (contactsJson), em vez de etiqueta(s)
   let explicitContacts = null
   if (contactsJson) {
     try {
       explicitContacts = JSON.parse(contactsJson)
     } catch {
-      return res.status(400).json({ error: 'Lista de contatos para reenvio inválida.' })
+      return res.status(400).json({ error: 'Lista de contatos inválida.' })
     }
     if (!Array.isArray(explicitContacts) || explicitContacts.length === 0) {
-      return res.status(400).json({ error: 'Selecione ao menos um contato para reenviar.' })
+      return res.status(400).json({ error: 'Selecione ao menos um contato para disparar.' })
     }
   }
 
   let labelName = null
   if (!explicitContacts) {
-    if (!labelId) {
-      return res.status(400).json({ error: 'Etiqueta é obrigatória.' })
+    if (labelIds.length === 0) {
+      return res.status(400).json({ error: 'Selecione ao menos uma etiqueta.' })
     }
     const labels = store.listLabels()
-    const label = labels.find((l) => l.id === labelId)
-    if (!label) {
-      return res.status(404).json({ error: 'Etiqueta não encontrada.' })
+    const selectedLabels = labelIds.map((id) => labels.find((l) => l.id === id)).filter(Boolean)
+    if (selectedLabels.length !== labelIds.length) {
+      return res.status(404).json({ error: 'Uma ou mais etiquetas não foram encontradas.' })
     }
-    if (label.contactCount === 0) {
-      return res.status(400).json({ error: 'Essa etiqueta não tem contatos associados.' })
+    if (store.listContactsForLabels(labelIds).length === 0) {
+      return res.status(400).json({ error: 'As etiquetas selecionadas não têm contatos associados.' })
     }
-    labelName = label.name
+    labelName = selectedLabels.map((l) => l.name).join(', ')
   }
 
   try {
@@ -210,7 +219,7 @@ app.post('/api/dispatch', upload.single('file'), (req, res) => {
   let jobId
   try {
     jobId = startDispatch({
-      labelId: explicitContacts ? null : labelId,
+      labelIds: explicitContacts ? null : labelIds,
       labelName,
       message: message.trim(),
       file: req.file || null,

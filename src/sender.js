@@ -39,17 +39,22 @@ function personalizeMessage(message, contactName) {
   return message.replace(/\{\{\s*nome\s*\}\}/gi, contactName || 'cliente')
 }
 
-function startDispatch({ labelId, labelName, message, file, contacts: explicitContacts }) {
+function startDispatch({ labelIds, labelName, message, file, contacts: explicitContacts }) {
   if (activeJobId) {
     throw new Error('Já existe um disparo em andamento. Aguarde ele terminar antes de iniciar outro.')
   }
 
-  // reenvio rápido a partir da tabela de falhas manda uma lista explícita de contatos,
-  // em vez de uma etiqueta inteira — nesse caso não há labelId/labelName reais
+  // reenvio rápido a partir da tabela de falhas (ou as abas "Todos os contatos"/"Clientes
+  // frios") manda uma lista explícita de contatos, em vez de etiqueta(s) — nesse caso não há
+  // labelIds/labelName reais vindos de etiqueta.
   const contacts = explicitContacts && explicitContacts.length > 0
     ? explicitContacts
-    : store.listContactsForLabel(labelId)
+    : store.listContactsForLabels(labelIds || [])
   const effectiveLabelName = labelName || (explicitContacts ? 'Reenvio manual' : null)
+  // logSend guarda um labelId por linha só pra exibição na tabela de falhas — com várias
+  // etiquetas combinadas não há um único "dono" do contato, então só preenche quando for
+  // exatamente uma etiqueta (mesmo padrão problem-free já usado antes com etiqueta única).
+  const logLabelId = labelIds && labelIds.length === 1 ? labelIds[0] : null
   const jobId = randomUUID()
   activeJobId = jobId
 
@@ -99,7 +104,7 @@ function startDispatch({ labelId, labelName, message, file, contacts: explicitCo
         emit({
           type: 'aborted',
           reason: 'daily_limit',
-          message: `Limite diário de ${settings.dailyLimit} envios atingido. O restante da etiqueta não foi enviado.`,
+          message: `Limite diário de ${settings.dailyLimit} envios atingido. O restante não foi enviado.`,
           sent,
           failed,
           total: contacts.length
@@ -115,12 +120,12 @@ function startDispatch({ labelId, labelName, message, file, contacts: explicitCo
         await sock.sendMessage(contact.jid, buildMessagePayload(personalizedMessage, file))
         sent += 1
         consecutiveFailures = 0
-        store.logSend(jobId, labelId, effectiveLabelName, contact.jid, contact.name, 'sent', null)
+        store.logSend(jobId, logLabelId, effectiveLabelName, contact.jid, contact.name, 'sent', null)
         emit({ type: 'progress', jid: contact.jid, name: label, status: 'sent', sent, failed, total: contacts.length })
       } catch (err) {
         failed += 1
         consecutiveFailures += 1
-        store.logSend(jobId, labelId, effectiveLabelName, contact.jid, contact.name, 'failed', String(err?.message || err))
+        store.logSend(jobId, logLabelId, effectiveLabelName, contact.jid, contact.name, 'failed', String(err?.message || err))
         emit({ type: 'progress', jid: contact.jid, name: label, status: 'failed', error: String(err?.message || err), sent, failed, total: contacts.length })
       }
 

@@ -89,7 +89,8 @@ const tutorialNextBtn = document.getElementById('tutorial-next-btn')
 const tutorialStepIndicator = document.getElementById('tutorial-step-indicator')
 const tutorialSteps = Array.from(document.querySelectorAll('.tutorial-step'))
 
-let selectedLabel = null
+let selectedLabelIds = new Set()
+let lastLabelsContactCount = 0
 let selectedFile = null
 let lastLabelsFetch = []
 let awaitingConfirm = false
@@ -331,8 +332,13 @@ async function refreshLabels() {
   const res = await fetch('/api/labels')
   const labels = await res.json()
   lastLabelsFetch = labels
+  // etiquetas apagadas ou renomeadas não devem ficar "presas" numa seleção antiga
+  for (const id of Array.from(selectedLabelIds)) {
+    if (!labels.some((l) => l.id === id)) selectedLabelIds.delete(id)
+  }
   renderLabels(labels)
   if (labels.length > 0) setScreen('main')
+  if (selectedLabelIds.size > 0) updateDispatchPanelForLabels()
   refreshStats()
 }
 
@@ -356,25 +362,48 @@ function renderLabels(labels) {
 
   for (const label of filtered) {
     const card = document.createElement('div')
-    card.className = 'label-card' + (selectedLabel && selectedLabel.id === label.id ? ' active' : '')
-    card.innerHTML = `<div class="name">${escapeHtml(label.name)}</div><div class="count">${label.contactCount} contato(s)</div>`
-    card.addEventListener('click', () => selectLabel(label))
+    card.className = 'label-card' + (selectedLabelIds.has(label.id) ? ' active' : '')
+    card.innerHTML = `<div class="select-check"></div><div class="name">${escapeHtml(label.name)}</div><div class="count">${label.contactCount} contato(s)</div>`
+    card.addEventListener('click', () => toggleLabel(label))
     labelsContainer.appendChild(card)
   }
 }
 
 labelsSearchInput.addEventListener('input', () => renderLabels(lastLabelsFetch))
 
-function selectLabel(label) {
-  selectedLabel = label
+// Marca/desmarca uma etiqueta — várias podem ficar selecionadas ao mesmo tempo, com dedupe
+// de contatos repetidos feito no backend (store.listContactsForLabels).
+function toggleLabel(label) {
+  if (selectedLabelIds.has(label.id)) selectedLabelIds.delete(label.id)
+  else selectedLabelIds.add(label.id)
   adHocContacts = null
   renderLabels(lastLabelsFetch)
+  updateDispatchPanelForLabels()
+}
+
+async function updateDispatchPanelForLabels() {
+  if (selectedLabelIds.size === 0) {
+    dispatchPanel.classList.add('hidden')
+    return
+  }
   dispatchPanel.classList.remove('hidden')
-  dispatchTitle.textContent = `Disparar: ${label.name}`
-  dispatchCount.textContent = `${label.contactCount} contato(s) receberão esta mensagem.`
+  const selected = lastLabelsFetch.filter((l) => selectedLabelIds.has(l.id))
+  dispatchTitle.textContent = `Disparar: ${selected.map((l) => l.name).join(', ')}`
   progressPanel.classList.add('hidden')
-  dispatchBtn.disabled = label.contactCount === 0
   resetConfirmState()
+
+  const ids = Array.from(selectedLabelIds).join(',')
+  try {
+    const res = await fetch(`/api/labels/contacts-count?ids=${encodeURIComponent(ids)}`)
+    const data = await res.json()
+    lastLabelsContactCount = data.count
+    dispatchCount.textContent = `${data.count} contato(s) receberão esta mensagem.`
+    dispatchBtn.disabled = data.count === 0
+  } catch (err) {
+    lastLabelsContactCount = 0
+    dispatchCount.textContent = ''
+    dispatchBtn.disabled = true
+  }
 }
 
 function escapeHtml(str) {
@@ -449,7 +478,7 @@ failuresResendBtn.addEventListener('click', () => {
   const checked = Array.from(document.querySelectorAll('.failure-select:checked'))
   if (checked.length === 0) return
   adHocContacts = checked.map((cb) => ({ jid: cb.dataset.jid, name: cb.dataset.name || null }))
-  selectedLabel = null
+  selectedLabelIds.clear()
   renderLabels(lastLabelsFetch)
   dispatchPanel.classList.remove('hidden')
   dispatchTitle.textContent = 'Reenviar para contatos selecionados'
@@ -740,7 +769,7 @@ dispatchCancelBtn.addEventListener('click', () => {
 })
 
 dispatchBtn.addEventListener('click', async () => {
-  if (!selectedLabel && !adHocContacts) {
+  if (selectedLabelIds.size === 0 && !adHocContacts) {
     showNotice('error', 'Selecione uma etiqueta ou contatos para disparar.')
     return
   }
@@ -756,7 +785,7 @@ dispatchBtn.addEventListener('click', async () => {
     dispatchCancelBtn.classList.remove('hidden')
     const target = adHocContacts
       ? `${adHocContacts.length} contato(s) selecionado(s)`
-      : `${selectedLabel.contactCount} contato(s) da etiqueta "${selectedLabel.name}"`
+      : `${lastLabelsContactCount} contato(s) da(s) etiqueta(s) "${lastLabelsFetch.filter((l) => selectedLabelIds.has(l.id)).map((l) => l.name).join(', ')}"`
     showNotice('confirm', `Clique em "Confirmar envio" para disparar para ${target}.`)
     return
   }
@@ -774,7 +803,7 @@ dispatchBtn.addEventListener('click', async () => {
   if (adHocContacts) {
     formData.append('contactsJson', JSON.stringify(adHocContacts))
   } else {
-    formData.append('labelId', selectedLabel.id)
+    for (const labelId of selectedLabelIds) formData.append('labelIds', labelId)
   }
   formData.append('message', message)
   if (selectedFile) formData.append('file', selectedFile)
