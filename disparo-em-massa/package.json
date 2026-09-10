@@ -12,8 +12,7 @@
     "start": "electron .",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
-    "dist:win:nsis": "electron-builder --win --x64",
-    "dist:win:msi": "electron-builder --win msi:x64"
+    "dist:win:nsis": "electron-builder --win --x64"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^7.0.0-rc14",
@@ -56,12 +55,6 @@
           "arch": [
             "x64"
           ]
-        },
-        {
-          "target": "msi",
-          "arch": [
-            "x64"
-          ]
         }
       ],
       "icon": "build/icon.ico",
@@ -78,14 +71,6 @@
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
       "installerHeaderIcon": "build/icon.ico"
-    },
-    "msi": {
-      "oneClick": false,
-      "perMachine": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Disparo em Massa",
-      "upgradeCode": "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
     },
     "publish": {
       "provider": "github",
