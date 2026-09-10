@@ -39,7 +39,7 @@ jobs:
         # GH_TOKEN presente (build.publish em package.json) — inclui .exe, .blockmap e
         # latest.yml, os três arquivos que o electron-updater precisa pra funcionar. Um passo
         # manual de release separado ficaria sem o latest.yml/blockmap e quebraria o auto-update.
-        run: npm run dist:win
+        run: npx electron-builder --win --publish always
         working-directory: ./disparo-em-massa
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
