@@ -693,7 +693,9 @@ textarea:focus, .field input:focus {
   gap: 8px;
 }
 
-.emoji-toggle-btn {
+.field-label-actions { display: flex; align-items: center; gap: 4px; }
+
+.emoji-toggle-btn, .template-toggle-btn, .product-toggle-btn {
   background: none;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -704,8 +706,8 @@ textarea:focus, .field input:focus {
   transition: background .15s, border-color .15s;
   font-family: inherit;
 }
-.emoji-toggle-btn:hover { background: var(--surface-alt); border-color: var(--border-strong); }
-.emoji-toggle-btn.active { background: var(--success-bg); border-color: var(--brand-light); }
+.emoji-toggle-btn:hover, .template-toggle-btn:hover, .product-toggle-btn:hover { background: var(--surface-alt); border-color: var(--border-strong); }
+.emoji-toggle-btn.active, .template-toggle-btn.active, .product-toggle-btn.active { background: var(--success-bg); border-color: var(--brand-light); }
 
 .emoji-picker {
   position: fixed;
@@ -760,6 +762,96 @@ textarea:focus, .field input:focus {
   line-height: 1.3;
 }
 .emoji-picker-grid button:hover { background: var(--surface-alt); }
+
+/* Modelos e produtos reaproveitam a mesma "carta flutuante" do emoji picker
+   (.emoji-picker), só com um cabeçalho de ação e uma lista em vez de abas+grade. */
+.mini-picker { width: 280px; max-height: 340px; }
+.mini-picker-header {
+  display: flex;
+  gap: 6px;
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.mini-picker-header input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-family: var(--font-body);
+}
+.mini-picker-title { font-size: 13px; font-weight: 600; color: var(--ink-soft); flex: 1; }
+.mini-picker-list { overflow-y: auto; padding: 6px; }
+.mini-picker-empty { padding: 16px 10px; text-align: center; color: var(--muted); font-size: 12.5px; }
+.mini-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.mini-picker-item:hover { background: var(--surface-alt); }
+.mini-picker-item-main { flex: 1; min-width: 0; }
+.mini-picker-item-title { font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini-picker-item-sub { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mini-picker-item-actions { display: flex; gap: 2px; flex-shrink: 0; }
+.mini-picker-item-actions button {
+  background: none;
+  border: none;
+  font-size: 13px;
+  padding: 3px 5px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.mini-picker-item-actions button:hover { background: var(--border); }
+
+/* ===== Pré-visualização de mensagem ===== */
+.preview-card { max-width: 380px; }
+.preview-phone {
+  background: #e5ddd5;
+  border-radius: var(--radius-md);
+  padding: 18px 14px;
+  min-height: 160px;
+  display: flex;
+  align-items: flex-start;
+}
+.preview-bubble {
+  background: #fff;
+  border-radius: 0 10px 10px 10px;
+  padding: 8px 10px 6px;
+  max-width: 88%;
+  box-shadow: 0 1px 1px rgba(0,0,0,.1);
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: #111b21;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.preview-bubble strong { font-weight: 700; }
+.preview-bubble em { font-style: italic; }
+.preview-bubble s { text-decoration: line-through; }
+.preview-bubble code { font-family: monospace; background: rgba(0,0,0,.06); padding: 0 3px; border-radius: 3px; }
+.preview-bubble .preview-meta { display: block; text-align: right; font-size: 10.5px; color: #667781; margin-top: 4px; }
+.preview-bubble .preview-poll-option, .preview-bubble .preview-card-row {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 9px;
+  margin-top: 6px;
+  font-size: 12.5px;
+}
+.preview-bubble .preview-card-title { font-weight: 700; margin-bottom: 2px; }
+.preview-bubble .preview-album-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; margin-bottom: 6px; }
+.preview-bubble .preview-album-grid div {
+  background: var(--surface-alt);
+  border: 1px dashed var(--border-strong);
+  border-radius: 6px;
+  height: 54px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: var(--muted);
+}
 
 .table-wrap { overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--border); }
 

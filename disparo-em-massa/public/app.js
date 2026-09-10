@@ -631,6 +631,7 @@ function updateDispatchPanelForContacts() {
   dispatchCount.textContent = `${adHocContacts.length} contato(s) receberão esta mensagem.`
   progressPanel.classList.add('hidden')
   dispatchBtn.disabled = false
+  scheduleBtn.disabled = false
   resetConfirmState()
 }
 
@@ -841,6 +842,7 @@ function updateDispatchPanelForColdContacts() {
   dispatchCount.textContent = `${adHocContacts.length} contato(s) receberão esta mensagem.`
   progressPanel.classList.add('hidden')
   dispatchBtn.disabled = false
+  scheduleBtn.disabled = false
   resetConfirmState()
 }
 
@@ -872,10 +874,12 @@ async function updateDispatchPanelForLabels() {
     lastLabelsContactCount = data.count
     dispatchCount.textContent = `${data.count} contato(s) receberão esta mensagem.`
     dispatchBtn.disabled = data.count === 0
+    scheduleBtn.disabled = data.count === 0
   } catch (err) {
     lastLabelsContactCount = 0
     dispatchCount.textContent = ''
     dispatchBtn.disabled = true
+    scheduleBtn.disabled = true
   }
 }
 
@@ -961,6 +965,7 @@ failuresResendBtn.addEventListener('click', () => {
   dispatchCount.textContent = `${adHocContacts.length} contato(s) selecionado(s) receberão esta mensagem.`
   progressPanel.classList.add('hidden')
   dispatchBtn.disabled = false
+  scheduleBtn.disabled = false
   resetConfirmState()
   messageInput.focus()
   dispatchPanel.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -1352,15 +1357,20 @@ function renderEmojiGrid() {
   }
 }
 
+// Compartilhado com os pickers de modelo e produto abaixo.
+function insertTextAtCursor(targetId, text) {
+  const el = document.getElementById(targetId)
+  if (!el) return
+  const start = el.selectionStart ?? el.value.length
+  const end = el.selectionEnd ?? el.value.length
+  el.value = el.value.slice(0, start) + text + el.value.slice(end)
+  const newPos = start + text.length
+  el.focus()
+  el.setSelectionRange(newPos, newPos)
+}
+
 function insertEmoji(emoji) {
-  const textarea = document.getElementById(emojiPickerTargetId)
-  if (!textarea) return
-  const start = textarea.selectionStart ?? textarea.value.length
-  const end = textarea.selectionEnd ?? textarea.value.length
-  textarea.value = textarea.value.slice(0, start) + emoji + textarea.value.slice(end)
-  const newPos = start + emoji.length
-  textarea.focus()
-  textarea.setSelectionRange(newPos, newPos)
+  insertTextAtCursor(emojiPickerTargetId, emoji)
 }
 
 function openEmojiPicker(button) {
@@ -1398,6 +1408,397 @@ document.addEventListener('click', (e) => {
   if (emojiPicker.contains(e.target) || e.target.classList.contains('emoji-toggle-btn')) return
   closeEmojiPicker()
 })
+
+// Popup posicionado genérico — mesmo comportamento do emoji picker (abre perto do botão,
+// fecha ao clicar fora ou ao clicar de novo no botão que abriu), reaproveitado pelos
+// pickers de modelo e produto abaixo em vez de duplicar a lógica de posicionamento 2x.
+function createPositionedPicker(pickerEl, toggleClass, onOpen) {
+  let targetId = null
+  function open(button) {
+    targetId = button.dataset.target
+    document.querySelectorAll('.' + toggleClass).forEach((b) => b.classList.toggle('active', b === button))
+    onOpen()
+    const rect = button.getBoundingClientRect()
+    pickerEl.classList.remove('hidden')
+    const pickerWidth = pickerEl.offsetWidth || 280
+    const left = Math.max(10, Math.min(rect.left, window.innerWidth - pickerWidth - 10))
+    pickerEl.style.left = `${left}px`
+    pickerEl.style.top = `${rect.bottom + 6}px`
+  }
+  function close() {
+    pickerEl.classList.add('hidden')
+    document.querySelectorAll('.' + toggleClass).forEach((b) => b.classList.remove('active'))
+    targetId = null
+  }
+  document.querySelectorAll('.' + toggleClass).forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault()
+      if (targetId === btn.dataset.target && !pickerEl.classList.contains('hidden')) close()
+      else open(btn)
+    })
+  })
+  document.addEventListener('click', (e) => {
+    if (pickerEl.classList.contains('hidden')) return
+    if (pickerEl.contains(e.target) || e.target.classList.contains(toggleClass)) return
+    close()
+  })
+  return { open, close, getTargetId: () => targetId }
+}
+
+// ===== Templates de mensagem =====
+const templatePicker = document.getElementById('template-picker')
+const templatePickerList = document.getElementById('template-picker-list')
+const templateSaveNameInput = document.getElementById('template-save-name')
+const templateSaveBtn = document.getElementById('template-save-btn')
+
+let templates = []
+let templatesFetchSeq = 0
+
+async function refreshTemplates() {
+  // abrir o popup duas vezes seguidas (ou abrir e depois salvar rápido) dispara GETs
+  // concorrentes — sem isso, o mais lento podia "vencer" e sobrescrever o estado com dados
+  // desatualizados só porque respondeu depois. Só aplica a resposta da requisição mais recente.
+  const seq = ++templatesFetchSeq
+  try {
+    const res = await fetch('/api/templates')
+    const data = await res.json()
+    if (seq === templatesFetchSeq) templates = data
+  } catch {
+    // popup só é preenchido quando aberto — se falhar, tenta de novo na próxima abertura
+  }
+}
+
+function renderTemplatePickerList() {
+  templatePickerList.innerHTML = ''
+  if (templates.length === 0) {
+    templatePickerList.innerHTML = '<p class="mini-picker-empty">Nenhum modelo salvo ainda.</p>'
+    return
+  }
+  for (const t of templates) {
+    const row = document.createElement('div')
+    row.className = 'mini-picker-item'
+    row.innerHTML = `
+      <div class="mini-picker-item-main">
+        <div class="mini-picker-item-title">${escapeHtml(t.name)}</div>
+        <div class="mini-picker-item-sub">${escapeHtml(t.message.slice(0, 50))}</div>
+      </div>
+      <div class="mini-picker-item-actions">
+        <button type="button" title="Excluir">🗑️</button>
+      </div>
+    `
+    row.querySelector('.mini-picker-item-main').addEventListener('click', () => applyTemplate(t))
+    row.querySelector('.mini-picker-item-actions button').addEventListener('click', async (e) => {
+      e.stopPropagation()
+      const confirmed = await showConfirmDialog({
+        title: 'Excluir este modelo?',
+        message: `"${t.name}" não poderá ser recuperado.`,
+        confirmText: 'Excluir',
+        danger: true
+      })
+      if (!confirmed) return
+      await fetch(`/api/templates/${t.id}`, { method: 'DELETE' })
+      await refreshTemplates()
+      renderTemplatePickerList()
+    })
+    templatePickerList.appendChild(row)
+  }
+}
+
+function applyTemplate(t) {
+  messageTypeSelect.value = t.messageType || 'media'
+  updateMessageTypeFields()
+  if (t.messageType === 'album') {
+    albumMessageInput.value = t.message
+  } else {
+    messageInput.value = t.message
+  }
+  if (t.messageType === 'poll') {
+    pollQuestionInput.value = t.pollQuestion || ''
+    pollOptionsInput.value = (t.pollOptions || []).join('\n')
+  }
+  templatePickerCtl.close()
+  showToast(`Modelo "${t.name}" aplicado.`, 'success')
+}
+
+const templatePickerCtl = createPositionedPicker(templatePicker, 'template-toggle-btn', () => {
+  templateSaveNameInput.value = ''
+  refreshTemplates().then(renderTemplatePickerList)
+})
+
+templateSaveBtn.addEventListener('click', async () => {
+  const name = templateSaveNameInput.value.trim()
+  if (!name) {
+    showToast('Dê um nome pro modelo antes de salvar.', 'error')
+    return
+  }
+  const targetId = templatePickerCtl.getTargetId()
+  const message = (targetId === 'album-message-input' ? albumMessageInput.value : messageInput.value).trim()
+  if (!message) {
+    showToast('Escreva a mensagem antes de salvar como modelo.', 'error')
+    return
+  }
+  const messageType = messageTypeSelect.value
+  try {
+    const res = await fetch('/api/templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        message,
+        messageType,
+        pollQuestion: messageType === 'poll' ? pollQuestionInput.value.trim() : null,
+        pollOptions: messageType === 'poll' ? pollOptionsInput.value.split('\n').map((s) => s.trim()).filter(Boolean) : []
+      })
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      showToast(data.error || 'Erro ao salvar modelo.', 'error')
+      return
+    }
+    templateSaveNameInput.value = ''
+    await refreshTemplates()
+    renderTemplatePickerList()
+    showToast('Modelo salvo!', 'success')
+  } catch (err) {
+    showToast('Erro ao salvar modelo: ' + err.message, 'error')
+  }
+})
+
+// ===== Produtos =====
+const productsBtn = document.getElementById('products-btn')
+const productsModal = document.getElementById('products-modal')
+const productsCloseBtn = document.getElementById('products-close-btn')
+const productFormName = document.getElementById('product-form-name')
+const productFormPrice = document.getElementById('product-form-price')
+const productFormDescription = document.getElementById('product-form-description')
+const productFormError = document.getElementById('product-form-error')
+const productFormSaveBtn = document.getElementById('product-form-save-btn')
+const productFormCancelBtn = document.getElementById('product-form-cancel-btn')
+const productsTable = document.getElementById('products-table')
+const productsBody = document.getElementById('products-body')
+const productsEmpty = document.getElementById('products-empty')
+const productPicker = document.getElementById('product-picker')
+const productPickerList = document.getElementById('product-picker-list')
+const productManageBtn = document.getElementById('product-manage-btn')
+
+let products = []
+let editingProductId = null
+let productsFetchSeq = 0
+
+async function refreshProducts() {
+  // mesma proteção contra corrida usada em refreshTemplates() — descarta respostas de
+  // requisições que não são mais a mais recente.
+  const seq = ++productsFetchSeq
+  try {
+    const res = await fetch('/api/products')
+    const data = await res.json()
+    if (seq === productsFetchSeq) products = data
+  } catch {
+    // idem templates — repopula na próxima vez que abrir
+  }
+}
+
+function resetProductForm() {
+  editingProductId = null
+  productFormName.value = ''
+  productFormPrice.value = ''
+  productFormDescription.value = ''
+  productFormError.classList.add('hidden')
+  productFormSaveBtn.textContent = 'Salvar produto'
+  productFormCancelBtn.classList.add('hidden')
+}
+
+function renderProductsTable() {
+  productsTable.classList.toggle('hidden', products.length === 0)
+  productsEmpty.classList.toggle('hidden', products.length > 0)
+  productsBody.innerHTML = ''
+  for (const p of products) {
+    const tr = document.createElement('tr')
+    tr.innerHTML = `
+      <td>${escapeHtml(p.name)}</td>
+      <td>${escapeHtml(p.price || '-')}</td>
+      <td>${escapeHtml((p.description || '').slice(0, 60))}</td>
+      <td>
+        <button type="button" class="secondary small product-edit-btn">Editar</button>
+        <button type="button" class="secondary small product-delete-btn">Excluir</button>
+      </td>
+    `
+    tr.querySelector('.product-edit-btn').addEventListener('click', () => {
+      editingProductId = p.id
+      productFormName.value = p.name
+      productFormPrice.value = p.price || ''
+      productFormDescription.value = p.description || ''
+      productFormError.classList.add('hidden')
+      productFormSaveBtn.textContent = 'Salvar alterações'
+      productFormCancelBtn.classList.remove('hidden')
+      productFormName.focus()
+    })
+    tr.querySelector('.product-delete-btn').addEventListener('click', async () => {
+      const confirmed = await showConfirmDialog({
+        title: 'Excluir este produto?',
+        message: `"${p.name}" não poderá ser recuperado.`,
+        confirmText: 'Excluir',
+        danger: true
+      })
+      if (!confirmed) return
+      await fetch(`/api/products/${p.id}`, { method: 'DELETE' })
+      await refreshProducts()
+      renderProductsTable()
+    })
+    productsBody.appendChild(tr)
+  }
+}
+
+function openProductsModal() {
+  resetProductForm()
+  productsModal.classList.remove('hidden')
+  refreshProducts().then(renderProductsTable)
+}
+
+function closeProductsModal() {
+  productsModal.classList.add('hidden')
+}
+
+productsBtn.addEventListener('click', openProductsModal)
+productsCloseBtn.addEventListener('click', closeProductsModal)
+productFormCancelBtn.addEventListener('click', resetProductForm)
+
+productFormSaveBtn.addEventListener('click', async () => {
+  const name = productFormName.value.trim()
+  if (!name) {
+    productFormError.textContent = 'Dê um nome pro produto.'
+    productFormError.classList.remove('hidden')
+    return
+  }
+  const body = JSON.stringify({
+    name,
+    price: productFormPrice.value.trim(),
+    description: productFormDescription.value.trim()
+  })
+  try {
+    const res = await fetch(editingProductId ? `/api/products/${editingProductId}` : '/api/products', {
+      method: editingProductId ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      productFormError.textContent = data.error || 'Erro ao salvar produto.'
+      productFormError.classList.remove('hidden')
+      return
+    }
+    resetProductForm()
+    await refreshProducts()
+    renderProductsTable()
+    showToast('Produto salvo!', 'success')
+  } catch (err) {
+    productFormError.textContent = 'Erro ao salvar produto: ' + err.message
+    productFormError.classList.remove('hidden')
+  }
+})
+
+function renderProductPickerList() {
+  productPickerList.innerHTML = ''
+  if (products.length === 0) {
+    productPickerList.innerHTML = '<p class="mini-picker-empty">Nenhum produto cadastrado ainda.</p>'
+    return
+  }
+  for (const p of products) {
+    const row = document.createElement('div')
+    row.className = 'mini-picker-item'
+    row.innerHTML = `
+      <div class="mini-picker-item-main">
+        <div class="mini-picker-item-title">${escapeHtml(p.name)}</div>
+        <div class="mini-picker-item-sub">${escapeHtml(p.price || '')}</div>
+      </div>
+    `
+    row.addEventListener('click', () => {
+      const lines = [`*${p.name}*`]
+      if (p.price) lines.push(p.price)
+      if (p.description) lines.push(p.description)
+      insertTextAtCursor(productPickerCtl.getTargetId(), lines.join('\n'))
+      productPickerCtl.close()
+    })
+    productPickerList.appendChild(row)
+  }
+}
+
+const productPickerCtl = createPositionedPicker(productPicker, 'product-toggle-btn', () => {
+  refreshProducts().then(renderProductPickerList)
+})
+
+productManageBtn.addEventListener('click', () => {
+  productPickerCtl.close()
+  openProductsModal()
+})
+
+// ===== Pré-visualização de mensagem =====
+const previewBtn = document.getElementById('preview-btn')
+const previewModal = document.getElementById('preview-modal')
+const previewCloseBtn = document.getElementById('preview-close-btn')
+const previewBubble = document.getElementById('preview-bubble')
+
+function formatWhatsAppText(text) {
+  let html = escapeHtml(text)
+  html = html.replace(/```([^`]+)```/g, '<code>$1</code>')
+  html = html.replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>')
+  html = html.replace(/_([^_\n]+)_/g, '<em>$1</em>')
+  html = html.replace(/~([^~\n]+)~/g, '<s>$1</s>')
+  return html
+}
+
+function previewTimeMeta() {
+  const now = new Date()
+  const time = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  return `<span class="preview-meta">${time} ✓✓</span>`
+}
+
+function buildPreviewHtml() {
+  const messageType = messageTypeSelect.value
+  const sampleName = 'João'
+
+  if (messageType === 'poll') {
+    const question = pollQuestionInput.value.trim() || '(pergunta da enquete)'
+    const options = pollOptionsInput.value.split('\n').map((s) => s.trim()).filter(Boolean)
+    const optionsHtml = (options.length ? options : ['(opção 1)', '(opção 2)'])
+      .map((o) => `<div class="preview-poll-option">⚪ ${escapeHtml(o)}</div>`).join('')
+    return `<strong>📊 ${escapeHtml(question)}</strong>${optionsHtml}${previewTimeMeta()}`
+  }
+
+  if (messageType === 'location') {
+    const loc = currentProfile.location
+    return `<div class="preview-card-row"><div class="preview-card-title">📍 ${escapeHtml(loc.name || 'Localização')}</div>${escapeHtml(loc.address || '')}</div>${previewTimeMeta()}`
+  }
+
+  if (messageType === 'contact') {
+    const card = currentProfile.businessCard
+    return `<div class="preview-card-row"><div class="preview-card-title">👤 ${escapeHtml(card.name || '(nome do contato)')}</div>${escapeHtml(card.phone || '')}</div>${previewTimeMeta()}`
+  }
+
+  if (messageType === 'album') {
+    const count = Math.max(selectedAlbumFiles.length, 2)
+    const grid = `<div class="preview-album-grid">${'<div>🖼️</div>'.repeat(count)}</div>`
+    const caption = formatWhatsAppText(albumMessageInput.value.replace(/\{\{nome\}\}/g, sampleName))
+    return `${grid}${caption}${previewTimeMeta()}`
+  }
+
+  // media (padrão) — pode ter arquivo anexado e/ou nota de voz
+  let attachmentNote = ''
+  if (voiceNoteToggle.checked && selectedFile) {
+    attachmentNote = '<div class="preview-card-row">🎤 Nota de voz</div>'
+  } else if (selectedFile) {
+    attachmentNote = `<div class="preview-card-row">📎 ${escapeHtml(selectedFile.name)}</div>`
+  }
+  const caption = formatWhatsAppText(messageInput.value.replace(/\{\{nome\}\}/g, sampleName))
+  return `${attachmentNote}${caption}${previewTimeMeta()}`
+}
+
+previewBtn.addEventListener('click', () => {
+  previewBubble.innerHTML = buildPreviewHtml()
+  previewModal.classList.remove('hidden')
+})
+previewCloseBtn.addEventListener('click', () => previewModal.classList.add('hidden'))
+previewModal.addEventListener('click', (e) => { if (e.target === previewModal) previewModal.classList.add('hidden') })
 
 // dropzone do álbum (multi-arquivo)
 albumDropzone.addEventListener('click', () => albumFileInput.click())
@@ -1608,6 +2009,7 @@ dispatchBtn.addEventListener('click', async () => {
 
   resetConfirmState()
   dispatchBtn.disabled = true
+  scheduleBtn.disabled = true
   progressPanel.classList.remove('hidden')
   progressLog.innerHTML = ''
   document.getElementById('batch-pause-banner')?.remove()
@@ -1623,12 +2025,14 @@ dispatchBtn.addEventListener('click', async () => {
     if (!res.ok) {
       showNotice('error', data.error || 'Erro ao iniciar disparo.')
       dispatchBtn.disabled = false
+      scheduleBtn.disabled = false
       return
     }
     listenToJob(data.jobId)
   } catch (err) {
     showNotice('error', 'Erro ao iniciar disparo: ' + err.message)
     dispatchBtn.disabled = false
+    scheduleBtn.disabled = false
   }
 })
 
@@ -1795,6 +2199,7 @@ function listenToJob(jobId) {
       progressSummary.textContent = `Concluído: ${data.sent} enviado(s), ${data.failed} falha(s) de ${data.total}`
       document.getElementById('batch-pause-banner')?.remove()
       dispatchBtn.disabled = false
+      scheduleBtn.disabled = false
       adHocContacts = null
       refreshLabels()
       refreshFailures()
@@ -1811,6 +2216,7 @@ function listenToJob(jobId) {
       progressPanel.appendChild(banner)
       progressSummary.textContent = `Interrompido: ${data.sent} enviado(s), ${data.failed} falha(s) de ${data.total}`
       dispatchBtn.disabled = false
+      scheduleBtn.disabled = false
       adHocContacts = null
       refreshLabels()
       refreshFailures()
@@ -1822,12 +2228,14 @@ function listenToJob(jobId) {
     if (data.type === 'error') {
       progressSummary.textContent = `Erro no disparo: ${data.error}`
       dispatchBtn.disabled = false
+      scheduleBtn.disabled = false
       source.close()
     }
   }
 
   source.onerror = () => {
     dispatchBtn.disabled = false
+    scheduleBtn.disabled = false
     source.close()
   }
 }

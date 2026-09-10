@@ -46,7 +46,9 @@ disparo-em-massa/
 │   ├── updateState.js      # ponte entre electron/main.js (autoUpdater) e a API — farol de versão na UI
 │   ├── scheduler.js        # dispara mensagens agendadas no horário certo, rearma ao iniciar o app
 │   ├── scheduledFiles.js   # persiste em disco os anexos de mensagens agendadas (sobrevive a restart)
-│   └── scheduledRoutes.js  # rotas /api/scheduled (router separado — server.js já tava grande)
+│   ├── scheduledRoutes.js  # rotas /api/scheduled (router separado — server.js já tava grande)
+│   ├── templateRoutes.js   # rotas /api/templates (modelos de mensagem reutilizáveis)
+│   └── productRoutes.js    # rotas /api/products (catálogo de produtos)
 ├── public/                 # frontend puro (HTML/CSS/JS, sem build step, sem framework)
 │   └── emoji-data.js       # lista curada de emojis pro seletor (sem dependência externa)
 ├── auth/                   # sessão Baileys (gitignored) — NUNCA commitar, é a credencial do WhatsApp
@@ -155,6 +157,19 @@ uma mudança futura "simplificar" o código sem querer e algum destes sumir, é 
   `src/scheduler.js` rearma os pendentes ao iniciar; se o horário passou há mais de 15min
   enquanto o app estava fechado, marca como falho em vez de disparar um envio muito atrasado
   sem avisar. Painel "Mensagens agendadas" mostra pendentes/enviadas/falhadas, com cancelar.
+  **v1.5.0 saiu com um bug**: o botão "Programar envio" nunca era habilitado (só
+  `dispatchBtn` tinha a sincronização com o estado de seleção) — corrigido na v1.5.1
+  espelhando `dispatchBtn.disabled` em todos os pontos que o setam.
+- **Templates de mensagem** (botão 📄 nos campos de mensagem): salva o texto atual como
+  modelo reutilizável e aplica um modelo salvo depois (`src/templateRoutes.js`) — só
+  texto, sem anexos.
+- **Produtos** (botão "Produtos" no cabeçalho abre CRUD completo; botão 🏷️ no compositor
+  insere no texto): cadastro de nome/preço/descrição (`src/productRoutes.js`) — insere um
+  bloco formatado (`*nome*`, preço, descrição) na mensagem, não vira uma mensagem de mídia
+  pronta.
+- **Pré-visualização** (botão "👁️ Pré-visualizar"): mostra a mensagem como uma bolha estilo
+  WhatsApp, com `{{nome}}` trocado por um exemplo e a formatação (`*negrito*`, `_itálico_`,
+  `~tachado~`) renderizada de verdade — só frontend, sem chamada ao servidor.
 
 ## Recursos portados de `disparo/` em 2026-09-09 (6 fases)
 

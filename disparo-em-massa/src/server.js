@@ -15,6 +15,8 @@ import { convertWebmToOggOpus } from './audio.js'
 import * as updateState from './updateState.js'
 import scheduledRoutes from './scheduledRoutes.js'
 import { initScheduler } from './scheduler.js'
+import templateRoutes from './templateRoutes.js'
+import productRoutes from './productRoutes.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -40,6 +42,8 @@ const app = express()
 app.use(express.json())
 app.use(express.static(path.join(__dirname, '..', 'public')))
 app.use(scheduledRoutes)
+app.use(templateRoutes)
+app.use(productRoutes)
 
 // rearma os agendamentos pendentes salvos em data/app.json — precisa vir depois que o app
 // (express) já existe mas independe de licença/conexão WhatsApp (a checagem é no disparo)

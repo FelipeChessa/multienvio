@@ -27,6 +27,7 @@
       <span id="version-badge" class="badge up-to-date" title="Versão instalada">v...</span>
       <button id="update-now-btn" class="header-btn hidden">Atualizar para versão mais recente</button>
       <span id="connection-badge" class="badge">verificando...</span>
+      <button id="products-btn" class="header-btn">Produtos</button>
       <button id="settings-btn" class="header-btn">Configurações de envio</button>
       <button id="help-btn" class="icon-btn" title="Como usar">?</button>
       <button id="disconnect-btn" class="header-btn hidden">Desconectar</button>
@@ -200,7 +201,11 @@
 
             <label class="field-label-row" for="message-input">
               <span>Mensagem</span>
-              <button type="button" class="emoji-toggle-btn" data-target="message-input" title="Inserir emoji">😊</button>
+              <span class="field-label-actions">
+                <button type="button" class="template-toggle-btn" data-target="message-input" title="Usar modelo salvo">📄</button>
+                <button type="button" class="product-toggle-btn" data-target="message-input" title="Inserir produto">🏷️</button>
+                <button type="button" class="emoji-toggle-btn" data-target="message-input" title="Inserir emoji">😊</button>
+              </span>
             </label>
             <textarea id="message-input" rows="5" placeholder="Ex: Olá! Passando para avisar sobre uma novidade importante para você."></textarea>
             <p class="field-hint">Dica: use <code>{{nome}}</code> na mensagem para personalizar com o nome de cada contato.</p>
@@ -218,7 +223,11 @@
 
             <label class="field-label-row" for="album-message-input">
               <span>Legenda (vai só na primeira foto/vídeo) — opcional</span>
-              <button type="button" class="emoji-toggle-btn" data-target="album-message-input" title="Inserir emoji">😊</button>
+              <span class="field-label-actions">
+                <button type="button" class="template-toggle-btn" data-target="album-message-input" title="Usar modelo salvo">📄</button>
+                <button type="button" class="product-toggle-btn" data-target="album-message-input" title="Inserir produto">🏷️</button>
+                <button type="button" class="emoji-toggle-btn" data-target="album-message-input" title="Inserir emoji">😊</button>
+              </span>
             </label>
             <textarea id="album-message-input" rows="3" placeholder="Ex: Confira as novidades desta semana."></textarea>
           </div>
@@ -278,6 +287,7 @@
           <div class="dispatch-actions">
             <button id="dispatch-btn" disabled>Disparar</button>
             <button id="schedule-btn" class="hidden" disabled>Programar envio</button>
+            <button id="preview-btn" type="button" class="secondary">👁️ Pré-visualizar</button>
             <button id="dispatch-cancel-btn" class="secondary hidden">Cancelar</button>
           </div>
 
@@ -437,6 +447,56 @@
     </div>
   </div>
 
+  <div id="products-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Produtos</h2>
+        <button id="products-close-btn" class="icon-btn" title="Fechar">&times;</button>
+      </div>
+      <p class="modal-intro">
+        Cadastre produtos pra inserir rapidamente na mensagem (nome, preço e descrição) sem
+        precisar digitar tudo de novo toda vez.
+      </p>
+
+      <div class="settings-grid">
+        <div class="field">
+          <label for="product-form-name">Nome do produto</label>
+          <input type="text" id="product-form-name" placeholder="Ex: Tênis Runner Pro" />
+        </div>
+        <div class="field">
+          <label for="product-form-price">Preço</label>
+          <input type="text" id="product-form-price" placeholder="Ex: R$ 199,90" />
+        </div>
+        <div class="field field-full">
+          <label for="product-form-description">Descrição</label>
+          <textarea id="product-form-description" rows="2" placeholder="Ex: Leve, respirável, ideal pra corrida."></textarea>
+        </div>
+      </div>
+
+      <p id="product-form-error" class="notice error hidden"></p>
+
+      <div class="modal-actions">
+        <button id="product-form-save-btn">Salvar produto</button>
+        <button id="product-form-cancel-btn" class="secondary hidden">Cancelar edição</button>
+      </div>
+
+      <div class="table-wrap" style="margin-top: 20px;">
+        <table id="products-table" class="hidden">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Preço</th>
+              <th>Descrição</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="products-body"></tbody>
+        </table>
+      </div>
+      <p id="products-empty" class="empty-state">Nenhum produto cadastrado ainda.</p>
+    </div>
+  </div>
+
   <div id="profile-modal" class="modal-overlay hidden">
     <div class="modal-card">
       <div class="modal-header">
@@ -534,11 +594,40 @@
     </div>
   </div>
 
+  <div id="preview-modal" class="modal-overlay hidden">
+    <div class="modal-card preview-card">
+      <div class="modal-header">
+        <h2>Pré-visualização</h2>
+        <button id="preview-close-btn" class="icon-btn" title="Fechar">&times;</button>
+      </div>
+      <p class="modal-intro">Assim a mensagem deve aparecer pro contato (com <code>{{nome}}</code> trocado por um exemplo).</p>
+      <div class="preview-phone">
+        <div id="preview-bubble" class="preview-bubble"></div>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-container"></div>
 
   <div id="emoji-picker" class="emoji-picker hidden">
     <div id="emoji-picker-tabs" class="emoji-picker-tabs"></div>
     <div id="emoji-picker-grid" class="emoji-picker-grid"></div>
+  </div>
+
+  <div id="template-picker" class="emoji-picker mini-picker hidden">
+    <div class="mini-picker-header">
+      <input type="text" id="template-save-name" placeholder="Nome do modelo..." />
+      <button type="button" id="template-save-btn" class="secondary small">Salvar mensagem atual</button>
+    </div>
+    <div id="template-picker-list" class="mini-picker-list"></div>
+  </div>
+
+  <div id="product-picker" class="emoji-picker mini-picker hidden">
+    <div class="mini-picker-header">
+      <span class="mini-picker-title">Inserir produto</span>
+      <button type="button" id="product-manage-btn" class="secondary small">Gerenciar produtos</button>
+    </div>
+    <div id="product-picker-list" class="mini-picker-list"></div>
   </div>
 
   <script src="emoji-data.js"></script>

@@ -82,7 +82,9 @@ function emptyState() {
     settings: buildDefaultSettings(),
     optOuts: {},
     messagingProfile: buildDefaultMessagingProfile(),
-    scheduledMessages: []
+    scheduledMessages: [],
+    templates: [],
+    products: []
   }
 }
 
@@ -104,7 +106,9 @@ function loadState() {
         settings,
         optOuts: parsed.optOuts || {},
         messagingProfile: profile,
-        scheduledMessages: parsed.scheduledMessages || []
+        scheduledMessages: parsed.scheduledMessages || [],
+        templates: parsed.templates || [],
+        products: parsed.products || []
       }
     }
   } catch (err) {
@@ -436,6 +440,38 @@ function removeScheduledMessage(id) {
   return true
 }
 
+// Templates de mensagem e produtos são coleções simples com o mesmo shape de CRUD —
+// listar/pegar um/adicionar/atualizar/remover num array do state — então compartilham
+// esta fábrica em vez de repetir as mesmas 5 funções duas vezes.
+function makeCrud(collectionName) {
+  return {
+    list: () => state[collectionName].slice(),
+    get: (id) => state[collectionName].find((item) => item.id === id) || null,
+    add: (entry) => {
+      state[collectionName].push(entry)
+      persist()
+      return entry
+    },
+    update: (id, patch) => {
+      const idx = state[collectionName].findIndex((item) => item.id === id)
+      if (idx === -1) return null
+      state[collectionName][idx] = { ...state[collectionName][idx], ...patch }
+      persist()
+      return state[collectionName][idx]
+    },
+    remove: (id) => {
+      const idx = state[collectionName].findIndex((item) => item.id === id)
+      if (idx === -1) return false
+      state[collectionName].splice(idx, 1)
+      persist()
+      return true
+    }
+  }
+}
+
+const templatesCrud = makeCrud('templates')
+const productsCrud = makeCrud('products')
+
 export {
   upsertLabel,
   applyAssociation,
@@ -462,5 +498,7 @@ export {
   getScheduledMessage,
   addScheduledMessage,
   updateScheduledMessage,
-  removeScheduledMessage
+  removeScheduledMessage,
+  templatesCrud,
+  productsCrud
 }
