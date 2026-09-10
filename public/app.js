@@ -55,6 +55,7 @@ const dropzone = document.getElementById('dropzone')
 const dropzoneText = document.getElementById('dropzone-text')
 const fileInput = document.getElementById('file-input')
 const removeFileBtn = document.getElementById('remove-file-btn')
+const recordAudioBtn = document.getElementById('record-audio-btn')
 
 const messageTypeSelect = document.getElementById('message-type-select')
 const mediaFields = document.getElementById('media-fields')
@@ -1187,6 +1188,77 @@ function clearFile() {
 removeFileBtn.addEventListener('click', (e) => {
   e.stopPropagation()
   clearFile()
+})
+
+// Gravação de áudio dentro do app (nota de voz), sem precisar importar um arquivo pronto —
+// grava com o microfone do computador, igual ao WhatsApp. O navegador só grava em WebM/Opus
+// (Ogg não é suportado pelo MediaRecorder do Chromium); o servidor remuxa pra Ogg/Opus antes
+// de enviar (ver src/audio.js), que é o formato que o WhatsApp reconhece como nota de voz.
+let mediaRecorder = null
+let recordedChunks = []
+let recordingStream = null
+let recordingStartedAt = null
+let recordingTimerInterval = null
+
+async function startRecording() {
+  if (mediaRecorder) return
+  try {
+    recordingStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+  } catch (err) {
+    showNotice('error', 'Não foi possível acessar o microfone. Verifique se o Windows permite que aplicativos de área de trabalho usem o microfone (Configurações > Privacidade > Microfone) e se nenhum outro programa está usando-o. Detalhe: ' + err.message)
+    return
+  }
+  const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : ''
+  mediaRecorder = mimeType ? new MediaRecorder(recordingStream, { mimeType }) : new MediaRecorder(recordingStream)
+  recordedChunks = []
+  mediaRecorder.addEventListener('dataavailable', (e) => {
+    if (e.data.size > 0) recordedChunks.push(e.data)
+  })
+  mediaRecorder.addEventListener('stop', onRecordingStopped)
+  mediaRecorder.start()
+  recordingStartedAt = Date.now()
+  recordAudioBtn.classList.add('recording')
+  updateRecordingTimer()
+  recordingTimerInterval = setInterval(updateRecordingTimer, 500)
+}
+
+function updateRecordingTimer() {
+  const secs = Math.floor((Date.now() - recordingStartedAt) / 1000)
+  const m = Math.floor(secs / 60)
+  const s = String(secs % 60).padStart(2, '0')
+  recordAudioBtn.textContent = `⏺ Gravando ${m}:${s} (clique para parar)`
+}
+
+function stopRecording() {
+  if (!mediaRecorder) return
+  mediaRecorder.stop()
+}
+
+function onRecordingStopped() {
+  clearInterval(recordingTimerInterval)
+  recordingTimerInterval = null
+  recordAudioBtn.textContent = '🎙️ Gravar áudio'
+  recordAudioBtn.classList.remove('recording')
+  recordingStream?.getTracks().forEach((t) => t.stop())
+  recordingStream = null
+  const durationMs = Date.now() - recordingStartedAt
+  const blobType = mediaRecorder.mimeType || 'audio/webm'
+  mediaRecorder = null
+  if (durationMs < 500 || recordedChunks.length === 0) {
+    showNotice('error', 'Gravação muito curta — segure e fale por pelo menos 1 segundo.')
+    recordedChunks = []
+    return
+  }
+  const blob = new Blob(recordedChunks, { type: blobType })
+  recordedChunks = []
+  const file = new File([blob], `gravacao-${Date.now()}.webm`, { type: blobType })
+  setFile(file)
+  voiceNoteToggle.checked = true
+}
+
+recordAudioBtn.addEventListener('click', () => {
+  if (mediaRecorder) stopRecording()
+  else startRecording()
 })
 
 // dropzone do álbum (multi-arquivo)

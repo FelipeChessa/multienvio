@@ -41,7 +41,8 @@ disparo-em-massa/
 │   ├── paths.js            # resolve auth/ e data/ (userData do Electron vs pasta do projeto)
 │   ├── env.js               # carrega .env manualmente
 │   ├── spreadsheet.js      # leitura de planilha (.xlsx/.csv) — "Clientes frios"
-│   └── phone.js            # normalização de telefone — "Clientes frios"
+│   ├── phone.js            # normalização de telefone — "Clientes frios"
+│   └── audio.js            # remuxa gravação do navegador (webm/opus) pra ogg/opus via ffmpeg-static
 ├── public/                 # frontend puro (HTML/CSS/JS, sem build step, sem framework)
 ├── auth/                   # sessão Baileys (gitignored) — NUNCA commitar, é a credencial do WhatsApp
 └── data/                   # data/app.json + data/license.json (gitignored)
@@ -91,12 +92,22 @@ Isso não é óbvio e já causou confusão real (ver histórico do incidente). O
 - O repositório `multienvio` também é onde os releases (`.exe`/`.msi`) ficam hospedados como
   GitHub Release assets — duas responsabilidades (ativação de licença + hospedagem de
   instalador) no mesmo repositório/deploy.
-- **`multienvio/api/latest-version.js`** existe (endpoint de auto-atualização) mas está
-  **pausado de propósito** (`version: '0.0.1'`, sem downloadUrl) desde 2026-09-09 — ver
-  `INCIDENTE-2026-09-09.md`. Esse app (`disparo-em-massa/`) não tem NENHUM código que consulte
-  esse endpoint — não existe `updater.js` aqui, `electron/main.js` não usa `electron-updater`
-  nem nada parecido. Auto-atualização pra este app real é trabalho futuro, ainda não
-  desenhado.
+- **`multienvio/api/latest-version.js`** existe (endpoint de auto-atualização manual, usado
+  pelo site de download) mas continua **pausado de propósito** (`version: '0.0.1'`, sem
+  downloadUrl) desde 2026-09-09 — ver `INCIDENTE-2026-09-09.md`. Não reative sem confirmar as
+  duas condições descritas lá.
+- **Auto-atualização de verdade (implementada em 2026-09-09, depois do incidente)**: usa
+  `electron-updater` (`electron/main.js`), configurado com o provider `github` que já existe
+  em `package.json` (`build.publish`, repositório `FelipeChessa/multienvio`, onde os releases
+  `.exe`/`.msi` já são publicados). **Não tem nenhuma relação com o endpoint acima** — lê
+  diretamente os assets + `latest.yml` do GitHub Release mais recente. Ao abrir, o app confere
+  se há uma versão nova, baixa em segundo plano (`autoUpdater.autoDownload = true`) e só
+  instala de fato na próxima vez que o app fechar de verdade — pelo menu da bandeja ("Sair" ou,
+  se já tiver baixado, "Reiniciar para atualizar"), nunca no meio de um disparo em andamento.
+  Só roda se `app.isPackaged` (em dev, `node src/server.js`/`electron .` sem build publicado,
+  fica inerte). Publicar uma release no GitHub (`electron-builder --publish always`, ou o
+  workflow do GitHub Actions) já é suficiente para os usuários que já instalaram o app
+  receberem a atualização sozinhos, sem precisar baixar o instalador de novo.
 
 ## Recursos existentes (não remover/quebrar sem querer)
 
@@ -112,6 +123,12 @@ uma mudança futura "simplificar" o código sem querer e algum destes sumir, é 
   configurável (`circuitBreaker` dentro de `settings`).
 - **Personalização `{{nome}}`**: qualquer mensagem de texto pode usar esse placeholder,
   substituído pelo nome do contato (ou "cliente" se não tiver nome salvo).
+- **Gravar nota de voz dentro do app** (botão "🎙️ Gravar áudio", em Arquivo/texto): grava pelo
+  microfone do computador (como o próprio WhatsApp), sem precisar importar um arquivo pronto.
+  O navegador grava em webm/opus; o servidor remuxa pra ogg/opus (`src/audio.js`, via
+  `ffmpeg-static` — só remuxagem de contêiner, não reencoda o áudio) antes de mandar como nota
+  de voz de verdade (`ptt: true`). Continua possível importar um arquivo de áudio existente e
+  marcar "enviar como nota de voz" manualmente, como antes.
 - **Opt-out automático**: se um contato responder "parar", "sair", "cancelar" etc. (lista em
   `src/whatsapp.js`), ele é adicionado a `data/app.json` (`optOuts`) e passa a ser
   automaticamente excluído de: contagem de etiquetas, listagem de contatos, disparo por
@@ -176,3 +193,10 @@ Sem suíte automatizada. Antes de considerar algo pronto:
 4. Depois de qualquer mudança em `src/sender.js`: confirmar que disjuntor e limite diário
    continuam funcionando (ainda contam certo mesmo com os tipos de mensagem/fontes de contato
    novos) — é fácil quebrar isso sem perceber ao generalizar o motor de disparo.
+5. Gravação de áudio: testar dentro do app empacotado (`.exe`), não só `node src/server.js` —
+   o Windows tem uma permissão de privacidade separada ("Configurações > Privacidade >
+   Microfone > Permitir que aplicativos de área de trabalho acessem o microfone") que só
+   aparece pra um app de verdade, não pro dev server no navegador.
+6. Auto-atualização: só é testável de fato publicando uma release real (não dá pra simular
+   localmente sem um build assinado/publicado) — antes de confirmar publicação de qualquer
+   release, ver o checklist do topo deste documento e do `INCIDENTE-2026-09-09.md`.

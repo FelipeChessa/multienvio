@@ -539,6 +539,14 @@ code {
 
 .remove-file-btn:hover { background: var(--danger-bg); border-color: var(--danger); }
 
+.record-audio-row { margin: 8px 0; }
+.record-audio-row .recording {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--danger);
+  font-weight: 600;
+}
+
 textarea {
   width: 100%;
   padding: 11px 13px;

@@ -11,6 +11,7 @@ import * as license from './license.js'
 import { startDispatch, subscribeToJob } from './sender.js'
 import { parseSpreadsheetRows } from './spreadsheet.js'
 import { normalizePhoneCandidates } from './phone.js'
+import { convertWebmToOggOpus } from './audio.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -404,13 +405,24 @@ app.post('/api/dispatch', uploadDispatchFiles, (req, res) => {
     }
   }
 
+  // gravação feita dentro do app chega como audio/webm (formato do MediaRecorder do
+  // navegador) — remuxa pra ogg/opus antes de mandar, senão o WhatsApp não reconhece como
+  // nota de voz de verdade (ver src/audio.js). Se a conversão falhar por algum motivo, manda
+  // o webm original mesmo assim — pior um áudio que talvez não vire bolha de nota de voz do
+  // que o disparo inteiro falhar.
+  let file = req.files?.file?.[0] || null
+  if (file && asVoiceNote && file.mimetype.startsWith('audio/webm')) {
+    const ogg = convertWebmToOggOpus(file.buffer)
+    if (ogg) file = { ...file, buffer: ogg, mimetype: 'audio/ogg; codecs=opus' }
+  }
+
   let jobId
   try {
     jobId = startDispatch({
       labelIds: explicitContacts ? null : labelIds,
       labelName,
       message: (message || '').trim(),
-      file: req.files?.file?.[0] || null,
+      file,
       albumFiles,
       contacts: explicitContacts,
       messageType,

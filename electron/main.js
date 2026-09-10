@@ -5,6 +5,7 @@
 // e sair de verdade é pelo ícone da bandeja (como qualquer app de mensagens de verdade).
 
 import { app, BrowserWindow, Tray, Menu, nativeImage } from 'electron'
+import { autoUpdater } from 'electron-updater'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -38,6 +39,7 @@ if (!gotLock) {
     await import('../src/server.js')
     createWindow()
     createTray()
+    setupAutoUpdater()
   })
 
   app.on('window-all-closed', () => {
@@ -75,11 +77,21 @@ function createWindow() {
   })
 }
 
+let updateReadyToInstall = false
+
 function createTray() {
   const trayIcon = nativeImage.createFromPath(ICON_PATH).resize({ width: 32, height: 32 })
   tray = new Tray(trayIcon)
   tray.setToolTip('Disparo em Massa - WhatsApp')
+  refreshTrayMenu()
+  tray.on('double-click', () => {
+    mainWindow.show()
+    mainWindow.focus()
+  })
+}
 
+function refreshTrayMenu() {
+  if (!tray) return
   const menu = Menu.buildFromTemplate([
     {
       label: 'Abrir',
@@ -89,6 +101,16 @@ function createTray() {
       }
     },
     { type: 'separator' },
+    ...(updateReadyToInstall
+      ? [{
+          label: 'Reiniciar para atualizar',
+          click: () => {
+            app.isQuitting = true
+            autoUpdater.quitAndInstall()
+          }
+        }]
+      : [{ label: 'Verificar atualizações', click: () => autoUpdater.checkForUpdatesAndNotify().catch(() => {}) }]),
+    { type: 'separator' },
     {
       label: 'Sair',
       click: () => {
@@ -97,10 +119,27 @@ function createTray() {
       }
     }
   ])
-
   tray.setContextMenu(menu)
-  tray.on('double-click', () => {
-    mainWindow.show()
-    mainWindow.focus()
+}
+
+// Atualização automática: usa o provider GitHub já configurado em package.json ("build.publish",
+// repositório FelipeChessa/multienvio, onde os releases .exe/.msi já são publicados) — não tem
+// relação com multienvio/api/latest-version.js (esse endpoint fica pausado de propósito desde
+// o incidente de 2026-09-09, ver INCIDENTE-2026-09-09.md). Baixa em segundo plano e só instala
+// de fato na próxima vez que o app fechar de verdade (menu da bandeja "Sair" ou "Reiniciar para
+// atualizar"), nunca no meio de um disparo em andamento.
+function setupAutoUpdater() {
+  if (!app.isPackaged) return // sem build publicado, checar update em dev só gera erro no console
+  autoUpdater.autoDownload = true
+  autoUpdater.autoInstallOnAppQuit = true
+  autoUpdater.on('error', (err) => console.error('[autoUpdater] erro:', err.message))
+  autoUpdater.on('update-available', (info) => console.log('[autoUpdater] atualização disponível:', info.version))
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('[autoUpdater] atualização baixada, será instalada ao sair:', info.version)
+    updateReadyToInstall = true
+    refreshTrayMenu()
   })
+  const check = () => autoUpdater.checkForUpdatesAndNotify().catch((err) => console.error('[autoUpdater] falha ao checar atualização:', err.message))
+  check()
+  setInterval(check, 4 * 60 * 60 * 1000) // o app fica rodando na bandeja por dias — reconfere periodicamente
 }
