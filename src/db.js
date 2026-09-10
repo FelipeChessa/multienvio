@@ -114,11 +114,45 @@ function loadState() {
 const loaded = loadState()
 const state = loaded.state
 
-function persist() {
+let persistTimer = null
+let persistPending = false
+
+// Escreve de fato em disco. No Windows, renameSync logo após um writeFileSync pode falhar
+// com EPERM/EBUSY quando algo (antivírus, indexação, sync de nuvem) segura o arquivo recém
+// criado por alguns ms — é transitório, não motivo pra derrubar o app inteiro (era isso que
+// causava o "Uncaught Exception" no processo principal do Electron ao atualizar etiquetas,
+// já que contacts.upsert chega em lote e cada contato disparava uma escrita síncrona).
+function writeStateToDisk() {
   const tmpFile = dataFile + '.tmp'
   fs.writeFileSync(tmpFile, JSON.stringify(state, null, 2))
   fs.renameSync(tmpFile, dataFile)
 }
+
+function persistNow() {
+  persistPending = false
+  try {
+    writeStateToDisk()
+  } catch (err) {
+    console.error('Falha ao persistir data/app.json (tentando de novo na próxima alteração):', err.message)
+  }
+}
+
+// Agrupa escritas próximas no tempo num único write+rename — evita tanto o martelamento
+// do disco quanto a corrida acima quando um lote grande de contatos/etiquetas chega de uma vez.
+function persist() {
+  persistPending = true
+  if (persistTimer) return
+  persistTimer = setTimeout(() => {
+    persistTimer = null
+    persistNow()
+  }, 150)
+}
+
+process.on('exit', () => {
+  if (!persistPending) return
+  if (persistTimer) clearTimeout(persistTimer)
+  persistNow()
+})
 
 if (loaded.migrated) persist() // garante que um data/app.json novo ou recém-migrado já nasça completo em disco
 
