@@ -5,9 +5,14 @@
 // e sair de verdade é pelo ícone da bandeja (como qualquer app de mensagens de verdade).
 
 import { app, BrowserWindow, Tray, Menu, nativeImage } from 'electron'
-import { autoUpdater } from 'electron-updater'
+import electronUpdaterPkg from 'electron-updater'
 import path from 'path'
 import { fileURLToPath } from 'url'
+
+// electron-updater é CommonJS puro (module.exports = {...}) — o Node não consegue detectar
+// os named exports estaticamente pra interop ESM, então precisa importar o pacote inteiro e
+// desestruturar em runtime (é o que a própria mensagem de erro do Node recomenda).
+const { autoUpdater } = electronUpdaterPkg
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = Number(process.env.PORT || 3210)

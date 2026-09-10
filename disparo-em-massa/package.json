@@ -1,6 +1,6 @@
 {
   "name": "tabelas-whatsapp",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Automacao local para envio de mensagens em massa por etiqueta do WhatsApp Business",
   "author": "Vanessa",
   "type": "module",

@@ -46,6 +46,13 @@ problemas reais, em ordem, pra não perder tempo redescobrindo:
    GitHub dá pra corrigir a tag na hora (foi o que salvou a v1.4.0), mas o certo é nem
    precisar disso: `"releaseType": "release"` explícito em `build.publish` publica direto com
    a tag correta, sem passar por rascunho.
+5. **v1.4.0 crashava na abertura**: `import { autoUpdater } from 'electron-updater'` — esse
+   pacote é CommonJS puro, o Node não detecta `autoUpdater` como named export estaticamente
+   (`SyntaxError: Named export 'autoUpdater' not found`). `node --check` NÃO pega esse erro
+   (é só sintaxe, não resolve o módulo de verdade) — só aparece rodando o Electron de
+   verdade. Corrigido em v1.4.1 com `import pkg from 'electron-updater'; const { autoUpdater
+   } = pkg`. **Lição**: depois de qualquer mudança em `electron/main.js`, testar com
+   `electron .` de verdade antes de publicar, não só `node --check`.
 
 Se uma release futura falhar de um jeito novo: o log completo de cada step só é visível
 logado no GitHub (não dá pra baixar via API sem ser admin/ter token) — abra o run em
