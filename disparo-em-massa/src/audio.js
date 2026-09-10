@@ -1,5 +1,13 @@
 import { spawnSync } from 'child_process'
-import ffmpegPath from 'ffmpeg-static'
+import ffmpegStaticPath from 'ffmpeg-static'
+
+// Dentro do app empacotado, ffmpeg-static resolve o próprio caminho como algo dentro de
+// "app.asar" — isso "existe" pra leitura de arquivo (o Electron redireciona transparentemente
+// pra app.asar.unpacked), mas spawnSync chama o SO diretamente pra executar o processo, sem
+// esse redirecionamento, e falha com ENOENT. O binário de fato está em app.asar.unpacked
+// (ver asarUnpack em package.json) — só precisa trocar o pedaço do caminho. Não afeta o modo
+// dev (node src/server.js, sem asar nenhum): a troca é um no-op quando "app.asar" não aparece.
+const ffmpegPath = ffmpegStaticPath.replace('app.asar', 'app.asar.unpacked')
 
 // Gravação feita no navegador (MediaRecorder) sai como WebM/Opus — o mesmo codec de áudio que
 // o WhatsApp espera pra nota de voz, só que dentro do contêiner errado. Aqui é só remuxagem
@@ -17,8 +25,8 @@ export function convertWebmToOggOpus(webmBuffer) {
       input: webmBuffer,
       maxBuffer: 100 * 1024 * 1024
     })
-    if (result.status !== 0 || !result.stdout || result.stdout.length === 0) {
-      console.error('ffmpeg falhou ao converter gravação de áudio para ogg/opus:', result.stderr?.toString())
+    if (result.error || result.status !== 0 || !result.stdout || result.stdout.length === 0) {
+      console.error('ffmpeg falhou ao converter gravação de áudio para ogg/opus:', result.error?.message, result.stderr?.toString())
       return null
     }
     return result.stdout

@@ -53,6 +53,18 @@ problemas reais, em ordem, pra não perder tempo redescobrindo:
    verdade. Corrigido em v1.4.1 com `import pkg from 'electron-updater'; const { autoUpdater
    } = pkg`. **Lição**: depois de qualquer mudança em `electron/main.js`, testar com
    `electron .` de verdade antes de publicar, não só `node --check`.
+6. **v1.4.0/v1.4.1 mandavam a nota de voz gravada como arquivo de áudio comum, não como PTT
+   nativo do WhatsApp**: `ffmpeg-static` resolve o próprio caminho como algo dentro de
+   `app.asar` — isso "existe" pra `fs.existsSync`/leitura (o Electron redireciona
+   transparentemente pra `app.asar.unpacked`), mas `spawnSync` chama o SO diretamente pra
+   executar o processo, sem esse redirecionamento, e falha com `ENOENT` **silenciosamente**
+   (o catch de `src/audio.js` só loga no console, que não existe no app empacotado — cai no
+   fallback de mandar o webm original sem converter, sem avisar ninguém). Corrigido em v1.4.2
+   trocando `app.asar` por `app.asar.unpacked` no caminho antes de rodar. **Lição**: pra
+   testar código que faz `spawnSync`/`spawn` de um binário empacotado via `asarUnpack`, rodar
+   `ELECTRON_RUN_AS_NODE=1 "dist\win-unpacked\Disparo em Massa.exe" script.mjs` — isso executa
+   com a resolução de módulos/asar real do app empacotado, sem precisar instalar nada nem
+   simular. `node --check` e testes fora do asar não pegam esse tipo de bug.
 
 Se uma release futura falhar de um jeito novo: o log completo de cada step só é visível
 logado no GitHub (não dá pra baixar via API sem ser admin/ter token) — abra o run em
