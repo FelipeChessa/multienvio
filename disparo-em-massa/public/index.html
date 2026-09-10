@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Disparo em Massa — WhatsApp</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="brand-mark">
+        <span class="icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="3" x2="10" y2="14"/><polygon points="21 3 14 21 10 14 3 10 21 3"/></svg>
+        </span>
+      </span>
+      <div class="brand-text">
+        <h1>Disparo em Massa</h1>
+        <div class="brand-subtitle">Mensagens por etiqueta do WhatsApp Business</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span id="connection-badge" class="badge">verificando...</span>
+      <button id="settings-btn" class="header-btn">Configurações de envio</button>
+      <button id="help-btn" class="icon-btn" title="Como usar">?</button>
+      <button id="disconnect-btn" class="header-btn hidden">Desconectar</button>
+      <button id="reconnect-btn" class="header-btn hidden">Reconectar</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="unlicensed-screen" class="screen hidden">
+      <h2>Ativar o programa</h2>
+      <p>Digite a chave de licença que você recebeu para começar a usar.</p>
+      <input type="text" id="license-key-input" class="license-input" placeholder="Cole aqui a chave de licença" autocomplete="off" spellcheck="false" />
+      <p id="license-error" class="notice error hidden"></p>
+      <button id="license-activate-btn">Ativar</button>
+    </section>
+
+    <section id="pairing-screen" class="screen hidden">
+      <h2>Conecte o WhatsApp Business</h2>
+      <p>Abra o WhatsApp Business no celular → Configurações → Aparelhos conectados → Conectar
+        um aparelho, e escaneie o código abaixo.</p>
+      <img id="qr-image" alt="QR Code de pareamento" />
+    </section>
+
+    <section id="syncing-screen" class="screen hidden">
+      <h2>Sincronizando etiquetas...</h2>
+      <p>Conectado! Aguardando o WhatsApp enviar suas etiquetas e contatos. Isso pode levar
+        alguns instantes na primeira vez.</p>
+    </section>
+
+    <section id="disconnected-screen" class="screen hidden">
+      <h2>WhatsApp desconectado</h2>
+      <p>Você desconectou manualmente. A sessão continua salva — clique em "Reconectar" no topo
+        da página para voltar a usar sem escanear o QR de novo.</p>
+    </section>
+
+    <section id="logged-out-screen" class="screen hidden">
+      <h2>Sessão encerrada pelo WhatsApp</h2>
+      <p>O WhatsApp encerrou esta sessão (por exemplo, o aparelho foi removido em
+        "Aparelhos conectados", ou duas instâncias do programa tentaram usar a mesma sessão ao
+        mesmo tempo). As credenciais salvas não servem mais — gere um novo QR Code e escaneie
+        de novo pelo celular.</p>
+      <button id="reset-session-btn">Gerar novo QR Code</button>
+    </section>
+
+    <section id="main-screen" class="screen hidden">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon accent-blue">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l10 10-8 8L3 11V3z"/><circle cx="7.5" cy="7.5" r="1.3" fill="currentColor" stroke="none"/></svg></span>
+          </div>
+          <div class="stat-value" id="stat-labels-count">–</div>
+          <div class="stat-label">Etiquetas ativas</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon accent-green">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="3" x2="10" y2="14"/><polygon points="21 3 14 21 10 14 3 10 21 3"/></svg></span>
+          </div>
+          <div class="stat-value" id="stat-usage-24h">–</div>
+          <div class="stat-label">Envios nas últimas 24h</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon accent-green">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="8 12 11 15 16 9"/></svg></span>
+          </div>
+          <div class="stat-value" id="stat-success-rate">–</div>
+          <div class="stat-label">Taxa de sucesso</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon accent-amber">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.4"/><path d="M15 20c0-2.4 1.1-4.4 2.8-5.4"/></svg></span>
+          </div>
+          <div class="stat-value" id="stat-optouts-count">–</div>
+          <div class="stat-label">Contatos que saíram</div>
+        </div>
+      </div>
+
+      <div class="layout">
+        <aside id="labels-list">
+          <div class="panel-header">
+            <h2 id="labels-panel-title">Etiquetas</h2>
+            <button id="labels-refresh-btn" class="secondary small">Atualizar</button>
+          </div>
+
+          <div class="sidebar-tabs">
+            <button type="button" class="sidebar-tab active" data-tab="labels">Etiquetas</button>
+            <button type="button" class="sidebar-tab" data-tab="allContacts">Todos os contatos</button>
+            <button type="button" class="sidebar-tab" data-tab="coldContacts">Clientes frios</button>
+          </div>
+
+          <input type="text" id="labels-search" class="labels-search hidden" placeholder="Buscar etiqueta..." />
+          <input type="text" id="all-contacts-search" class="labels-search hidden" placeholder="Buscar contato por nome ou número..." />
+
+          <div id="all-contacts-bulk-actions" class="panel-header-actions hidden" style="margin-bottom: 10px;">
+            <button type="button" id="select-all-contacts-btn" class="secondary small">Selecionar todos (<span id="all-contacts-filtered-count">0</span>)</button>
+            <button type="button" id="clear-contacts-selection-btn" class="secondary small">Limpar seleção</button>
+          </div>
+
+          <div id="labels-container"></div>
+
+          <div id="cold-contacts-panel" class="hidden">
+            <div id="cc-stage-upload">
+              <div id="cc-dropzone" class="dropzone">
+                <span id="cc-dropzone-text">Arraste uma planilha (.xlsx ou .csv) aqui, ou clique para selecionar</span>
+                <input type="file" id="cc-file-input" accept=".xlsx,.csv" hidden />
+              </div>
+              <p class="field-hint">Precisa ter uma coluna com telefone (com ou sem DDI). Cada
+                número é conferido no WhatsApp antes de aparecer selecionável — nada é enviado
+                nesta etapa.</p>
+              <p id="cc-upload-notice" class="notice error hidden"></p>
+            </div>
+
+            <div id="cc-stage-mapping" class="hidden">
+              <p id="cc-mapping-filename" class="muted"></p>
+              <label for="cc-phone-column-select">Coluna do telefone</label>
+              <select id="cc-phone-column-select"></select>
+              <label for="cc-name-column-select">Coluna do nome — opcional</label>
+              <select id="cc-name-column-select">
+                <option value="">Nenhuma</option>
+              </select>
+              <div class="dispatch-actions">
+                <button type="button" id="cc-validate-btn">Validar contatos</button>
+                <button type="button" id="cc-change-file-btn" class="secondary small">Trocar arquivo</button>
+              </div>
+              <p id="cc-mapping-notice" class="notice error hidden"></p>
+            </div>
+
+            <div id="cc-stage-results" class="hidden">
+              <p id="cc-results-summary" class="muted"></p>
+              <div class="panel-header-actions" style="margin-bottom: 10px;">
+                <button type="button" id="cc-select-all-btn" class="secondary small">Selecionar todos válidos</button>
+                <button type="button" id="cc-clear-selection-btn" class="secondary small">Limpar seleção</button>
+              </div>
+              <div id="cc-results-list"></div>
+              <button type="button" id="cc-restart-btn" class="secondary small" style="margin-top: 12px; width: 100%;">Trocar arquivo</button>
+            </div>
+          </div>
+        </aside>
+
+        <section id="dispatch-panel" class="hidden">
+          <p id="cold-contacts-risk-banner" class="notice confirm hidden">
+            <strong>Disparo para quem não é seu contato ainda.</strong> Isso aumenta o risco de
+            bloqueio pelo WhatsApp. Prefira lotes menores e mantenha o ritmo de envio em
+            "Configurações de envio" dentro da faixa recomendada.
+          </p>
+          <h2 id="dispatch-title">Disparar mensagem</h2>
+          <p id="dispatch-count" class="muted"></p>
+
+          <label for="message-type-select">Tipo de mensagem</label>
+          <select id="message-type-select">
+            <option value="media">Arquivo/texto</option>
+            <option value="album">Álbum (várias fotos/vídeos)</option>
+            <option value="poll">Enquete</option>
+            <option value="location">Localização</option>
+            <option value="contact">Cartão de contato</option>
+          </select>
+
+          <div id="media-fields">
+            <label>Arquivo (PDF, imagem, vídeo ou áudio) — opcional</label>
+            <div id="dropzone" class="dropzone">
+              <span id="dropzone-text">Arraste um arquivo aqui ou clique para selecionar</span>
+              <button id="remove-file-btn" class="remove-file-btn hidden" type="button" title="Remover anexo">&times;</button>
+              <input type="file" id="file-input" accept=".pdf,image/*,video/*,audio/*" hidden />
+            </div>
+            <div class="record-audio-row">
+              <button type="button" id="record-audio-btn" class="secondary small">🎙️ Gravar áudio</button>
+            </div>
+            <label id="voice-note-label" class="checkbox-field hidden">
+              <input type="checkbox" id="voice-note-toggle" />
+              Enviar como nota de voz (sem legenda — se houver mensagem, ela vai separada, como texto)
+            </label>
+
+            <label for="message-input">Mensagem</label>
+            <textarea id="message-input" rows="5" placeholder="Ex: Olá! Passando para avisar sobre uma novidade importante para você."></textarea>
+            <p class="field-hint">Dica: use <code>{{nome}}</code> na mensagem para personalizar com o nome de cada contato.</p>
+          </div>
+
+          <div id="album-fields" class="hidden">
+            <label>Fotos/vídeos do álbum (2 a 5 arquivos)</label>
+            <div id="album-dropzone" class="dropzone">
+              <span id="album-dropzone-text">Arraste 2 a 5 imagens ou vídeos aqui, ou clique para selecionar</span>
+              <input type="file" id="album-file-input" accept="image/*,video/*" multiple hidden />
+            </div>
+            <p class="field-hint">Álbum manda 1 mensagem "moldura" + 1 por arquivo — um álbum de 5
+              fotos vira 6 mensagens por contato, o que aumenta bastante o tempo total do disparo (o
+              intervalo entre mensagens se aplica entre cada item também, não só entre contatos).</p>
+
+            <label for="album-message-input">Legenda (vai só na primeira foto/vídeo) — opcional</label>
+            <textarea id="album-message-input" rows="3" placeholder="Ex: Confira as novidades desta semana."></textarea>
+          </div>
+
+          <div id="poll-fields" class="hidden">
+            <label for="poll-question-input">Pergunta da enquete</label>
+            <input type="text" id="poll-question-input" placeholder="Ex: Qual horário prefere?" />
+            <label for="poll-options-input">Opções (uma por linha, mínimo 2)</label>
+            <textarea id="poll-options-input" rows="4" placeholder="Opção A&#10;Opção B&#10;Opção C"></textarea>
+          </div>
+
+          <div id="location-fields" class="hidden">
+            <p class="field-hint" id="location-summary">Nenhuma localização configurada ainda.</p>
+            <button type="button" id="configure-location-btn" class="secondary small">Configurar localização</button>
+          </div>
+
+          <div id="contact-fields" class="hidden">
+            <p class="field-hint" id="contact-card-summary">Nenhum cartão de contato configurado ainda.</p>
+            <button type="button" id="configure-contact-btn" class="secondary small">Configurar cartão de contato</button>
+          </div>
+
+          <label for="apply-label-select">Aplicar etiqueta após o envio — opcional</label>
+          <select id="apply-label-select">
+            <option value="">Nenhuma</option>
+          </select>
+
+          <label for="remove-label-select">Remover etiqueta após o envio — opcional</label>
+          <select id="remove-label-select">
+            <option value="">Nenhuma</option>
+          </select>
+
+          <label class="checkbox-field">
+            <input type="checkbox" id="simulate-typing-toggle" checked />
+            Simular digitação antes de enviar (recomendado)
+          </label>
+          <label class="checkbox-field">
+            <input type="checkbox" id="skip-blocked-toggle" checked />
+            Pular contatos bloqueados (recomendado)
+          </label>
+          <label class="checkbox-field">
+            <input type="checkbox" id="mark-read-toggle" />
+            Marcar conversa como lida após enviar
+          </label>
+
+          <div id="pacing-summary" class="pacing-summary"></div>
+
+          <p id="dispatch-notice" class="notice hidden"></p>
+          <div class="dispatch-actions">
+            <button id="dispatch-btn" disabled>Disparar</button>
+            <button id="dispatch-cancel-btn" class="secondary hidden">Cancelar</button>
+          </div>
+
+          <div id="progress-panel" class="hidden">
+            <h3>Progresso do envio</h3>
+            <div id="progress-bar"><div id="progress-fill"></div></div>
+            <p id="progress-summary"></p>
+            <ul id="progress-log"></ul>
+          </div>
+        </section>
+      </div>
+
+      <section id="failures-section">
+        <div class="panel-header">
+          <h2>Falhas de envio recentes</h2>
+          <div class="panel-header-actions">
+            <a id="failures-export-btn" class="secondary small" href="/api/logs/export.csv">Exportar CSV</a>
+            <button id="failures-resend-btn" class="secondary small" disabled>Reenviar selecionados</button>
+            <button id="failures-refresh-btn" class="secondary small">Atualizar</button>
+          </div>
+        </div>
+        <p id="failures-empty" class="empty-state">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="8 12 11 15 16 9"/></svg></span>
+          Nenhuma falha registrada até agora.
+        </p>
+        <div class="table-wrap">
+          <table id="failures-table" class="hidden">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="failures-select-all" title="Selecionar todos" /></th>
+                <th>Data</th>
+                <th>Etiqueta</th>
+                <th>Contato</th>
+                <th>Número</th>
+                <th>Erro</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="failures-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="optouts-section">
+        <div class="panel-header">
+          <h2>Contatos que pediram para não receber mais</h2>
+          <button id="optouts-refresh-btn" class="secondary small">Atualizar</button>
+        </div>
+        <p class="field-hint">Detectado automaticamente quando o contato responde algo como "parar", "sair" ou "cancelar". Eles ficam de fora dos próximos disparos até você reativar.</p>
+        <p id="optouts-empty" class="empty-state">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="8 12 11 15 16 9"/></svg></span>
+          Ninguém pediu para sair ainda.
+        </p>
+        <div class="table-wrap">
+          <table id="optouts-table" class="hidden">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Contato</th>
+                <th>Número</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="optouts-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div id="settings-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Configurações de envio</h2>
+        <button id="settings-close-btn" class="icon-btn" title="Fechar">&times;</button>
+      </div>
+
+      <p class="modal-intro">
+        Esses parâmetros controlam o ritmo dos disparos para reduzir o risco do WhatsApp
+        identificar os envios como comportamento automatizado. Você pode ajustar livremente,
+        mas fora da faixa recomendada o risco de bloqueio da conta aumenta.
+      </p>
+
+      <div class="settings-grid">
+        <div class="field">
+          <label for="setting-delay-min">Espera mínima entre mensagens (segundos)</label>
+          <input type="number" id="setting-delay-min" min="0" step="0.5" />
+          <p class="field-hint" id="hint-delay-min"></p>
+        </div>
+        <div class="field">
+          <label for="setting-delay-max">Espera máxima entre mensagens (segundos)</label>
+          <input type="number" id="setting-delay-max" min="0" step="0.5" />
+          <p class="field-hint" id="hint-delay-max"></p>
+        </div>
+        <div class="field">
+          <label for="setting-batch-size">Pausar a cada quantas mensagens</label>
+          <input type="number" id="setting-batch-size" min="1" step="1" />
+          <p class="field-hint" id="hint-batch-size"></p>
+        </div>
+        <div class="field">
+          <label for="setting-batch-pause">Duração da pausa entre lotes (minutos)</label>
+          <input type="number" id="setting-batch-pause" min="0" step="0.5" />
+          <p class="field-hint" id="hint-batch-pause"></p>
+        </div>
+        <div class="field field-full">
+          <label for="setting-daily-limit">Limite de envios por dia (0 = sem limite)</label>
+          <input type="number" id="setting-daily-limit" min="0" step="1" />
+          <p class="field-hint" id="hint-daily-limit"></p>
+        </div>
+      </div>
+
+      <details class="settings-advanced">
+        <summary>Avançado: proteção automática (disjuntor)</summary>
+        <p class="modal-intro">
+          Interrompe o disparo sozinho se os envios começarem a falhar em sequência — isso
+          costuma ser o primeiro sinal visível de um problema de conexão ou de bloqueio.
+        </p>
+        <label class="checkbox-field">
+          <input type="checkbox" id="setting-cb-enabled" />
+          Interromper automaticamente em caso de falhas seguidas
+        </label>
+        <div class="settings-grid">
+          <div class="field">
+            <label for="setting-cb-consecutive">Parar após quantas falhas seguidas</label>
+            <input type="number" id="setting-cb-consecutive" min="1" step="1" />
+          </div>
+          <div class="field">
+            <label for="setting-cb-sample">Amostra mínima para calcular taxa de falha</label>
+            <input type="number" id="setting-cb-sample" min="1" step="1" />
+          </div>
+          <div class="field field-full">
+            <label for="setting-cb-rate">Parar se a taxa de falha passar de (%)</label>
+            <input type="number" id="setting-cb-rate" min="1" max="100" step="1" />
+          </div>
+        </div>
+      </details>
+
+      <p id="settings-error" class="notice error hidden"></p>
+
+      <div class="modal-actions">
+        <button id="settings-save-btn">Salvar</button>
+        <button id="settings-cancel-btn" class="secondary">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="profile-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Cartão de contato e localização</h2>
+        <button id="profile-close-btn" class="icon-btn" title="Fechar">&times;</button>
+      </div>
+
+      <p class="modal-intro">
+        Usados pelos tipos de mensagem "Cartão de contato" e "Localização" — configure uma vez,
+        fica salvo pros próximos disparos.
+      </p>
+
+      <div class="settings-grid">
+        <div class="field">
+          <label for="profile-business-name">Nome do negócio</label>
+          <input type="text" id="profile-business-name" placeholder="Ex: Empresa X" />
+        </div>
+        <div class="field">
+          <label for="profile-business-phone">Telefone (com DDI)</label>
+          <input type="text" id="profile-business-phone" placeholder="+5511999999999" />
+        </div>
+        <div class="field">
+          <label for="profile-location-name">Nome do local — opcional</label>
+          <input type="text" id="profile-location-name" placeholder="Ex: Loja Centro" />
+        </div>
+        <div class="field">
+          <label for="profile-location-address">Endereço — opcional</label>
+          <input type="text" id="profile-location-address" placeholder="Rua Exemplo, 123" />
+        </div>
+        <div class="field">
+          <label for="profile-location-lat">Latitude</label>
+          <input type="text" id="profile-location-lat" placeholder="Ex: -23.55052" />
+        </div>
+        <div class="field">
+          <label for="profile-location-lng">Longitude</label>
+          <input type="text" id="profile-location-lng" placeholder="Ex: -46.633308" />
+        </div>
+      </div>
+
+      <p id="profile-error" class="notice error hidden"></p>
+
+      <div class="modal-actions">
+        <button id="profile-save-btn">Salvar</button>
+        <button id="profile-cancel-btn" class="secondary">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tutorial-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Como usar</h2>
+        <button id="tutorial-skip-btn" class="icon-btn" title="Pular">&times;</button>
+      </div>
+
+      <p class="tutorial-step-indicator" id="tutorial-step-indicator"></p>
+
+      <div class="tutorial-step" data-step="1">
+        <h3>1. Conecte o WhatsApp via QR Code</h3>
+        <p>Abra o WhatsApp Business no seu celular → Configurações → Aparelhos conectados →
+          Conectar um aparelho, e escaneie o código que aparece na tela inicial deste programa.</p>
+      </div>
+
+      <div class="tutorial-step" data-step="2">
+        <h3>2. Crie as etiquetas no WhatsApp</h3>
+        <p>Organize seus contatos em etiquetas (ex: "Clientes VIP", "Atacado") direto no
+          WhatsApp Business do seu celular — em Conversas, segure um contato e toque em
+          "Etiquetas".</p>
+        <p class="tutorial-external-note">
+          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><line x1="12" y1="9" x2="12" y2="14"/><circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none"/></svg></span>
+          <span>Isto é feito no aplicativo do WhatsApp Business, não aqui. Este programa só lê as
+          etiquetas que você já criou por lá — não existe um botão para criar etiqueta dentro
+          dele.</span>
+        </p>
+      </div>
+
+      <div class="tutorial-step" data-step="3">
+        <h3>3. Selecione a etiqueta e escreva a mensagem</h3>
+        <p>Clique numa etiqueta na lista, escreva a mensagem e, se quiser, anexe um arquivo
+          (PDF ou imagem) — por exemplo, um catálogo, cardápio ou imagem promocional.</p>
+      </div>
+
+      <div class="tutorial-step" data-step="4">
+        <h3>4. Envie</h3>
+        <p>Clique em "Disparar", confirme, e acompanhe o progresso em tempo real. Os parâmetros
+          de ritmo do envio (para reduzir o risco de bloqueio) ficam em "Configurações de
+          envio", no topo da página.</p>
+      </div>
+
+      <div class="modal-actions">
+        <button id="tutorial-back-btn" class="secondary hidden">Voltar</button>
+        <button id="tutorial-next-btn">Próximo</button>
+        <button id="tutorial-skip-link-btn" class="link-btn">Pular</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
