@@ -57,9 +57,9 @@
   header .name { font-size: 16.5px; font-weight: 700; }
 
   .hero {
-    max-width: 720px;
+    max-width: 820px;
     margin: 0 auto;
-    padding: 72px 24px 48px;
+    padding: 64px 24px 16px;
     text-align: center;
   }
   .hero h1 {
@@ -72,29 +72,134 @@
     font-size: 17px;
     color: var(--ink-soft);
     line-height: 1.6;
-    margin: 0 0 36px;
+    margin: 0 auto 20px;
+    max-width: 620px;
   }
 
-  .price-tag {
+  .compat-row {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 44px;
+  }
+  .compat-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-soft);
+  }
+  .compat-chip svg { width: 13px; height: 13px; color: var(--brand); }
+
+  /* ===== Planos ===== */
+  .pricing-section {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 0 24px 56px;
+  }
+  .pricing-section h2 {
+    text-align: center;
+    font-size: 24px;
+    margin: 0 0 6px;
+  }
+  .pricing-sub {
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0 0 32px;
+  }
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+  }
+  @media (max-width: 780px) {
+    .pricing-grid { grid-template-columns: 1fr; max-width: 360px; margin: 0 auto; }
+  }
+  .price-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 26px 22px;
+    box-shadow: var(--shadow-sm);
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    margin-bottom: 28px;
+    position: relative;
   }
-  .price-value {
-    font-family: var(--font-heading);
-    font-size: 34px;
+  .price-card.featured {
+    border-color: var(--brand-light);
+    box-shadow: 0 16px 40px rgba(22,163,74,.16);
+    transform: translateY(-6px);
+  }
+  .price-badge {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--brand);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .price-card h3 {
+    font-size: 15px;
+    color: var(--ink-soft);
+    margin: 4px 0 14px;
+    font-weight: 700;
+  }
+  .price-card .amount {
+    font-size: 30px;
     font-weight: 800;
     color: var(--ink);
-    letter-spacing: -0.01em;
+    font-family: var(--font-heading);
   }
-  .price-note {
-    font-size: 13px;
+  .price-card .amount span { font-size: 14px; font-weight: 600; color: var(--muted); }
+  .price-card .per-month { font-size: 12.5px; color: var(--muted); margin: 4px 0 18px; }
+  .price-card .savings { font-size: 12px; color: var(--brand-dark); font-weight: 700; margin: -12px 0 18px; }
+  .plan-cta {
+    display: inline-block;
+    text-align: center;
+    text-decoration: none;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 14px;
+    font-family: var(--font-heading);
+    border: 1px solid var(--border);
+    color: var(--brand-dark);
+    background: var(--surface-alt);
+    transition: background .15s, transform .15s;
+    margin-top: auto;
+  }
+  .price-card.featured .plan-cta {
+    background: linear-gradient(135deg, var(--brand-light), var(--brand-dark));
+    color: white;
+    border-color: transparent;
+  }
+  .plan-cta:hover { transform: translateY(-1px); }
+  .pricing-footnote {
+    text-align: center;
+    font-size: 12.5px;
     color: var(--muted);
-    font-weight: 500;
+    margin: 22px 0 0;
   }
 
+  /* ===== Download ===== */
+  .download-section {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 8px 24px 0;
+    text-align: center;
+  }
   .download-btn {
     display: inline-flex;
     align-items: center;
@@ -114,12 +219,24 @@
   .download-btn svg { width: 20px; height: 20px; }
 
   .download-meta {
-    margin-top: 14px;
+    margin-top: 12px;
     font-size: 13px;
     color: var(--muted);
   }
   .download-meta a { color: var(--brand-dark); font-weight: 600; text-decoration: none; }
   .download-meta a:hover { text-decoration: underline; }
+  .version-chip {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-family: var(--font-heading);
+    font-weight: 600;
+  }
 
   .section {
     max-width: 720px;
@@ -185,6 +302,89 @@
   }
   .feature strong { display: block; color: var(--ink); font-family: var(--font-heading); font-size: 14.5px; margin-bottom: 4px; }
 
+  /* ===== Mockups (dados fictícios, ilustrativo) ===== */
+  .showcase-section {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 0 24px 64px;
+  }
+  .showcase-section h2 { text-align: center; font-size: 24px; margin: 0 0 6px; }
+  .showcase-sub { text-align: center; color: var(--muted); font-size: 14px; margin: 0 0 8px; }
+  .showcase-fineprint { text-align: center; color: var(--muted); font-size: 11.5px; margin: 0 0 32px; font-style: italic; }
+  .showcase-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 22px;
+  }
+  @media (max-width: 720px) {
+    .showcase-grid { grid-template-columns: 1fr; }
+  }
+  .mock-window {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+  }
+  .mock-titlebar {
+    background: #1a2436;
+    padding: 9px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .mock-dot { width: 9px; height: 9px; border-radius: 50%; }
+  .mock-dot.red { background: #f87171; }
+  .mock-dot.yellow { background: #fbbf24; }
+  .mock-dot.green { background: #4ade80; }
+  .mock-titlebar span {
+    color: rgba(255,255,255,.6);
+    font-size: 11px;
+    margin-left: 8px;
+    font-family: var(--font-body);
+  }
+  .mock-body { padding: 16px; background: var(--surface-alt); }
+  .mock-caption {
+    padding: 12px 16px 14px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .mock-caption strong { color: var(--ink); }
+
+  .mock-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+  .mock-stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px; text-align: center; }
+  .mock-stat b { display: block; font-size: 15px; color: var(--ink); font-family: var(--font-heading); }
+  .mock-stat span { font-size: 9.5px; color: var(--muted); }
+  .mock-labels { display: flex; flex-direction: column; gap: 6px; }
+  .mock-label-row {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-size: 12px; color: var(--ink-soft);
+  }
+  .mock-label-row .count { background: var(--surface-alt); border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; color: var(--brand-dark); }
+
+  .mock-composer { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+  .mock-composer .to-line { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .mock-composer .to-line strong { color: var(--ink-soft); }
+  .mock-textarea {
+    background: var(--surface-alt); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px; font-size: 12px; color: var(--ink-soft); line-height: 1.5; min-height: 64px;
+  }
+  .mock-toolbar { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
+  .mock-emoji { font-size: 14px; border: 1px solid var(--border); border-radius: 6px; padding: 2px 6px; background: var(--surface); }
+  .mock-send { background: linear-gradient(135deg, var(--brand-light), var(--brand-dark)); color: white; border: none; border-radius: 8px; padding: 7px 16px; font-size: 12px; font-weight: 700; font-family: var(--font-heading); }
+
+  .mock-schedule-row {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 9px 10px; font-size: 11.5px; color: var(--ink-soft); margin-bottom: 6px;
+  }
+  .mock-schedule-row .status { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .mock-schedule-row .status.pending { background: #fffbeb; color: var(--warning); }
+  .mock-schedule-row .status.sent { background: #f0fdf4; color: var(--brand-dark); }
+
   footer {
     text-align: center;
     padding: 32px 24px 48px;
@@ -206,21 +406,119 @@
     <section class="hero">
       <h1>Envie mensagens em massa pelo WhatsApp, direto do seu computador</h1>
       <p class="lead">
-        Organize seus contatos por etiqueta no WhatsApp Business e dispare mensagens,
-        catálogos ou promoções para todos de uma vez — com ritmo de envio pensado para reduzir
-        o risco de bloqueio da sua conta.
+        Dispare mensagens, catálogos ou promoções para vários contatos de uma vez — com ritmo de
+        envio pensado para reduzir o risco de bloqueio da sua conta. Funciona com WhatsApp comum
+        ou Business: escolha por etiqueta (Business), selecione contatos já salvos, ou importe uma
+        lista de uma planilha.
       </p>
-
-      <div class="price-tag">
-        <span class="price-value">R$ 129,90</span>
-        <span class="price-note">pagamento único · licença vitalícia, sem mensalidade</span>
+      <div class="compat-row">
+        <span class="compat-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>WhatsApp comum</span>
+        <span class="compat-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>WhatsApp Business</span>
+        <span class="compat-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Windows 10/11</span>
       </div>
+    </section>
 
+    <section class="pricing-section">
+      <h2>Escolha seu plano</h2>
+      <p class="pricing-sub">Quanto mais tempo, menor o valor por mês. Pagamento único por período, sem renovação automática.</p>
+      <div class="pricing-grid">
+        <div class="price-card">
+          <h3>3 meses</h3>
+          <div class="amount">R$ 89<span>,90</span></div>
+          <p class="per-month">R$ 29,97 / mês</p>
+          <a class="plan-cta" href="mailto:multienvio.g7@gmail.com?subject=Quero%20o%20plano%20de%203%20meses%20-%20MultiEnvio&body=Ol%C3%A1!%20Quero%20contratar%20o%20plano%20de%203%20meses%20do%20MultiEnvio.">Escolher 3 meses</a>
+        </div>
+        <div class="price-card featured">
+          <span class="price-badge">Mais popular</span>
+          <h3>6 meses</h3>
+          <div class="amount">R$ 149<span>,90</span></div>
+          <p class="per-month">R$ 24,98 / mês</p>
+          <p class="savings">Economize 17% vs. mensal</p>
+          <a class="plan-cta" href="mailto:multienvio.g7@gmail.com?subject=Quero%20o%20plano%20de%206%20meses%20-%20MultiEnvio&body=Ol%C3%A1!%20Quero%20contratar%20o%20plano%20de%206%20meses%20do%20MultiEnvio.">Escolher 6 meses</a>
+        </div>
+        <div class="price-card">
+          <h3>1 ano</h3>
+          <div class="amount">R$ 239<span>,90</span></div>
+          <p class="per-month">R$ 19,99 / mês</p>
+          <p class="savings">Economize 33% vs. mensal</p>
+          <a class="plan-cta" href="mailto:multienvio.g7@gmail.com?subject=Quero%20o%20plano%20de%201%20ano%20-%20MultiEnvio&body=Ol%C3%A1!%20Quero%20contratar%20o%20plano%20de%201%20ano%20do%20MultiEnvio.">Escolher 1 ano</a>
+        </div>
+      </div>
+      <p class="pricing-footnote">* Valores sugeridos — ajuste conforme seu custo e posicionamento antes de divulgar. Clicar em um plano abre um e-mail pra gente confirmar o pagamento e enviar sua chave de licença.</p>
+    </section>
+
+    <section class="download-section">
       <a class="download-btn" href="#" id="download-link" download>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg>
-        Baixar para Windows
+        Já tenho licença — baixar para Windows
       </a>
       <p class="download-meta">Windows 10 ou 11 · gratuito para instalar, requer licença para ativar</p>
+      <span class="version-chip" id="version-chip">versão atual</span>
+    </section>
+
+    <section class="showcase-section">
+      <h2>Veja como funciona</h2>
+      <p class="showcase-sub">O painel de controle e o disparo de mensagens, na prática.</p>
+      <p class="showcase-fineprint">Ilustração da interface com dados fictícios — não são contatos reais.</p>
+      <div class="showcase-grid">
+        <div class="mock-window">
+          <div class="mock-titlebar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><span>Disparo em Massa — WhatsApp</span></div>
+          <div class="mock-body">
+            <div class="mock-stats">
+              <div class="mock-stat"><b>6</b><span>ETIQUETAS</span></div>
+              <div class="mock-stat"><b>184</b><span>ENVIOS 24H</span></div>
+              <div class="mock-stat"><b>97%</b><span>SUCESSO</span></div>
+              <div class="mock-stat"><b>3</b><span>SAÍRAM</span></div>
+            </div>
+            <div class="mock-labels">
+              <div class="mock-label-row">🏷️ Clientes VIP <span class="count">42</span></div>
+              <div class="mock-label-row">🏷️ Leads do site <span class="count">128</span></div>
+              <div class="mock-label-row">🏷️ Promoção Black Friday <span class="count">315</span></div>
+            </div>
+          </div>
+          <div class="mock-caption">Painel com <strong>etiquetas</strong>, dashboard de envios e taxa de sucesso em tempo real.</div>
+        </div>
+
+        <div class="mock-window">
+          <div class="mock-titlebar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><span>Disparo em Massa — WhatsApp</span></div>
+          <div class="mock-body">
+            <div class="mock-composer">
+              <div class="to-line">Enviando para: <strong>128 contatos</strong> — Leads do site</div>
+              <div class="mock-textarea">Oi {{nome}}! 🎉 Nossa promoção especial começou hoje — aproveite antes que acabe.</div>
+              <div class="mock-toolbar">
+                <span class="mock-emoji">😊</span>
+                <button class="mock-send" type="button">Disparar</button>
+              </div>
+            </div>
+          </div>
+          <div class="mock-caption">Mensagem personalizada com <strong>{{nome}}</strong>, emojis e ritmo de envio protegido.</div>
+        </div>
+
+        <div class="mock-window">
+          <div class="mock-titlebar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><span>Disparo em Massa — WhatsApp</span></div>
+          <div class="mock-body">
+            <div class="mock-schedule-row">🕐 Amanhã, 09:00 — Leads do site <span class="status pending">Agendado</span></div>
+            <div class="mock-schedule-row">🕐 Sex, 14:00 — Clientes VIP <span class="status pending">Agendado</span></div>
+            <div class="mock-schedule-row">✔ Ontem, 10:00 — Promoção BF <span class="status sent">Enviado</span></div>
+          </div>
+          <div class="mock-caption"><strong>Programe envios</strong> para o horário certo, mesmo com o computador desligado depois.</div>
+        </div>
+
+        <div class="mock-window">
+          <div class="mock-titlebar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><span>Disparo em Massa — WhatsApp</span></div>
+          <div class="mock-body">
+            <div class="mock-composer">
+              <div class="to-line">Fonte: <strong>planilha.xlsx</strong> — "Clientes frios" (sem etiqueta)</div>
+              <div class="mock-textarea">247 números conferidos no WhatsApp<br>231 válidos · 16 inválidos</div>
+              <div class="mock-toolbar">
+                <span class="mock-emoji">📎</span>
+                <button class="mock-send" type="button">Validar e selecionar</button>
+              </div>
+            </div>
+          </div>
+          <div class="mock-caption">Sem etiquetas? Importe uma <strong>planilha</strong> ou use qualquer contato já salvo no WhatsApp.</div>
+        </div>
+      </div>
     </section>
 
     <section class="section">
@@ -244,7 +542,7 @@
           <li>
             <span class="step-num">4</span>
             <p><strong>Cole a chave de licença</strong> que você recebeu e escaneie o QR Code com o WhatsApp
-              Business do seu celular para conectar.</p>
+              (comum ou Business) do seu celular para conectar.</p>
           </li>
         </ul>
 
@@ -257,8 +555,20 @@
 
       <div class="features">
         <div class="feature">
-          <strong>Por etiqueta</strong>
+          <strong>Por etiqueta (Business)</strong>
           Escolha uma etiqueta do WhatsApp Business e envie para todos os contatos dela de uma vez.
+        </div>
+        <div class="feature">
+          <strong>Todos os contatos</strong>
+          Sem etiqueta? Envie para qualquer contato já salvo no seu WhatsApp, comum ou Business.
+        </div>
+        <div class="feature">
+          <strong>Lista por planilha</strong>
+          Importe uma planilha (.xlsx/.csv) — cada número é conferido no WhatsApp antes de enviar.
+        </div>
+        <div class="feature">
+          <strong>Programar envio</strong>
+          Agende mensagens para um horário futuro — dispara sozinho mesmo se você reiniciar o computador antes.
         </div>
         <div class="feature">
           <strong>Ritmo protegido</strong>
@@ -273,13 +583,15 @@
   </main>
 
   <footer>
-    MultiEnvio — automação local para WhatsApp Business.
+    MultiEnvio — automação local para WhatsApp.
   </footer>
 
   <script>
     // Troque o link abaixo pela URL real do instalador no GitHub Releases.
+    var version = '1.5.0'
     document.getElementById('download-link').href =
-      'https://github.com/FelipeChessa/multienvio/releases/download/v1.5.0/Disparo.em.Massa.Setup.1.5.0.exe'
+      'https://github.com/FelipeChessa/multienvio/releases/download/v' + version + '/Disparo.em.Massa.Setup.' + version + '.exe'
+    document.getElementById('version-chip').textContent = 'versão atual: v' + version
   </script>
 </body>
 </html>
