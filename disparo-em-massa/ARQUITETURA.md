@@ -42,8 +42,13 @@ disparo-em-massa/
 │   ├── env.js               # carrega .env manualmente
 │   ├── spreadsheet.js      # leitura de planilha (.xlsx/.csv) — "Clientes frios"
 │   ├── phone.js            # normalização de telefone — "Clientes frios"
-│   └── audio.js            # remuxa gravação do navegador (webm/opus) pra ogg/opus via ffmpeg-static
+│   ├── audio.js            # remuxa gravação do navegador (webm/opus) pra ogg/opus via ffmpeg-static
+│   ├── updateState.js      # ponte entre electron/main.js (autoUpdater) e a API — farol de versão na UI
+│   ├── scheduler.js        # dispara mensagens agendadas no horário certo, rearma ao iniciar o app
+│   ├── scheduledFiles.js   # persiste em disco os anexos de mensagens agendadas (sobrevive a restart)
+│   └── scheduledRoutes.js  # rotas /api/scheduled (router separado — server.js já tava grande)
 ├── public/                 # frontend puro (HTML/CSS/JS, sem build step, sem framework)
+│   └── emoji-data.js       # lista curada de emojis pro seletor (sem dependência externa)
 ├── auth/                   # sessão Baileys (gitignored) — NUNCA commitar, é a credencial do WhatsApp
 └── data/                   # data/app.json + data/license.json (gitignored)
 ```
@@ -136,6 +141,20 @@ uma mudança futura "simplificar" o código sem querer e algum destes sumir, é 
 - **Exportar CSV** (`GET /api/logs/export.csv`) e **reenviar falhas selecionadas** — histórico
   de envios com filtro de falhas recentes.
 - **Tutorial de primeiro uso** (modal, 4 passos, controlado por `localStorage`).
+- **Farol de versão + auto-update manual** (cabeçalho): mostra a versão instalada; fica
+  amarelo quando há atualização disponível, com botão "Atualizar para versão mais recente"
+  que aparece só depois que o download terminar (`GET/POST /api/app-version*`,
+  `src/updateState.js`) — clicar chama `autoUpdater.quitAndInstall()`, reinicia e já abre na
+  versão nova, sem passar pelo instalador manual.
+- **Emoji picker** (botão 😊 nos campos de mensagem/legenda): lista curada local
+  (`public/emoji-data.js`, ~280 emojis em 10 categorias), sem dependência externa nem rede.
+- **Programar envio** (checkbox "Programar para depois" perto do botão Disparar): agenda
+  qualquer tipo de mensagem (texto, mídia com arquivo, álbum, enquete, localização, cartão)
+  pra um horário futuro. Anexos ficam persistidos em disco (`src/scheduledFiles.js`,
+  `data/scheduled-attachments/`) até a hora chegar — sobrevive a fechar/reabrir o app.
+  `src/scheduler.js` rearma os pendentes ao iniciar; se o horário passou há mais de 15min
+  enquanto o app estava fechado, marca como falho em vez de disparar um envio muito atrasado
+  sem avisar. Painel "Mensagens agendadas" mostra pendentes/enviadas/falhadas, com cancelar.
 
 ## Recursos portados de `disparo/` em 2026-09-09 (6 fases)
 

@@ -8,6 +8,7 @@ import { app, BrowserWindow, Tray, Menu, nativeImage } from 'electron'
 import electronUpdaterPkg from 'electron-updater'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import * as updateState from '../src/updateState.js'
 
 // electron-updater é CommonJS puro (module.exports = {...}) — o Node não consegue detectar
 // os named exports estaticamente pra interop ESM, então precisa importar o pacote inteiro e
@@ -137,13 +138,32 @@ function setupAutoUpdater() {
   if (!app.isPackaged) return // sem build publicado, checar update em dev só gera erro no console
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
-  autoUpdater.on('error', (err) => console.error('[autoUpdater] erro:', err.message))
-  autoUpdater.on('update-available', (info) => console.log('[autoUpdater] atualização disponível:', info.version))
+
+  updateState.registerHandlers({
+    onCheck: () => autoUpdater.checkForUpdates(),
+    onInstall: () => {
+      app.isQuitting = true
+      autoUpdater.quitAndInstall()
+    }
+  })
+
+  autoUpdater.on('checking-for-update', () => updateState.setState({ checking: true, error: null }))
+  autoUpdater.on('update-not-available', () => updateState.setState({ checking: false, updateAvailable: false, latestVersion: null }))
+  autoUpdater.on('error', (err) => {
+    console.error('[autoUpdater] erro:', err.message)
+    updateState.setState({ checking: false, error: err.message })
+  })
+  autoUpdater.on('update-available', (info) => {
+    console.log('[autoUpdater] atualização disponível:', info.version)
+    updateState.setState({ checking: false, updateAvailable: true, latestVersion: info.version })
+  })
   autoUpdater.on('update-downloaded', (info) => {
     console.log('[autoUpdater] atualização baixada, será instalada ao sair:', info.version)
     updateReadyToInstall = true
+    updateState.setState({ downloaded: true })
     refreshTrayMenu()
   })
+
   const check = () => autoUpdater.checkForUpdatesAndNotify().catch((err) => console.error('[autoUpdater] falha ao checar atualização:', err.message))
   check()
   setInterval(check, 4 * 60 * 60 * 1000) // o app fica rodando na bandeja por dias — reconfere periodicamente

@@ -1,4 +1,6 @@
 const badge = document.getElementById('connection-badge')
+const versionBadge = document.getElementById('version-badge')
+const updateNowBtn = document.getElementById('update-now-btn')
 const disconnectBtn = document.getElementById('disconnect-btn')
 const reconnectBtn = document.getElementById('reconnect-btn')
 const settingsBtn = document.getElementById('settings-btn')
@@ -98,20 +100,30 @@ const profileFields = {
 const dispatchNotice = document.getElementById('dispatch-notice')
 const dispatchCancelBtn = document.getElementById('dispatch-cancel-btn')
 
+const scheduleToggle = document.getElementById('schedule-toggle')
+const scheduleFields = document.getElementById('schedule-fields')
+const scheduleDatetimeInput = document.getElementById('schedule-datetime-input')
+const scheduleBtn = document.getElementById('schedule-btn')
+
+const scheduledSection = document.getElementById('scheduled-section')
+const scheduledRefreshBtn = document.getElementById('scheduled-refresh-btn')
+const scheduledTable = document.getElementById('scheduled-table')
+const scheduledBody = document.getElementById('scheduled-body')
+
 const progressPanel = document.getElementById('progress-panel')
 const progressFill = document.getElementById('progress-fill')
 const progressSummary = document.getElementById('progress-summary')
 const progressLog = document.getElementById('progress-log')
 
+const failuresSection = document.getElementById('failures-section')
 const failuresRefreshBtn = document.getElementById('failures-refresh-btn')
 const failuresResendBtn = document.getElementById('failures-resend-btn')
 const failuresSelectAll = document.getElementById('failures-select-all')
-const failuresEmpty = document.getElementById('failures-empty')
 const failuresTable = document.getElementById('failures-table')
 const failuresBody = document.getElementById('failures-body')
 
+const optoutsSection = document.getElementById('optouts-section')
 const optoutsRefreshBtn = document.getElementById('optouts-refresh-btn')
-const optoutsEmpty = document.getElementById('optouts-empty')
 const optoutsTable = document.getElementById('optouts-table')
 const optoutsBody = document.getElementById('optouts-body')
 
@@ -305,6 +317,50 @@ async function pollStatus() {
     badge.className = 'badge error'
   }
 }
+
+// Farol de versão no cabeçalho: verde = em dia, amarelo = tem atualização (baixando ou já
+// pronta pra instalar). O botão "Atualizar" só aparece quando a atualização já terminou de
+// baixar — antes disso, mostra "baixando..." desabilitado, já que instalar sem terminar o
+// download não funciona (electron-updater exige o arquivo completo em disco).
+async function pollAppVersion() {
+  try {
+    const res = await fetch('/api/app-version')
+    const data = await res.json()
+    versionBadge.textContent = `v${data.currentVersion}`
+    if (data.updateAvailable) {
+      versionBadge.className = 'badge update-available'
+      versionBadge.title = `Versão instalada: ${data.currentVersion} — nova versão disponível: ${data.latestVersion}`
+      updateNowBtn.classList.remove('hidden')
+      updateNowBtn.disabled = !data.downloaded
+      updateNowBtn.textContent = data.downloaded
+        ? `Atualizar para v${data.latestVersion}`
+        : 'Baixando atualização...'
+    } else {
+      versionBadge.className = 'badge up-to-date'
+      versionBadge.title = 'Versão instalada (em dia)'
+      updateNowBtn.classList.add('hidden')
+    }
+  } catch {
+    // servidor ainda subindo ou fora do ar — mantém o que já estava mostrado, sem quebrar a UI
+  }
+}
+
+updateNowBtn.addEventListener('click', async () => {
+  updateNowBtn.disabled = true
+  updateNowBtn.textContent = 'Atualizando...'
+  try {
+    const res = await fetch('/api/app-version/install', { method: 'POST' })
+    if (!res.ok) {
+      const data = await res.json()
+      showNotice('error', data.error || 'Não foi possível atualizar agora.')
+      pollAppVersion() // repõe o texto/estado corretos do botão
+    }
+    // se deu certo o app fecha e reabre sozinho na nova versão — não precisa fazer mais nada aqui
+  } catch (err) {
+    showNotice('error', 'Não foi possível atualizar agora: ' + err.message)
+    pollAppVersion()
+  }
+})
 
 licenseActivateBtn.addEventListener('click', async () => {
   const key = licenseKeyInput.value.trim()
@@ -848,12 +904,11 @@ async function refreshFailures() {
 
 function renderFailures(failures) {
   updateResendButtonState()
+  failuresSection.classList.toggle('hidden', failures.length === 0)
   if (failures.length === 0) {
     failuresTable.classList.add('hidden')
-    failuresEmpty.classList.remove('hidden')
     return
   }
-  failuresEmpty.classList.add('hidden')
   failuresTable.classList.remove('hidden')
   failuresSelectAll.checked = false
   failuresBody.innerHTML = ''
@@ -926,12 +981,11 @@ async function refreshOptOuts() {
 }
 
 function renderOptOuts(optOuts) {
+  optoutsSection.classList.toggle('hidden', optOuts.length === 0)
   if (optOuts.length === 0) {
     optoutsTable.classList.add('hidden')
-    optoutsEmpty.classList.remove('hidden')
     return
   }
-  optoutsEmpty.classList.add('hidden')
   optoutsTable.classList.remove('hidden')
   optoutsBody.innerHTML = ''
   for (const o of optOuts) {
@@ -1261,6 +1315,90 @@ recordAudioBtn.addEventListener('click', () => {
   else startRecording()
 })
 
+// Emoji picker compartilhado entre os campos de mensagem (message-input, album-message-input,
+// etc.) — abre perto do botão clicado, insere na textarea alvo na posição do cursor.
+// EMOJI_CATEGORIES vem de emoji-data.js (script clássico carregado antes deste).
+const emojiPicker = document.getElementById('emoji-picker')
+const emojiPickerTabs = document.getElementById('emoji-picker-tabs')
+const emojiPickerGrid = document.getElementById('emoji-picker-grid')
+let emojiPickerTargetId = null
+let emojiPickerCategoryIndex = 0
+
+function renderEmojiTabs() {
+  emojiPickerTabs.innerHTML = ''
+  EMOJI_CATEGORIES.forEach((cat, i) => {
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.textContent = cat.icon
+    btn.title = cat.name
+    btn.className = i === emojiPickerCategoryIndex ? 'active' : ''
+    btn.addEventListener('click', () => {
+      emojiPickerCategoryIndex = i
+      renderEmojiTabs()
+      renderEmojiGrid()
+    })
+    emojiPickerTabs.appendChild(btn)
+  })
+}
+
+function renderEmojiGrid() {
+  emojiPickerGrid.innerHTML = ''
+  for (const emoji of EMOJI_CATEGORIES[emojiPickerCategoryIndex].emojis) {
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.textContent = emoji
+    btn.addEventListener('click', () => insertEmoji(emoji))
+    emojiPickerGrid.appendChild(btn)
+  }
+}
+
+function insertEmoji(emoji) {
+  const textarea = document.getElementById(emojiPickerTargetId)
+  if (!textarea) return
+  const start = textarea.selectionStart ?? textarea.value.length
+  const end = textarea.selectionEnd ?? textarea.value.length
+  textarea.value = textarea.value.slice(0, start) + emoji + textarea.value.slice(end)
+  const newPos = start + emoji.length
+  textarea.focus()
+  textarea.setSelectionRange(newPos, newPos)
+}
+
+function openEmojiPicker(button) {
+  emojiPickerTargetId = button.dataset.target
+  document.querySelectorAll('.emoji-toggle-btn').forEach((b) => b.classList.toggle('active', b === button))
+  renderEmojiTabs()
+  renderEmojiGrid()
+  const rect = button.getBoundingClientRect()
+  emojiPicker.classList.remove('hidden')
+  const pickerWidth = 300
+  const left = Math.max(10, Math.min(rect.left, window.innerWidth - pickerWidth - 10))
+  emojiPicker.style.left = `${left}px`
+  emojiPicker.style.top = `${rect.bottom + 6}px`
+}
+
+function closeEmojiPicker() {
+  emojiPicker.classList.add('hidden')
+  document.querySelectorAll('.emoji-toggle-btn').forEach((b) => b.classList.remove('active'))
+  emojiPickerTargetId = null
+}
+
+document.querySelectorAll('.emoji-toggle-btn').forEach((btn) => {
+  btn.addEventListener('click', (e) => {
+    e.preventDefault()
+    if (emojiPickerTargetId === btn.dataset.target && !emojiPicker.classList.contains('hidden')) {
+      closeEmojiPicker()
+    } else {
+      openEmojiPicker(btn)
+    }
+  })
+})
+
+document.addEventListener('click', (e) => {
+  if (emojiPicker.classList.contains('hidden')) return
+  if (emojiPicker.contains(e.target) || e.target.classList.contains('emoji-toggle-btn')) return
+  closeEmojiPicker()
+})
+
 // dropzone do álbum (multi-arquivo)
 albumDropzone.addEventListener('click', () => albumFileInput.click())
 albumDropzone.addEventListener('dragover', (e) => {
@@ -1388,58 +1526,39 @@ dispatchCancelBtn.addEventListener('click', () => {
   resetConfirmState()
 })
 
-dispatchBtn.addEventListener('click', async () => {
+// Validação e montagem do FormData compartilhadas entre "Disparar" (agora) e "Programar
+// envio" (mais tarde) — os dois mandam exatamente os mesmos campos, só a rota muda.
+function validateDispatchFields() {
   if (selectedLabelIds.size === 0 && !adHocContacts) {
-    showNotice('error', 'Selecione uma etiqueta ou contatos para disparar.')
-    return
+    return 'Selecione uma etiqueta ou contatos.'
   }
   const messageType = messageTypeSelect.value
   const message = messageInput.value.trim()
   if (messageType === 'media' && !message) {
-    showNotice('error', 'Escreva a mensagem antes de disparar.')
-    return
+    return 'Escreva a mensagem.'
   }
   if (messageType === 'album' && selectedAlbumFiles.length < 2) {
-    showNotice('error', 'Selecione pelo menos 2 fotos/vídeos para o álbum.')
-    return
+    return 'Selecione pelo menos 2 fotos/vídeos para o álbum.'
   }
   if (messageType === 'poll') {
     const question = pollQuestionInput.value.trim()
     const options = pollOptionsInput.value.split('\n').map((s) => s.trim()).filter(Boolean)
     if (!question || options.length < 2) {
-      showNotice('error', 'Escreva a pergunta e pelo menos 2 opções da enquete.')
-      return
+      return 'Escreva a pergunta e pelo menos 2 opções da enquete.'
     }
   }
   if (messageType === 'location' && currentProfile.location.lat == null) {
-    showNotice('error', 'Configure a localização antes de disparar.')
-    return
+    return 'Configure a localização antes de continuar.'
   }
   if (messageType === 'contact' && !currentProfile.businessCard.name) {
-    showNotice('error', 'Configure o cartão de contato antes de disparar.')
-    return
+    return 'Configure o cartão de contato antes de continuar.'
   }
+  return null
+}
 
-  if (!awaitingConfirm) {
-    awaitingConfirm = true
-    dispatchBtn.textContent = 'Confirmar envio'
-    dispatchCancelBtn.classList.remove('hidden')
-    const target = adHocContacts
-      ? `${adHocContacts.length} contato(s) selecionado(s)`
-      : `${lastLabelsContactCount} contato(s) da(s) etiqueta(s) "${lastLabelsFetch.filter((l) => selectedLabelIds.has(l.id)).map((l) => l.name).join(', ')}"`
-    showNotice('confirm', `Clique em "Confirmar envio" para disparar para ${target}.`)
-    return
-  }
-
-  resetConfirmState()
-  dispatchBtn.disabled = true
-  progressPanel.classList.remove('hidden')
-  progressLog.innerHTML = ''
-  document.getElementById('batch-pause-banner')?.remove()
-  document.querySelector('.aborted-banner')?.remove()
-  progressFill.style.width = '0%'
-  progressSummary.textContent = 'Iniciando...'
-
+function buildDispatchFormData() {
+  const messageType = messageTypeSelect.value
+  const message = messageInput.value.trim()
   const formData = new FormData()
   if (adHocContacts) {
     formData.append('contactsJson', JSON.stringify(adHocContacts))
@@ -1466,6 +1585,37 @@ dispatchBtn.addEventListener('click', async () => {
   formData.append('markAsRead', markReadToggle.checked ? 'true' : 'false')
   if (applyLabelSelect.value) formData.append('applyLabelId', applyLabelSelect.value)
   if (removeLabelSelect.value) formData.append('removeLabelId', removeLabelSelect.value)
+  return formData
+}
+
+dispatchBtn.addEventListener('click', async () => {
+  const validationError = validateDispatchFields()
+  if (validationError) {
+    showNotice('error', validationError)
+    return
+  }
+
+  if (!awaitingConfirm) {
+    awaitingConfirm = true
+    dispatchBtn.textContent = 'Confirmar envio'
+    dispatchCancelBtn.classList.remove('hidden')
+    const target = adHocContacts
+      ? `${adHocContacts.length} contato(s) selecionado(s)`
+      : `${lastLabelsContactCount} contato(s) da(s) etiqueta(s) "${lastLabelsFetch.filter((l) => selectedLabelIds.has(l.id)).map((l) => l.name).join(', ')}"`
+    showNotice('confirm', `Clique em "Confirmar envio" para disparar para ${target}.`)
+    return
+  }
+
+  resetConfirmState()
+  dispatchBtn.disabled = true
+  progressPanel.classList.remove('hidden')
+  progressLog.innerHTML = ''
+  document.getElementById('batch-pause-banner')?.remove()
+  document.querySelector('.aborted-banner')?.remove()
+  progressFill.style.width = '0%'
+  progressSummary.textContent = 'Iniciando...'
+
+  const formData = buildDispatchFormData()
 
   try {
     const res = await fetch('/api/dispatch', { method: 'POST', body: formData })
@@ -1481,6 +1631,113 @@ dispatchBtn.addEventListener('click', async () => {
     dispatchBtn.disabled = false
   }
 })
+
+// Programar envio — mesmos campos do disparo imediato, só que vai pra /api/scheduled com um
+// horário no futuro em vez de disparar na hora. src/scheduler.js persiste e dispara sozinho,
+// mesmo que o app seja fechado e reaberto antes do horário chegar.
+scheduleToggle.addEventListener('change', () => {
+  const scheduling = scheduleToggle.checked
+  scheduleFields.classList.toggle('hidden', !scheduling)
+  dispatchBtn.classList.toggle('hidden', scheduling)
+  scheduleBtn.classList.toggle('hidden', !scheduling)
+  resetConfirmState()
+})
+
+scheduleBtn.addEventListener('click', async () => {
+  const validationError = validateDispatchFields()
+  if (validationError) {
+    showNotice('error', validationError)
+    return
+  }
+  if (!scheduleDatetimeInput.value) {
+    showNotice('error', 'Escolha a data e hora do envio.')
+    return
+  }
+  const scheduledFor = new Date(scheduleDatetimeInput.value)
+  if (scheduledFor.getTime() <= Date.now()) {
+    showNotice('error', 'Escolha um horário no futuro.')
+    return
+  }
+
+  scheduleBtn.disabled = true
+  const formData = buildDispatchFormData()
+  formData.append('scheduledFor', scheduledFor.toISOString())
+
+  try {
+    const res = await fetch('/api/scheduled', { method: 'POST', body: formData })
+    const data = await res.json()
+    if (!res.ok) {
+      showNotice('error', data.error || 'Erro ao programar o envio.')
+      scheduleBtn.disabled = false
+      return
+    }
+    showToast(`Envio programado para ${scheduledFor.toLocaleString('pt-BR')}`, 'success')
+    scheduleToggle.checked = false
+    scheduleFields.classList.add('hidden')
+    dispatchBtn.classList.remove('hidden')
+    scheduleBtn.classList.add('hidden')
+    scheduleDatetimeInput.value = ''
+    refreshScheduled()
+  } catch (err) {
+    showNotice('error', 'Erro ao programar o envio: ' + err.message)
+  }
+  scheduleBtn.disabled = false
+})
+
+async function refreshScheduled() {
+  try {
+    const res = await fetch('/api/scheduled')
+    const scheduled = await res.json()
+    renderScheduled(scheduled)
+  } catch {
+    // painel informativo — não bloqueia o resto da tela se der erro
+  }
+}
+
+function renderScheduled(scheduled) {
+  const pending = scheduled.filter((s) => s.status === 'pending')
+  scheduledSection.classList.toggle('hidden', scheduled.length === 0)
+  if (scheduled.length === 0) {
+    scheduledTable.classList.add('hidden')
+    return
+  }
+  scheduledTable.classList.remove('hidden')
+  scheduledBody.innerHTML = ''
+  const statusLabel = { pending: 'Agendado', sent: 'Enviado', failed: 'Falhou', cancelled: 'Cancelado' }
+  for (const s of scheduled) {
+    const tr = document.createElement('tr')
+    const when = new Date(s.scheduledFor).toLocaleString('pt-BR')
+    const target = s.payload.labelName || (s.payload.contacts ? `${s.payload.contacts.length} contato(s)` : '-')
+    const preview = (s.payload.message || s.payload.pollQuestion || '').slice(0, 60)
+    tr.innerHTML = `
+      <td>${escapeHtml(when)}</td>
+      <td>${escapeHtml(target)}</td>
+      <td title="${escapeHtml(s.payload.message || '')}">${escapeHtml(preview) || '-'}</td>
+      <td>${escapeHtml(statusLabel[s.status] || s.status)}${s.error ? ` <span title="${escapeHtml(s.error)}">⚠️</span>` : ''}</td>
+      <td>${s.status === 'pending' ? '<button type="button" class="scheduled-cancel-btn secondary small">Cancelar</button>' : ''}</td>
+    `
+    if (s.status === 'pending') {
+      tr.querySelector('.scheduled-cancel-btn').addEventListener('click', async () => {
+        const confirmed = await showConfirmDialog({
+          title: 'Cancelar este agendamento?',
+          message: 'O envio programado não vai acontecer.',
+          confirmText: 'Cancelar agendamento',
+          danger: true
+        })
+        if (!confirmed) return
+        try {
+          await fetch(`/api/scheduled/${s.id}`, { method: 'DELETE' })
+          refreshScheduled()
+        } catch (err) {
+          showNotice('error', 'Erro ao cancelar: ' + err.message)
+        }
+      })
+    }
+    scheduledBody.appendChild(tr)
+  }
+}
+
+scheduledRefreshBtn.addEventListener('click', refreshScheduled)
 
 function listenToJob(jobId) {
   const source = new EventSource(`/api/dispatch/${jobId}/stream`)
@@ -1578,11 +1835,14 @@ function listenToJob(jobId) {
 updateMessageTypeFields()
 refreshProfile()
 pollStatus()
+pollAppVersion()
 refreshFailures()
 refreshOptOuts()
+refreshScheduled()
 loadPacingSummary()
 refreshStats()
 setInterval(pollStatus, 2500)
+setInterval(pollAppVersion, 30000)
 setInterval(() => {
   if (!mainScreen.classList.contains('hidden')) {
     refreshLabels()
@@ -1592,6 +1852,7 @@ setInterval(() => {
       refreshFailures()
     }
     refreshOptOuts()
+    refreshScheduled()
     loadPacingSummary()
     refreshStats()
   }

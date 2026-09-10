@@ -12,6 +12,9 @@ import { startDispatch, subscribeToJob } from './sender.js'
 import { parseSpreadsheetRows } from './spreadsheet.js'
 import { normalizePhoneCandidates } from './phone.js'
 import { convertWebmToOggOpus } from './audio.js'
+import * as updateState from './updateState.js'
+import scheduledRoutes from './scheduledRoutes.js'
+import { initScheduler } from './scheduler.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -36,6 +39,11 @@ function startWhatsappOnce() {
 const app = express()
 app.use(express.json())
 app.use(express.static(path.join(__dirname, '..', 'public')))
+app.use(scheduledRoutes)
+
+// rearma os agendamentos pendentes salvos em data/app.json — precisa vir depois que o app
+// (express) já existe mas independe de licença/conexão WhatsApp (a checagem é no disparo)
+initScheduler()
 
 app.get('/api/license/status', (req, res) => {
   res.json(license.getStatus())
@@ -56,6 +64,30 @@ app.get('/api/status', (req, res) => {
     return res.json({ status: 'unlicensed', qrDataUrl: null })
   }
   res.json(whatsapp.getStatus())
+})
+
+// Versão instalada + farol de atualização (verde = em dia, amarelo = tem versão nova),
+// consumido pelo indicador no cabeçalho da UI.
+app.get('/api/app-version', (req, res) => {
+  res.json(updateState.getState())
+})
+
+app.post('/api/app-version/check', (req, res) => {
+  try {
+    updateState.requestCheck()
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(400).json({ error: err.message })
+  }
+})
+
+app.post('/api/app-version/install', (req, res) => {
+  try {
+    updateState.requestInstall()
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(400).json({ error: err.message })
+  }
 })
 
 app.get('/api/labels', (req, res) => {

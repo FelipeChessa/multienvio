@@ -24,6 +24,8 @@
       </div>
     </div>
     <div class="header-actions">
+      <span id="version-badge" class="badge up-to-date" title="Versão instalada">v...</span>
+      <button id="update-now-btn" class="header-btn hidden">Atualizar para versão mais recente</button>
       <span id="connection-badge" class="badge">verificando...</span>
       <button id="settings-btn" class="header-btn">Configurações de envio</button>
       <button id="help-btn" class="icon-btn" title="Como usar">?</button>
@@ -196,7 +198,10 @@
               Enviar como nota de voz (sem legenda — se houver mensagem, ela vai separada, como texto)
             </label>
 
-            <label for="message-input">Mensagem</label>
+            <label class="field-label-row" for="message-input">
+              <span>Mensagem</span>
+              <button type="button" class="emoji-toggle-btn" data-target="message-input" title="Inserir emoji">😊</button>
+            </label>
             <textarea id="message-input" rows="5" placeholder="Ex: Olá! Passando para avisar sobre uma novidade importante para você."></textarea>
             <p class="field-hint">Dica: use <code>{{nome}}</code> na mensagem para personalizar com o nome de cada contato.</p>
           </div>
@@ -211,7 +216,10 @@
               fotos vira 6 mensagens por contato, o que aumenta bastante o tempo total do disparo (o
               intervalo entre mensagens se aplica entre cada item também, não só entre contatos).</p>
 
-            <label for="album-message-input">Legenda (vai só na primeira foto/vídeo) — opcional</label>
+            <label class="field-label-row" for="album-message-input">
+              <span>Legenda (vai só na primeira foto/vídeo) — opcional</span>
+              <button type="button" class="emoji-toggle-btn" data-target="album-message-input" title="Inserir emoji">😊</button>
+            </label>
             <textarea id="album-message-input" rows="3" placeholder="Ex: Confira as novidades desta semana."></textarea>
           </div>
 
@@ -257,9 +265,19 @@
 
           <div id="pacing-summary" class="pacing-summary"></div>
 
+          <label class="checkbox-field">
+            <input type="checkbox" id="schedule-toggle" />
+            Programar para depois, em vez de enviar agora
+          </label>
+          <div id="schedule-fields" class="hidden">
+            <label for="schedule-datetime-input">Data e hora do envio</label>
+            <input type="datetime-local" id="schedule-datetime-input" />
+          </div>
+
           <p id="dispatch-notice" class="notice hidden"></p>
           <div class="dispatch-actions">
             <button id="dispatch-btn" disabled>Disparar</button>
+            <button id="schedule-btn" class="hidden" disabled>Programar envio</button>
             <button id="dispatch-cancel-btn" class="secondary hidden">Cancelar</button>
           </div>
 
@@ -272,7 +290,28 @@
         </section>
       </div>
 
-      <section id="failures-section">
+      <section id="scheduled-section" class="panel-compact hidden">
+        <div class="panel-header">
+          <h2>Mensagens agendadas</h2>
+          <button id="scheduled-refresh-btn" class="secondary small">Atualizar</button>
+        </div>
+        <div class="table-wrap">
+          <table id="scheduled-table" class="hidden">
+            <thead>
+              <tr>
+                <th>Quando</th>
+                <th>Para</th>
+                <th>Mensagem</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="scheduled-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="failures-section" class="panel-compact hidden">
         <div class="panel-header">
           <h2>Falhas de envio recentes</h2>
           <div class="panel-header-actions">
@@ -281,10 +320,6 @@
             <button id="failures-refresh-btn" class="secondary small">Atualizar</button>
           </div>
         </div>
-        <p id="failures-empty" class="empty-state">
-          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="8 12 11 15 16 9"/></svg></span>
-          Nenhuma falha registrada até agora.
-        </p>
         <div class="table-wrap">
           <table id="failures-table" class="hidden">
             <thead>
@@ -303,16 +338,12 @@
         </div>
       </section>
 
-      <section id="optouts-section">
+      <section id="optouts-section" class="panel-compact hidden">
         <div class="panel-header">
           <h2>Contatos que pediram para não receber mais</h2>
           <button id="optouts-refresh-btn" class="secondary small">Atualizar</button>
         </div>
         <p class="field-hint">Detectado automaticamente quando o contato responde algo como "parar", "sair" ou "cancelar". Eles ficam de fora dos próximos disparos até você reativar.</p>
-        <p id="optouts-empty" class="empty-state">
-          <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="8 12 11 15 16 9"/></svg></span>
-          Ninguém pediu para sair ainda.
-        </p>
         <div class="table-wrap">
           <table id="optouts-table" class="hidden">
             <thead>
@@ -505,6 +536,12 @@
 
   <div id="toast-container"></div>
 
+  <div id="emoji-picker" class="emoji-picker hidden">
+    <div id="emoji-picker-tabs" class="emoji-picker-tabs"></div>
+    <div id="emoji-picker-grid" class="emoji-picker-grid"></div>
+  </div>
+
+  <script src="emoji-data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

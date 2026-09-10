@@ -81,7 +81,8 @@ function emptyState() {
     sendLogs: [],
     settings: buildDefaultSettings(),
     optOuts: {},
-    messagingProfile: buildDefaultMessagingProfile()
+    messagingProfile: buildDefaultMessagingProfile(),
+    scheduledMessages: []
   }
 }
 
@@ -102,7 +103,8 @@ function loadState() {
         sendLogs: parsed.sendLogs || [],
         settings,
         optOuts: parsed.optOuts || {},
-        messagingProfile: profile
+        messagingProfile: profile,
+        scheduledMessages: parsed.scheduledMessages || []
       }
     }
   } catch (err) {
@@ -399,6 +401,41 @@ function listSendLogsForExport() {
     }))
 }
 
+// Mensagens agendadas — ver src/scheduler.js pra quem realmente dispara no horário certo e
+// rearma os timers ao iniciar o app. Aqui é só a persistência (mesmo padrão do resto do
+// arquivo: mutar state em memória + persist()).
+function listScheduledMessages() {
+  return state.scheduledMessages
+    .slice()
+    .sort((a, b) => new Date(a.scheduledFor) - new Date(b.scheduledFor))
+}
+
+function getScheduledMessage(id) {
+  return state.scheduledMessages.find((m) => m.id === id) || null
+}
+
+function addScheduledMessage(entry) {
+  state.scheduledMessages.push(entry)
+  persist()
+  return entry
+}
+
+function updateScheduledMessage(id, patch) {
+  const idx = state.scheduledMessages.findIndex((m) => m.id === id)
+  if (idx === -1) return null
+  state.scheduledMessages[idx] = { ...state.scheduledMessages[idx], ...patch }
+  persist()
+  return state.scheduledMessages[idx]
+}
+
+function removeScheduledMessage(id) {
+  const idx = state.scheduledMessages.findIndex((m) => m.id === id)
+  if (idx === -1) return false
+  state.scheduledMessages.splice(idx, 1)
+  persist()
+  return true
+}
+
 export {
   upsertLabel,
   applyAssociation,
@@ -420,5 +457,10 @@ export {
   addOptOut,
   removeOptOut,
   isOptedOut,
-  listOptOuts
+  listOptOuts,
+  listScheduledMessages,
+  getScheduledMessage,
+  addScheduledMessage,
+  updateScheduledMessage,
+  removeScheduledMessage
 }

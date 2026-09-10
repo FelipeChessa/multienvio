@@ -173,6 +173,11 @@ header h1 {
 .badge:not(.connected):not(.error):not(.disconnected) { color: #fbbf24; }
 .badge:not(.connected):not(.error):not(.disconnected)::before { animation: pulse-dot 1.4s ease-in-out infinite; }
 
+/* Farol de versão: verde = em dia, amarelo = atualização disponível/baixando */
+.badge.up-to-date { background: rgba(74,222,128,.16); color: #4ade80; border-color: rgba(74,222,128,.32); }
+.badge.update-available { background: rgba(251,191,36,.16); color: #fbbf24; border-color: rgba(251,191,36,.32); }
+.badge.update-available::before { animation: pulse-dot 1.4s ease-in-out infinite; }
+
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: .35; transform: scale(.65); }
@@ -666,7 +671,95 @@ textarea:focus, .field input:focus {
   margin-top: 2px;
 }
 
-#failures-section, #optouts-section { margin-top: 20px; }
+#failures-section, #optouts-section { margin-top: 14px; }
+
+/* Painéis secundários (falhas, opt-out) — só aparecem quando há algo a mostrar; visual mais
+   discreto que os painéis principais pra não competir por atenção com o compositor. */
+.panel-compact {
+  padding: 14px 18px;
+  box-shadow: none;
+  background: var(--surface-alt);
+}
+.panel-compact .panel-header { margin-bottom: 10px; }
+.panel-compact .panel-header h2 { font-size: 13.5px; color: var(--ink-soft); }
+.panel-compact .field-hint { margin-top: -4px; margin-bottom: 10px; }
+
+/* ===== Emoji picker ===== */
+
+.field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.emoji-toggle-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+  line-height: 1;
+  padding: 3px 7px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  font-family: inherit;
+}
+.emoji-toggle-btn:hover { background: var(--surface-alt); border-color: var(--border-strong); }
+.emoji-toggle-btn.active { background: var(--success-bg); border-color: var(--brand-light); }
+
+.emoji-picker {
+  position: fixed;
+  width: 300px;
+  max-height: 320px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.emoji-picker-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 6px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.emoji-picker-tabs button {
+  background: none;
+  border: none;
+  font-size: 16px;
+  padding: 4px 7px;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.emoji-picker-tabs button:hover { background: var(--surface-alt); }
+.emoji-picker-tabs button.active { background: var(--success-bg); }
+
+.emoji-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.emoji-picker-grid button {
+  background: none;
+  border: none;
+  font-size: 19px;
+  padding: 4px 0;
+  border-radius: 6px;
+  cursor: pointer;
+  line-height: 1.3;
+}
+.emoji-picker-grid button:hover { background: var(--surface-alt); }
 
 .table-wrap { overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--border); }
 
