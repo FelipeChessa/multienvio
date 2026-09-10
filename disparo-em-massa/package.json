@@ -75,7 +75,8 @@
     "publish": {
       "provider": "github",
       "owner": "FelipeChessa",
-      "repo": "multienvio"
+      "repo": "multienvio",
+      "releaseType": "release"
     }
   },
   "allowScripts": {

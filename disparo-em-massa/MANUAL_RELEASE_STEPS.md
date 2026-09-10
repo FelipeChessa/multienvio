@@ -20,6 +20,40 @@ Este documento detalha os passos que **não pude automatizar** e que você preci
 
 ---
 
+## ⚠️ Problemas já resolvidos na release v1.4.0 (não repetir)
+
+A release v1.4.0 precisou de várias tentativas no GitHub Actions até sair certa. Os
+problemas reais, em ordem, pra não perder tempo redescobrindo:
+
+1. **`actions/setup-node` com `cache: 'npm'` não achava o lockfile** — depois que
+   `disparo-em-massa/` virou uma subpasta deste repositório (fusão dos dois repositórios em
+   2026-09-09), o workflow passou a rodar da raiz, mas o cache do setup-node procura o
+   lockfile na raiz por padrão. Precisa de `cache-dependency-path:
+   disparo-em-massa/package-lock.json` explícito no step.
+2. **Target MSI quebra com `error LGHT0094: Icon:... could not be found`** — bug conhecido
+   do `electron-builder` com WiX 4 que só aparece em runner limpo (localmente não reproduz
+   se já tiver cache do WiX de builds antigas). `electron-updater` também não suporta
+   auto-update via MSI no Windows de qualquer forma — solução foi remover o target MSI de
+   `build.win.target` e do `build.msi`, ficando só com NSIS (`.exe`).
+3. **`build/icon.ico` e `build/license.txt` nunca foram commitados** — `build/` estava no
+   `.gitignore` desde sempre. Local sempre funcionou porque a pasta existe em disco; o
+   checkout limpo do Actions não tinha esses arquivos e o NSIS falhava com "cannot find
+   specified resource build/icon.ico". `build/` precisa estar versionado (só `dist/`, a
+   saída do build, deve ser ignorado).
+4. **Release saía como rascunho com tag genérica (`untagged-XXXXX`)** — o `electron-builder`
+   usa `releaseType: "draft"` por padrão, e nesse modo às vezes cria/atualiza um rascunho com
+   uma tag placeholder em vez de `v${version}`. Ao publicar manualmente pela interface do
+   GitHub dá pra corrigir a tag na hora (foi o que salvou a v1.4.0), mas o certo é nem
+   precisar disso: `"releaseType": "release"` explícito em `build.publish` publica direto com
+   a tag correta, sem passar por rascunho.
+
+Se uma release futura falhar de um jeito novo: o log completo de cada step só é visível
+logado no GitHub (não dá pra baixar via API sem ser admin/ter token) — abra o run em
+Actions, expanda o step que falhou, e copie a mensagem de erro real (não só "Process
+completed with exit code 1", que é genérica e não ajuda a diagnosticar nada).
+
+---
+
 ## ⚠️ Problema conhecido: Build local no Windows
 
 O `electron-builder` baixa `winCodeSign` (necessário para assinar o instalador), que contém symlinks do macOS. **No Windows, extrair esses symlinks requer privilégios de administrador**.
