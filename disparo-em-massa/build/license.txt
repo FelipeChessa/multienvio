@@ -1,0 +1,13 @@
+Disparo em Massa - WhatsApp Business Automation
+Copyright © 2024 Felipe Chessa
+
+Este software é licenciado, não vendido. O uso está sujeito aos termos
+do contrato de licença fornecido no momento da ativação.
+
+A automação de mensagens no WhatsApp Business pode violar os Termos de
+Serviço do WhatsApp. Use por sua conta e risco. O autor não se
+responsabiliza por bloqueios, banimentos ou quaisquer consequências
+decorrentes do uso deste software.
+
+Para suporte ou dúvidas sobre licenciamento, consulte a documentação
+oficial ou entre em contato através dos canais oficiais.
