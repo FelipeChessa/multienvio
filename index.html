@@ -1,468 +1,1405 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>MultiEnvio — Baixar</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
-<style>
-  :root {
-    --brand: #16a34a;
-    --brand-dark: #065f46;
-    --brand-light: #22c55e;
-    --whatsapp: #25d366;
-    --ink: #0f172a;
-    --ink-soft: #334155;
-    --muted: #64748b;
-    --surface: #ffffff;
-    --surface-alt: #f8fafc;
-    --bg: #eef1f5;
-    --border: #e2e8f0;
-    --warning: #b45309;
-    --warning-bg: #fffbeb;
-    --shadow-sm: 0 1px 2px rgba(15,23,42,.06);
-    --shadow-md: 0 8px 24px rgba(15,23,42,.08);
-    --shadow-lg: 0 24px 56px rgba(15,23,42,.16);
-    --font-heading: 'Sora', 'Segoe UI', Arial, sans-serif;
-    --font-body: 'Inter', 'Segoe UI', Arial, sans-serif;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: var(--font-body);
-    background: var(--bg);
-    color: var(--ink);
-    -webkit-font-smoothing: antialiased;
-  }
-  h1, h2, h3 { font-family: var(--font-heading); letter-spacing: -0.01em; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MultiEnvio — SISTEMA COMERCIAL</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap"
+    rel="stylesheet" />
+  <style>
+    :root {
+      --brand: #16a34a;
+      --brand-dark: #065f46;
+      --brand-light: #22c55e;
+      --whatsapp: #25d366;
+      --whatsapp-dark: #128c7e;
+      --ink: #0f172a;
+      --ink-soft: #334155;
+      --muted: #64748b;
+      --surface: #ffffff;
+      --surface-alt: #f8fafc;
+      --bg: #eef1f5;
+      --border: #e2e8f0;
+      --warning: #b45309;
+      --warning-bg: #fffbeb;
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, .06);
+      --shadow-md: 0 8px 24px rgba(15, 23, 42, .08);
+      --shadow-lg: 0 24px 56px rgba(15, 23, 42, .16);
+      --font-heading: 'Sora', 'Segoe UI', Arial, sans-serif;
+      --font-body: 'Inter', 'Segoe UI', Arial, sans-serif;
+    }
 
-  header {
-    background: linear-gradient(120deg, #0b1220 0%, #16233a 55%, #0f3d33 130%);
-    color: white;
-    padding: 18px 28px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .brand-mark {
-    width: 36px; height: 36px;
-    border-radius: 11px;
-    background: linear-gradient(135deg, var(--whatsapp), var(--brand-dark));
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
-  .brand-mark svg { width: 19px; height: 19px; color: white; }
-  header .name { font-size: 16.5px; font-weight: 700; }
+    * {
+      box-sizing: border-box;
+    }
 
-  .hero {
-    max-width: 820px;
-    margin: 0 auto;
-    padding: 64px 24px 16px;
-    text-align: center;
-  }
-  .hero h1 {
-    font-size: clamp(28px, 5vw, 42px);
-    font-weight: 800;
-    margin: 0 0 16px;
-    line-height: 1.15;
-  }
-  .hero p.lead {
-    font-size: 17px;
-    color: var(--ink-soft);
-    line-height: 1.6;
-    margin: 0 auto 20px;
-    max-width: 620px;
-  }
+    body {
+      margin: 0;
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+    }
 
-  .compat-row {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-bottom: 44px;
-  }
-  .compat-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    padding: 6px 14px;
-    font-size: 12.5px;
-    font-weight: 600;
-    color: var(--ink-soft);
-  }
-  .compat-chip svg { width: 13px; height: 13px; color: var(--brand); }
+    h1,
+    h2,
+    h3,
+    h4 {
+      font-family: var(--font-heading);
+      letter-spacing: -0.01em;
+    }
 
-  /* ===== Planos ===== */
-  .pricing-section {
-    max-width: 980px;
-    margin: 0 auto;
-    padding: 0 24px 56px;
-  }
-  .pricing-section h2 {
-    text-align: center;
-    font-size: 24px;
-    margin: 0 0 6px;
-  }
-  .pricing-sub {
-    text-align: center;
-    color: var(--muted);
-    font-size: 14px;
-    margin: 0 0 32px;
-  }
-  .pricing-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 18px;
-  }
-  @media (max-width: 780px) {
-    .pricing-grid { grid-template-columns: 1fr; max-width: 360px; margin: 0 auto; }
-  }
-  .price-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 18px;
-    padding: 26px 22px;
-    box-shadow: var(--shadow-sm);
-    display: flex;
-    flex-direction: column;
-    position: relative;
-  }
-  .price-card.featured {
-    border-color: var(--brand-light);
-    box-shadow: 0 16px 40px rgba(22,163,74,.16);
-    transform: translateY(-6px);
-  }
-  .price-badge {
-    position: absolute;
-    top: -12px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--brand);
-    color: white;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 4px 12px;
-    border-radius: 999px;
-    white-space: nowrap;
-  }
-  .price-card h3 {
-    font-size: 15px;
-    color: var(--ink-soft);
-    margin: 4px 0 14px;
-    font-weight: 700;
-  }
-  .price-card .amount {
-    font-size: 30px;
-    font-weight: 800;
-    color: var(--ink);
-    font-family: var(--font-heading);
-  }
-  .price-card .amount span { font-size: 14px; font-weight: 600; color: var(--muted); }
-  .price-card .per-month { font-size: 12.5px; color: var(--muted); margin: 4px 0 18px; }
-  .price-card .savings { font-size: 12px; color: var(--brand-dark); font-weight: 700; margin: -12px 0 18px; }
-  .plan-cta {
-    display: inline-block;
-    text-align: center;
-    text-decoration: none;
-    padding: 12px 16px;
-    border-radius: 10px;
-    font-weight: 700;
-    font-size: 14px;
-    font-family: var(--font-heading);
-    border: 1px solid var(--border);
-    color: var(--brand-dark);
-    background: var(--surface-alt);
-    transition: background .15s, transform .15s;
-    margin-top: auto;
-  }
-  .price-card.featured .plan-cta {
-    background: linear-gradient(135deg, var(--brand-light), var(--brand-dark));
-    color: white;
-    border-color: transparent;
-  }
-  .plan-cta:hover { transform: translateY(-1px); }
-  .pricing-footnote {
-    text-align: center;
-    font-size: 12.5px;
-    color: var(--muted);
-    margin: 22px 0 0;
-  }
+    /* ===== Header ===== */
+    header {
+      background: linear-gradient(120deg, #0b1220 0%, #16233a 55%, #0f3d33 130%);
+      color: white;
+      padding: 18px 28px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, .15);
+    }
 
-  /* ===== Download ===== */
-  .download-section {
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 8px 24px 0;
-    text-align: center;
-  }
-  .download-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    background: linear-gradient(135deg, var(--brand-light), var(--brand-dark));
-    color: white;
-    text-decoration: none;
-    padding: 17px 34px;
-    border-radius: 12px;
-    font-family: var(--font-heading);
-    font-size: 16px;
-    font-weight: 700;
-    box-shadow: 0 10px 28px rgba(22,163,74,.32);
-    transition: transform .15s, box-shadow .15s;
-  }
-  .download-btn:hover { transform: translateY(-2px); box-shadow: 0 14px 34px rgba(22,163,74,.4); }
-  .download-btn svg { width: 20px; height: 20px; }
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 11px;
+      background: linear-gradient(135deg, var(--whatsapp), var(--brand-dark));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(37, 211, 102, .3);
+    }
 
-  .download-meta {
-    margin-top: 12px;
-    font-size: 13px;
-    color: var(--muted);
-  }
-  .download-meta a { color: var(--brand-dark); font-weight: 600; text-decoration: none; }
-  .download-meta a:hover { text-decoration: underline; }
-  .version-chip {
-    display: inline-block;
-    margin-top: 10px;
-    font-size: 11px;
-    color: var(--muted);
-    background: var(--surface-alt);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    padding: 2px 10px;
-    font-family: var(--font-heading);
-    font-weight: 600;
-  }
+    .brand-mark svg {
+      width: 19px;
+      height: 19px;
+      color: white;
+    }
 
-  .section {
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 0 24px 64px;
-  }
+    header .name {
+      font-size: 16.5px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
 
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 32px;
-    box-shadow: var(--shadow-sm);
-  }
+    header .name .sub-tag {
+      font-size: 12px;
+      color: var(--whatsapp);
+      font-weight: 600;
+      margin-left: 6px;
+      background: rgba(37, 211, 102, 0.12);
+      padding: 3px 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(37, 211, 102, 0.25);
+    }
 
-  .card h2 { font-size: 20px; margin: 0 0 20px; }
+    /* ===== Hero ===== */
+    .hero {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 60px 24px 20px;
+      text-align: center;
+    }
 
-  .steps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 18px; }
-  .steps li { display: flex; gap: 14px; align-items: flex-start; }
-  .step-num {
-    width: 28px; height: 28px; flex-shrink: 0;
-    border-radius: 50%;
-    background: var(--surface-alt);
-    color: var(--brand-dark);
-    font-family: var(--font-heading);
-    font-weight: 700;
-    font-size: 13px;
-    display: flex; align-items: center; justify-content: center;
-    border: 1px solid var(--border);
-  }
-  .steps p { margin: 0; line-height: 1.55; color: var(--ink-soft); font-size: 14.5px; }
-  .steps strong { color: var(--ink); }
+    .slogan-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #ffffff;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      box-shadow: 0 2px 10px rgba(22, 163, 74, 0.08);
+      border-radius: 999px;
+      padding: 6px 16px;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--brand-dark);
+      margin-bottom: 20px;
+    }
 
-  .warning-note {
-    margin-top: 28px;
-    background: var(--warning-bg);
-    color: var(--warning);
-    border-radius: 12px;
-    padding: 14px 16px;
-    font-size: 13.5px;
-    line-height: 1.6;
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-  }
-  .warning-note svg { width: 17px; height: 17px; flex-shrink: 0; margin-top: 2px; }
-  .warning-note a { color: inherit; font-weight: 700; text-decoration: underline; }
+    .slogan-badge svg {
+      width: 16px;
+      height: 16px;
+      color: var(--whatsapp);
+    }
 
-  .features {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 16px;
-    margin-top: 40px;
-  }
-  .feature {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 18px;
-    font-size: 13.5px;
-    color: var(--ink-soft);
-    line-height: 1.5;
-  }
-  .feature strong { display: block; color: var(--ink); font-family: var(--font-heading); font-size: 14.5px; margin-bottom: 4px; }
+    .hero h1 {
+      font-size: clamp(30px, 5.5vw, 46px);
+      font-weight: 800;
+      margin: 0 0 14px;
+      line-height: 1.15;
+      color: var(--ink);
+    }
 
-  /* ===== Mockups (dados fictícios, ilustrativo) ===== */
-  .showcase-section {
-    max-width: 980px;
-    margin: 0 auto;
-    padding: 0 24px 64px;
-  }
-  .showcase-section h2 { text-align: center; font-size: 24px; margin: 0 0 6px; }
-  .showcase-sub { text-align: center; color: var(--muted); font-size: 14px; margin: 0 0 8px; }
-  .showcase-fineprint { text-align: center; color: var(--muted); font-size: 11.5px; margin: 0 0 32px; font-style: italic; }
-  .showcase-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 22px;
-  }
-  @media (max-width: 720px) {
-    .showcase-grid { grid-template-columns: 1fr; }
-  }
-  .mock-window {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    box-shadow: var(--shadow-md);
-    overflow: hidden;
-  }
-  .mock-titlebar {
-    background: #1a2436;
-    padding: 9px 12px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .mock-dot { width: 9px; height: 9px; border-radius: 50%; }
-  .mock-dot.red { background: #f87171; }
-  .mock-dot.yellow { background: #fbbf24; }
-  .mock-dot.green { background: #4ade80; }
-  .mock-titlebar span {
-    color: rgba(255,255,255,.6);
-    font-size: 11px;
-    margin-left: 8px;
-    font-family: var(--font-body);
-  }
-  .mock-body { padding: 16px; background: var(--surface-alt); }
-  .mock-caption {
-    padding: 12px 16px 14px;
-    font-size: 13px;
-    color: var(--ink-soft);
-    border-top: 1px solid var(--border);
-    background: var(--surface);
-  }
-  .mock-caption strong { color: var(--ink); }
+    .hero-subtitle {
+      font-family: var(--font-heading);
+      font-size: clamp(16px, 2.5vw, 21px);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, var(--brand-dark), var(--brand));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0 auto 18px;
+    }
 
-  .mock-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
-  .mock-stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px; text-align: center; }
-  .mock-stat b { display: block; font-size: 15px; color: var(--ink); font-family: var(--font-heading); }
-  .mock-stat span { font-size: 9.5px; color: var(--muted); }
-  .mock-labels { display: flex; flex-direction: column; gap: 6px; }
-  .mock-label-row {
-    display: flex; justify-content: space-between; align-items: center;
-    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-    padding: 8px 10px; font-size: 12px; color: var(--ink-soft);
-  }
-  .mock-label-row .count { background: var(--surface-alt); border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; color: var(--brand-dark); }
+    .diferenciais-bar {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: rgba(15, 23, 42, 0.04);
+      border: 1px solid var(--border);
+      padding: 8px 20px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--ink-soft);
+      letter-spacing: 0.06em;
+      margin-bottom: 24px;
+    }
 
-  .mock-composer { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
-  .mock-composer .to-line { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
-  .mock-composer .to-line strong { color: var(--ink-soft); }
-  .mock-textarea {
-    background: var(--surface-alt); border: 1px solid var(--border); border-radius: 8px;
-    padding: 10px; font-size: 12px; color: var(--ink-soft); line-height: 1.5; min-height: 64px;
-  }
-  .mock-toolbar { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
-  .mock-emoji { font-size: 14px; border: 1px solid var(--border); border-radius: 6px; padding: 2px 6px; background: var(--surface); }
-  .mock-send { background: linear-gradient(135deg, var(--brand-light), var(--brand-dark)); color: white; border: none; border-radius: 8px; padding: 7px 16px; font-size: 12px; font-weight: 700; font-family: var(--font-heading); }
+    .diferenciais-bar .dot {
+      color: var(--brand);
+      font-size: 14px;
+    }
 
-  .mock-schedule-row {
-    display: flex; justify-content: space-between; align-items: center;
-    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-    padding: 9px 10px; font-size: 11.5px; color: var(--ink-soft); margin-bottom: 6px;
-  }
-  .mock-schedule-row .status { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
-  .mock-schedule-row .status.pending { background: #fffbeb; color: var(--warning); }
-  .mock-schedule-row .status.sent { background: #f0fdf4; color: var(--brand-dark); }
+    .hero p.lead {
+      font-size: 16.5px;
+      color: var(--ink-soft);
+      line-height: 1.6;
+      margin: 0 auto 28px;
+      max-width: 660px;
+    }
 
-  footer {
-    text-align: center;
-    padding: 32px 24px 48px;
-    font-size: 12.5px;
-    color: var(--muted);
-  }
-</style>
+    .compat-row {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 48px;
+    }
+
+    .compat-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--ink-soft);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .compat-chip svg {
+      width: 13px;
+      height: 13px;
+      color: var(--brand);
+    }
+
+    /* ===== Planos e Preços ===== */
+    .pricing-section {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 0 24px 56px;
+    }
+
+    .pricing-section h2 {
+      text-align: center;
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 0 6px;
+    }
+
+    .pricing-sub {
+      text-align: center;
+      color: var(--muted);
+      font-size: 15px;
+      margin: 0 auto 36px;
+      max-width: 600px;
+    }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+      align-items: stretch;
+    }
+
+    @media (max-width: 860px) {
+      .pricing-grid {
+        grid-template-columns: 1fr;
+        max-width: 420px;
+        margin: 0 auto;
+      }
+    }
+
+    .price-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      padding: 30px 24px 26px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+
+    .price-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .price-card.featured {
+      border-color: var(--brand-light);
+      box-shadow: 0 18px 44px rgba(22, 163, 74, .18);
+      transform: translateY(-8px);
+      background: linear-gradient(180deg, #ffffff 0%, #f7fdf9 100%);
+    }
+
+    .price-card.featured:hover {
+      transform: translateY(-11px);
+    }
+
+    .price-badge {
+      position: absolute;
+      top: -13px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, var(--brand-light), var(--brand-dark));
+      color: white;
+      font-size: 11.5px;
+      font-weight: 800;
+      padding: 5px 14px;
+      border-radius: 999px;
+      white-space: nowrap;
+      letter-spacing: 0.04em;
+      box-shadow: 0 4px 12px rgba(22, 163, 74, .25);
+    }
+
+    .price-badge.badge-blue {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, .25);
+    }
+
+    .plan-header {
+      margin-bottom: 14px;
+    }
+
+    .price-card h3 {
+      font-size: 17px;
+      color: var(--ink);
+      margin: 4px 0 2px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+
+    .plan-duration {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .price-box {
+      margin: 14px 0 18px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .old-price-line {
+      font-size: 13px;
+      color: #94a3b8;
+      text-decoration: line-through;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    .old-price-line.placeholder {
+      visibility: hidden;
+    }
+
+    .discount-badge {
+      display: inline-block;
+      background: #fef2f2;
+      color: #dc2626;
+      border: 1px solid #fecaca;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+
+    .discount-badge.placeholder {
+      visibility: hidden;
+    }
+
+    .price-card .amount {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--ink);
+      font-family: var(--font-heading);
+      line-height: 1.1;
+    }
+
+    .price-card .amount span {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    .price-card .per-month {
+      font-size: 12.5px;
+      color: var(--muted);
+      margin: 4px 0 0;
+      font-weight: 500;
+    }
+
+    /* Benefícios Comuns */
+    .plan-benefits {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex-grow: 1;
+    }
+
+    .plan-benefits li {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 13px;
+      color: var(--ink-soft);
+      line-height: 1.4;
+    }
+
+    .plan-benefits li .chk {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #dcfce7;
+      color: var(--brand-dark);
+      font-size: 11px;
+      font-weight: 900;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .plan-cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-align: center;
+      text-decoration: none;
+      padding: 13px 18px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 14px;
+      font-family: var(--font-heading);
+      border: 1px solid var(--border);
+      color: var(--ink);
+      background: var(--surface-alt);
+      transition: all .2s ease;
+      margin-top: auto;
+      letter-spacing: 0.02em;
+    }
+
+    .plan-cta svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .price-card.featured .plan-cta {
+      background: linear-gradient(135deg, var(--brand-light), var(--brand-dark));
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 6px 20px rgba(22, 163, 74, .3);
+    }
+
+    .plan-cta:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, .08);
+      background: var(--ink);
+      color: white;
+      border-color: var(--ink);
+    }
+
+    .price-card.featured .plan-cta:hover {
+      box-shadow: 0 10px 26px rgba(22, 163, 74, .45);
+      background: linear-gradient(135deg, #15803d, #044e39);
+    }
+
+    /* ===== Implementação ===== */
+    .implementation-container {
+      margin-top: 36px;
+    }
+
+    .implementation-card {
+      background: linear-gradient(135deg, #0b1329 0%, #172554 100%);
+      color: white;
+      border-radius: 20px;
+      padding: 32px 30px;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, .18);
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .implementation-card::before {
+      content: '';
+      position: absolute;
+      top: -60px;
+      right: -60px;
+      width: 220px;
+      height: 220px;
+      background: radial-gradient(circle, rgba(34, 197, 94, 0.25) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .implementation-badge {
+      display: inline-block;
+      background: rgba(37, 211, 102, 0.2);
+      border: 1px solid rgba(37, 211, 102, 0.4);
+      color: #4ade80;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 4px 12px;
+      border-radius: 999px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .implementation-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      padding-bottom: 22px;
+      margin-bottom: 24px;
+    }
+
+    .implementation-top h3 {
+      font-size: 22px;
+      font-weight: 800;
+      margin: 0 0 6px;
+      color: white;
+    }
+
+    .implementation-top p {
+      font-size: 14px;
+      color: #cbd5e1;
+      margin: 0;
+      max-width: 520px;
+      line-height: 1.5;
+    }
+
+    .implementation-price-tag {
+      text-align: right;
+    }
+
+    @media (max-width: 640px) {
+      .implementation-price-tag {
+        text-align: left;
+      }
+    }
+
+    .implementation-price-tag .orig {
+      display: block;
+      font-size: 14px;
+      color: #94a3b8;
+      text-decoration: line-through;
+      font-weight: 600;
+    }
+
+    .implementation-price-tag .free {
+      font-size: 26px;
+      font-weight: 800;
+      color: #4ade80;
+      font-family: var(--font-heading);
+    }
+
+    .implementation-price-tag .free span {
+      font-size: 16px;
+      background: #22c55e;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 800;
+      margin-left: 6px;
+    }
+
+    .implementation-features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    @media (max-width: 768px) {
+      .implementation-features {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .imp-item {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 16px 18px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .imp-icon {
+      font-size: 22px;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+
+    .imp-item strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 2px;
+    }
+
+    .imp-item span {
+      font-size: 12.5px;
+      color: #94a3b8;
+      line-height: 1.4;
+    }
+
+    /* ===== Download ===== */
+    .download-section {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 8px 24px 0;
+      text-align: center;
+    }
+
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, var(--brand-light), var(--brand-dark));
+      color: white;
+      text-decoration: none;
+      padding: 17px 34px;
+      border-radius: 12px;
+      font-family: var(--font-heading);
+      font-size: 16px;
+      font-weight: 700;
+      box-shadow: 0 10px 28px rgba(22, 163, 74, .32);
+      transition: transform .15s, box-shadow .15s;
+    }
+
+    .download-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 34px rgba(22, 163, 74, .4);
+    }
+
+    .download-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .download-meta {
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .version-chip {
+      display: inline-block;
+      margin-top: 10px;
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-family: var(--font-heading);
+      font-weight: 600;
+    }
+
+    /* ===== Showcase ===== */
+    .showcase-section {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 56px 24px 64px;
+    }
+
+    .showcase-section h2 {
+      text-align: center;
+      font-size: 24px;
+      margin: 0 0 6px;
+    }
+
+    .showcase-sub {
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      margin: 0 0 8px;
+    }
+
+    .showcase-fineprint {
+      text-align: center;
+      color: var(--muted);
+      font-size: 11.5px;
+      margin: 0 0 32px;
+      font-style: italic;
+    }
+
+    .showcase-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 22px;
+    }
+
+    @media (max-width: 720px) {
+      .showcase-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .mock-window {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+    }
+
+    .mock-titlebar {
+      background: #1a2436;
+      padding: 9px 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .mock-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+    }
+
+    .mock-dot.red {
+      background: #f87171;
+    }
+
+    .mock-dot.yellow {
+      background: #fbbf24;
+    }
+
+    .mock-dot.green {
+      background: #4ade80;
+    }
+
+    .mock-titlebar span {
+      color: rgba(255, 255, 255, .6);
+      font-size: 11px;
+      margin-left: 8px;
+      font-family: var(--font-body);
+    }
+
+    .mock-body {
+      padding: 16px;
+      background: var(--surface-alt);
+    }
+
+    .mock-caption {
+      padding: 12px 16px 14px;
+      font-size: 13px;
+      color: var(--ink-soft);
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .mock-caption strong {
+      color: var(--ink);
+    }
+
+    .mock-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .mock-stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px;
+      text-align: center;
+    }
+
+    .mock-stat b {
+      display: block;
+      font-size: 15px;
+      color: var(--ink);
+      font-family: var(--font-heading);
+    }
+
+    .mock-stat span {
+      font-size: 9.5px;
+      color: var(--muted);
+    }
+
+    .mock-labels {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .mock-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      color: var(--ink-soft);
+    }
+
+    .mock-label-row .count {
+      background: var(--surface-alt);
+      border-radius: 999px;
+      padding: 1px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--brand-dark);
+    }
+
+    .mock-composer {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    .mock-composer .to-line {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .mock-composer .to-line strong {
+      color: var(--ink-soft);
+    }
+
+    .mock-textarea {
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 12px;
+      color: var(--ink-soft);
+      line-height: 1.5;
+      min-height: 64px;
+    }
+
+    .mock-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .mock-emoji {
+      font-size: 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px 6px;
+      background: var(--surface);
+    }
+
+    .mock-send {
+      background: linear-gradient(135deg, var(--brand-light), var(--brand-dark));
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 7px 16px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: var(--font-heading);
+    }
+
+    .mock-schedule-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 10px;
+      font-size: 11.5px;
+      color: var(--ink-soft);
+      margin-bottom: 6px;
+    }
+
+    .mock-schedule-row .status {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+
+    .mock-schedule-row .status.pending {
+      background: #fffbeb;
+      color: var(--warning);
+    }
+
+    .mock-schedule-row .status.sent {
+      background: #f0fdf4;
+      color: var(--brand-dark);
+    }
+
+    /* ===== Como Instalar Card ===== */
+    .section {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 0 24px 64px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .card h2 {
+      font-size: 20px;
+      margin: 0 0 20px;
+    }
+
+    .steps {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .steps li {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+
+    .step-num {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: var(--surface-alt);
+      color: var(--brand-dark);
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+    }
+
+    .steps p {
+      margin: 0;
+      line-height: 1.55;
+      color: var(--ink-soft);
+      font-size: 14.5px;
+    }
+
+    .steps strong {
+      color: var(--ink);
+    }
+
+    /* Botão de Suporte WhatsApp substituto do warning-note */
+    .support-cta-box {
+      margin-top: 28px;
+      background: #f0fdf4;
+      border: 1.5px solid #bbf7d0;
+      border-radius: 14px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .support-cta-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .support-cta-info svg {
+      width: 28px;
+      height: 28px;
+      color: var(--whatsapp-dark);
+      flex-shrink: 0;
+    }
+
+    .support-cta-info p {
+      margin: 0;
+      font-size: 14px;
+      color: #14532d;
+      line-height: 1.4;
+    }
+
+    .support-cta-info strong {
+      display: block;
+      color: #064e3b;
+      font-weight: 700;
+    }
+
+    .whatsapp-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #25d366;
+      color: white;
+      text-decoration: none;
+      padding: 11px 20px;
+      border-radius: 10px;
+      font-family: var(--font-heading);
+      font-size: 13.5px;
+      font-weight: 800;
+      box-shadow: 0 4px 14px rgba(37, 211, 102, 0.35);
+      transition: all .15s ease;
+      white-space: nowrap;
+    }
+
+    .whatsapp-btn:hover {
+      background: #20ba5a;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(37, 211, 102, 0.45);
+      color: white;
+    }
+
+    .whatsapp-btn svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 40px;
+    }
+
+    .feature {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      font-size: 13.5px;
+      color: var(--ink-soft);
+      line-height: 1.5;
+    }
+
+    .feature strong {
+      display: block;
+      color: var(--ink);
+      font-family: var(--font-heading);
+      font-size: 14.5px;
+      margin-bottom: 4px;
+    }
+
+    /* ===== Seção de Crescimento / Benefícios Adicionais ===== */
+    .growth-section {
+      background: linear-gradient(135deg, #0b1220 0%, #162438 60%, #064e3b 140%);
+      color: white;
+      padding: 64px 24px 72px;
+      text-align: center;
+      margin-top: 30px;
+      position: relative;
+    }
+
+    .growth-container {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .growth-headline {
+      font-size: clamp(24px, 4vw, 36px);
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      margin: 0 0 40px;
+      color: white;
+      text-transform: uppercase;
+    }
+
+    .growth-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+      margin-bottom: 44px;
+    }
+
+    @media (max-width: 860px) {
+      .growth-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .growth-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .growth-card {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 24px 18px;
+      backdrop-filter: blur(8px);
+      transition: transform .2s ease, background .2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .growth-card:hover {
+      transform: translateY(-4px);
+      background: rgba(255, 255, 255, 0.09);
+      border-color: rgba(74, 222, 128, 0.3);
+    }
+
+    .growth-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+      display: block;
+      line-height: 1;
+    }
+
+    .growth-card strong {
+      font-family: var(--font-heading);
+      font-size: 15px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 6px;
+      letter-spacing: 0.03em;
+    }
+
+    .growth-card p {
+      font-size: 12.5px;
+      color: #94a3b8;
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    .growth-tagline {
+      font-family: var(--font-heading);
+      font-size: clamp(14px, 2vw, 17px);
+      font-weight: 800;
+      color: #4ade80;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin: 0;
+      opacity: 0.95;
+    }
+
+    /* ===== Footer ===== */
+    footer {
+      background: #070d17;
+      border-top: 1px solid #1e293b;
+      text-align: center;
+      padding: 36px 24px 44px;
+      font-size: 13px;
+      color: #64748b;
+    }
+
+    .footer-content {
+      max-width: 680px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .footer-brand {
+      font-family: var(--font-heading);
+      font-size: 15px;
+      font-weight: 700;
+      color: #cbd5e1;
+    }
+
+    .footer-contact {
+      color: var(--whatsapp);
+      text-decoration: none;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13.5px;
+    }
+
+    .footer-contact:hover {
+      text-decoration: underline;
+    }
+  </style>
 </head>
+
 <body>
 
   <header>
     <span class="brand-mark">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="3" x2="10" y2="14"/><polygon points="21 3 14 21 10 14 3 10 21 3"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+        stroke-linejoin="round">
+        <line x1="21" y1="3" x2="10" y2="14" />
+        <polygon points="21 3 14 21 10 14 3 10 21 3" />
+      </svg>
     </span>
-    <span class="name">MultiEnvio</span>
+    <span class="name">MultiEnvio <span class="sub-tag">SISTEMA COMERCIAL</span></span>
   </header>
 
   <main>
+    <!-- HERO SECTION -->
     <section class="hero">
-      <h1>Envie mensagens em massa pelo WhatsApp, direto do seu computador</h1>
+      <div class="slogan-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+        </svg>
+        <span>"Seu WhatsApp mais poderoso."</span>
+      </div>
+
+      <h1>MultiEnvio — SISTEMA COMERCIAL</h1>
+      <p class="hero-subtitle">MAIS VENDAS. MAIS CONEXÕES. MAIS RESULTADOS.</p>
+
+      <div class="diferenciais-bar">
+        <span>AUTOMAÇÃO</span>
+        <span class="dot">•</span>
+        <span>AGILIDADE</span>
+        <span class="dot">•</span>
+        <span>RESULTADOS</span>
+      </div>
+
       <p class="lead">
         Dispare mensagens, catálogos ou promoções para vários contatos de uma vez — com ritmo de
-        envio pensado para reduzir o risco de bloqueio da sua conta. Funciona com WhatsApp comum
+        envio inteligente pensado para reduzir o risco de bloqueio da sua conta. Funciona com WhatsApp comum
         ou Business: escolha por etiqueta (Business), selecione contatos já salvos, ou importe uma
         lista de uma planilha.
       </p>
+
       <div class="compat-row">
-        <span class="compat-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>WhatsApp comum</span>
-        <span class="compat-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>WhatsApp Business</span>
-        <span class="compat-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Windows 10/11</span>
+        <span class="compat-chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          WhatsApp comum
+        </span>
+        <span class="compat-chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          WhatsApp Business
+        </span>
+        <span class="compat-chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          Windows 10/11
+        </span>
       </div>
     </section>
 
+    <!-- PLANOS E PREÇOS -->
     <section class="pricing-section">
-      <h2>Escolha seu plano</h2>
-      <p class="pricing-sub">Quanto mais tempo, menor o valor por mês. Pagamento único por período, sem renovação automática.</p>
+      <h2>Planos e Preços</h2>
+      <p class="pricing-sub">Acelere sua operação comercial com o plano ideal para a escala das suas vendas.</p>
+
       <div class="pricing-grid">
-        <div class="price-card">
-          <h3>3 meses</h3>
-          <div class="amount">R$ 89<span>,90</span></div>
-          <p class="per-month">R$ 29,97 / mês</p>
-          <a class="plan-cta" href="mailto:multienvio.g7@gmail.com?subject=Quero%20o%20plano%20de%203%20meses%20-%20MultiEnvio&body=Ol%C3%A1!%20Quero%20contratar%20o%20plano%20de%203%20meses%20do%20MultiEnvio.">Escolher 3 meses</a>
-        </div>
+        <!-- PLANO TRIMESTRAL -->
         <div class="price-card featured">
-          <span class="price-badge">Mais popular</span>
-          <h3>6 meses</h3>
-          <div class="amount">R$ 149<span>,90</span></div>
-          <p class="per-month">R$ 24,98 / mês</p>
-          <p class="savings">Economize 17% vs. mensal</p>
-          <a class="plan-cta" href="mailto:multienvio.g7@gmail.com?subject=Quero%20o%20plano%20de%206%20meses%20-%20MultiEnvio&body=Ol%C3%A1!%20Quero%20contratar%20o%20plano%20de%206%20meses%20do%20MultiEnvio.">Escolher 6 meses</a>
+          <span class="price-badge">MAIS ESCOLHIDO</span>
+          <div class="plan-header">
+            <h3>PLANO TRIMESTRAL</h3>
+            <p class="plan-duration">Duração: 3 MESES</p>
+          </div>
+          <div class="price-box">
+            <div class="old-price-line placeholder">—</div>
+            <div class="discount-badge placeholder">—</div>
+            <div class="amount">R$ 361<span>,67</span></div>
+            <p class="per-month">/ mês</p>
+          </div>
+          <ul class="plan-benefits">
+            <li><span class="chk">✓</span> Seven Chat — Sistema Comercial</li>
+            <li><span class="chk">✓</span> WhatsApp multi-envio</li>
+            <li><span class="chk">✓</span> Automações inteligentes</li>
+            <li><span class="chk">✓</span> Suporte especializado</li>
+            <li><span class="chk">✓</span> Atualizações inclusas</li>
+          </ul>
+          <a class="plan-cta"
+            href="https://wa.me/5511917979982?text=Ol%C3%A1!%20Quero%20contratar%20o%20Plano%20Trimestral%20(3%20meses)%20do%20MultiEnvio."
+            target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+            </svg>
+            ESCOLHER PLANO
+          </a>
         </div>
+
+        <!-- PLANO SEMESTRAL -->
         <div class="price-card">
-          <h3>1 ano</h3>
-          <div class="amount">R$ 239<span>,90</span></div>
-          <p class="per-month">R$ 19,99 / mês</p>
-          <p class="savings">Economize 33% vs. mensal</p>
-          <a class="plan-cta" href="mailto:multienvio.g7@gmail.com?subject=Quero%20o%20plano%20de%201%20ano%20-%20MultiEnvio&body=Ol%C3%A1!%20Quero%20contratar%20o%20plano%20de%201%20ano%20do%20MultiEnvio.">Escolher 1 ano</a>
+          <div class="plan-header">
+            <h3>PLANO SEMESTRAL</h3>
+            <p class="plan-duration">Duração: 6 MESES</p>
+          </div>
+          <div class="price-box">
+            <div class="old-price-line">De R$ 361,67/mês</div>
+            <div class="discount-badge">25% DE DESCONTO</div>
+            <div class="amount">R$ 271<span>,25</span></div>
+            <p class="per-month">/ mês</p>
+          </div>
+          <ul class="plan-benefits">
+            <li><span class="chk">✓</span> Seven Chat — Sistema Comercial</li>
+            <li><span class="chk">✓</span> WhatsApp multi-envio</li>
+            <li><span class="chk">✓</span> Automações inteligentes</li>
+            <li><span class="chk">✓</span> Suporte especializado</li>
+            <li><span class="chk">✓</span> Atualizações inclusas</li>
+          </ul>
+          <a class="plan-cta"
+            href="https://wa.me/5511917979982?text=Ol%C3%A1!%20Quero%20contratar%20o%20Plano%20Semestral%20(6%20meses)%20do%20MultiEnvio."
+            target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+            </svg>
+            ESCOLHER PLANO
+          </a>
+        </div>
+
+        <!-- PLANO ANUAL -->
+        <div class="price-card">
+          <span class="price-badge badge-blue">MELHOR INVESTIMENTO</span>
+          <div class="plan-header">
+            <h3>PLANO ANUAL</h3>
+            <p class="plan-duration">Duração: 12 MESES</p>
+          </div>
+          <div class="price-box">
+            <div class="old-price-line">De R$ 361,67/mês</div>
+            <div class="discount-badge">50% DE DESCONTO</div>
+            <div class="amount">R$ 180<span>,84</span></div>
+            <p class="per-month">/ mês</p>
+          </div>
+          <ul class="plan-benefits">
+            <li><span class="chk">✓</span> Seven Chat — Sistema Comercial</li>
+            <li><span class="chk">✓</span> WhatsApp multi-envio</li>
+            <li><span class="chk">✓</span> Automações inteligentes</li>
+            <li><span class="chk">✓</span> Suporte especializado</li>
+            <li><span class="chk">✓</span> Atualizações inclusas</li>
+          </ul>
+          <a class="plan-cta"
+            href="https://wa.me/5511917979982?text=Ol%C3%A1!%20Quero%20contratar%20o%20Plano%20Anual%20(12%20meses)%20do%20MultiEnvio."
+            target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+            </svg>
+            ESCOLHER PLANO
+          </a>
         </div>
       </div>
-      <p class="pricing-footnote">* Valores sugeridos — ajuste conforme seu custo e posicionamento antes de divulgar. Clicar em um plano abre um e-mail pra gente confirmar o pagamento e enviar sua chave de licença.</p>
+
+      <!-- IMPLEMENTAÇÃO -->
+      <div class="implementation-container">
+        <div class="implementation-card">
+          <div class="implementation-badge">BÔNUS ESPECIAL INCLUSO</div>
+          <div class="implementation-top">
+            <div>
+              <h3>IMPLEMENTAÇÃO COMPLETA</h3>
+              <p>Cuidamos de toda a parte técnica para você e seu time começarem a disparar sem complicação.</p>
+            </div>
+            <div class="implementation-price-tag">
+              <span class="orig">Valor original: R$ 3.400,00</span>
+              <div class="free">R$ 0,00 <span>GRÁTIS</span></div>
+            </div>
+          </div>
+          <div class="implementation-features">
+            <div class="imp-item">
+              <span class="imp-icon">⚙️</span>
+              <div>
+                <strong>Instalação e configuração</strong>
+                <span>Parametrização completa e segura no seu ambiente de trabalho.</span>
+              </div>
+            </div>
+            <div class="imp-item">
+              <span class="imp-icon">🎓</span>
+              <div>
+                <strong>Treinamento da sua equipe</strong>
+                <span>Capacitação passo a passo para extrair máxima conversão em vendas.</span>
+              </div>
+            </div>
+            <div class="imp-item">
+              <span class="imp-icon">🚀</span>
+              <div>
+                <strong>Suporte na ativação</strong>
+                <span>Acompanhamento direto para garantir sucesso nos primeiros disparos.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
+    <!-- DOWNLOAD SECTION -->
     <section class="download-section">
       <a class="download-btn" href="#" id="download-link" download>
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+          <path d="M12 3v13" />
+          <path d="m7 11 5 5 5-5" />
+          <path d="M5 20h14" />
+        </svg>
         Já tenho licença — baixar para Windows
       </a>
       <p class="download-meta">Windows 10 ou 11 · gratuito para instalar, requer licença para ativar</p>
       <span class="version-chip" id="version-chip">versão atual</span>
     </section>
 
+    <!-- SHOWCASE SECTION -->
     <section class="showcase-section">
       <h2>Veja como funciona</h2>
       <p class="showcase-sub">O painel de controle e o disparo de mensagens, na prática.</p>
       <p class="showcase-fineprint">Ilustração da interface com dados fictícios — não são contatos reais.</p>
       <div class="showcase-grid">
         <div class="mock-window">
-          <div class="mock-titlebar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><span>Disparo em Massa — WhatsApp</span></div>
+          <div class="mock-titlebar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span
+              class="mock-dot green"></span><span>Disparo em Massa — WhatsApp</span></div>
           <div class="mock-body">
             <div class="mock-stats">
               <div class="mock-stat"><b>6</b><span>ETIQUETAS</span></div>
@@ -476,36 +1413,45 @@
               <div class="mock-label-row">🏷️ Promoção Black Friday <span class="count">315</span></div>
             </div>
           </div>
-          <div class="mock-caption">Painel com <strong>etiquetas</strong>, dashboard de envios e taxa de sucesso em tempo real.</div>
+          <div class="mock-caption">Painel com <strong>etiquetas</strong>, dashboard de envios e taxa de sucesso em
+            tempo real.</div>
         </div>
 
         <div class="mock-window">
-          <div class="mock-titlebar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><span>Disparo em Massa — WhatsApp</span></div>
+          <div class="mock-titlebar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span
+              class="mock-dot green"></span><span>Disparo em Massa — WhatsApp</span></div>
           <div class="mock-body">
             <div class="mock-composer">
               <div class="to-line">Enviando para: <strong>128 contatos</strong> — Leads do site</div>
-              <div class="mock-textarea">Oi {{nome}}! 🎉 Nossa promoção especial começou hoje — aproveite antes que acabe.</div>
+              <div class="mock-textarea">Oi {{nome}}! 🎉 Nossa promoção especial começou hoje — aproveite antes que
+                acabe.</div>
               <div class="mock-toolbar">
                 <span class="mock-emoji">😊</span>
                 <button class="mock-send" type="button">Disparar</button>
               </div>
             </div>
           </div>
-          <div class="mock-caption">Mensagem personalizada com <strong>{{nome}}</strong>, emojis e ritmo de envio protegido.</div>
+          <div class="mock-caption">Mensagem personalizada com <strong>{{nome}}</strong>, emojis e ritmo de envio
+            protegido.</div>
         </div>
 
         <div class="mock-window">
-          <div class="mock-titlebar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><span>Disparo em Massa — WhatsApp</span></div>
+          <div class="mock-titlebar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span
+              class="mock-dot green"></span><span>Disparo em Massa — WhatsApp</span></div>
           <div class="mock-body">
-            <div class="mock-schedule-row">🕐 Amanhã, 09:00 — Leads do site <span class="status pending">Agendado</span></div>
-            <div class="mock-schedule-row">🕐 Sex, 14:00 — Clientes VIP <span class="status pending">Agendado</span></div>
+            <div class="mock-schedule-row">🕐 Amanhã, 09:00 — Leads do site <span class="status pending">Agendado</span>
+            </div>
+            <div class="mock-schedule-row">🕐 Sex, 14:00 — Clientes VIP <span class="status pending">Agendado</span>
+            </div>
             <div class="mock-schedule-row">✔ Ontem, 10:00 — Promoção BF <span class="status sent">Enviado</span></div>
           </div>
-          <div class="mock-caption"><strong>Programe envios</strong> para o horário certo, mesmo com o computador desligado depois.</div>
+          <div class="mock-caption"><strong>Programe envios</strong> para o horário certo, mesmo com o computador
+            desligado depois.</div>
         </div>
 
         <div class="mock-window">
-          <div class="mock-titlebar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span class="mock-dot green"></span><span>Disparo em Massa — WhatsApp</span></div>
+          <div class="mock-titlebar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span
+              class="mock-dot green"></span><span>Disparo em Massa — WhatsApp</span></div>
           <div class="mock-body">
             <div class="mock-composer">
               <div class="to-line">Fonte: <strong>planilha.xlsx</strong> — "Clientes frios" (sem etiqueta)</div>
@@ -516,11 +1462,13 @@
               </div>
             </div>
           </div>
-          <div class="mock-caption">Sem etiquetas? Importe uma <strong>planilha</strong> ou use qualquer contato já salvo no WhatsApp.</div>
+          <div class="mock-caption">Sem etiquetas? Importe uma <strong>planilha</strong> ou use qualquer contato já
+            salvo no WhatsApp.</div>
         </div>
       </div>
     </section>
 
+    <!-- INSTRUÇÕES E SUPORTE WHATSAPP -->
     <section class="section">
       <div class="card">
         <h2>Como instalar</h2>
@@ -533,7 +1481,8 @@
             <span class="step-num">2</span>
             <p><strong>Se aparecer um aviso azul do Windows</strong> ("O Windows protegeu seu PC"), clique em
               <strong>"Mais informações"</strong> e depois em <strong>"Executar assim mesmo"</strong>. Isso é normal
-              para programas novos baixados da internet — não é um vírus.</p>
+              para programas novos baixados da internet — não é um vírus.
+            </p>
           </li>
           <li>
             <span class="step-num">3</span>
@@ -546,10 +1495,23 @@
           </li>
         </ul>
 
-        <div class="warning-note">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><line x1="12" y1="9" x2="12" y2="14"/><circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none"/></svg>
-          <span>Não recebeu sua chave de licença ainda? Fale com a nossa equipe pelo e-mail
-          <a href="mailto:multienvio.g7@gmail.com">multienvio.g7@gmail.com</a>.</span>
+        <!-- BOTÃO DE REDIRECIONAMENTO WHATSAPP -->
+        <div class="support-cta-box">
+          <div class="support-cta-info">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+            </svg>
+            <div>
+              <strong>Não recebeu sua chave de licença ainda?</strong>
+              <p>Fale diretamente com a nossa equipe pelo WhatsApp para receber seu acesso rápido.</p>
+            </div>
+          </div>
+          <a class="whatsapp-btn" href="https://wa.me/5511917979982?text=Ol%C3%A1!%20Ainda%20n%C3%A3o%20recebi%20minha%20chave%20de%20licen%C3%A7a.%20Poderiam%20me%20ajudar%3F" target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24">
+              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+            </svg>
+            Falar no WhatsApp: (11) 91797-9982
+          </a>
         </div>
       </div>
 
@@ -580,10 +1542,46 @@
         </div>
       </div>
     </section>
+
+    <!-- FOOTER / BENEFÍCIOS ADICIONAIS -->
+    <section class="growth-section">
+      <div class="growth-container">
+        <h2 class="growth-headline">MAIS CONVERSAS MAIS VENDAS</h2>
+        <div class="growth-grid">
+          <div class="growth-card">
+            <span class="growth-icon">📈</span>
+            <strong>MAIS VENDAS</strong>
+            <p>Aumente a conversão com abordagens comerciais rápidas e personalizadas.</p>
+          </div>
+          <div class="growth-card">
+            <span class="growth-icon">👥</span>
+            <strong>MAIS CLIENTES</strong>
+            <p>Conecte-se com novos leads e reative contatos inativos da sua base.</p>
+          </div>
+          <div class="growth-card">
+            <span class="growth-icon">⚡</span>
+            <strong>MAIS RESULTADOS</strong>
+            <p>Agilidade e produtividade comercial para o seu negócio decolar.</p>
+          </div>
+          <div class="growth-card">
+            <span class="growth-icon">🛡️</span>
+            <strong>SEGURANÇA E ESTABILIDADE</strong>
+            <p>Tecnologia pensada com cadência e proteção para as suas operações.</p>
+          </div>
+        </div>
+        <p class="growth-tagline">TECNOLOGIA A FAVOR DO SEU CRESCIMENTO</p>
+      </div>
+    </section>
   </main>
 
   <footer>
-    MultiEnvio — automação local para WhatsApp.
+    <div class="footer-content">
+      <div class="footer-brand">MultiEnvio — SISTEMA COMERCIAL</div>
+      <a class="footer-contact" href="https://wa.me/5511917979982" target="_blank" rel="noopener noreferrer">
+        WhatsApp Comercial & Suporte: +55 11 91797-9982
+      </a>
+      <div>MultiEnvio © 2026. Todos os direitos reservados.</div>
+    </div>
   </footer>
 
   <script>
@@ -594,4 +1592,5 @@
     document.getElementById('version-chip').textContent = 'versão atual: v' + version
   </script>
 </body>
+
 </html>
