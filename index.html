@@ -1585,11 +1585,23 @@
   </footer>
 
   <script>
-    // Troque o link abaixo pela URL real do instalador no GitHub Releases.
-    var version = '1.5.1'
-    document.getElementById('download-link').href =
-      'https://github.com/FelipeChessa/multienvio/releases/download/v' + version + '/Disparo.em.Massa.Setup.' + version + '.exe'
-    document.getElementById('version-chip').textContent = 'versão atual: v' + version
+    // Botão de download: começa na versão abaixo e, se o GitHub responder, troca sozinho para a
+    // versão mais recente publicada — assim o site não fica para trás a cada release.
+    var version = '1.6.0'
+    function setDownloadVersion(v) {
+      document.getElementById('download-link').href =
+        'https://github.com/FelipeChessa/multienvio/releases/download/v' + v + '/Disparo.em.Massa.Setup.' + v + '.exe'
+      document.getElementById('version-chip').textContent = 'versão atual: v' + v
+    }
+    setDownloadVersion(version)
+    fetch('https://api.github.com/repos/FelipeChessa/multienvio/releases/latest')
+      .then(function (r) { return r.ok ? r.json() : null })
+      .then(function (rel) {
+        var v = rel && /^v?(\d+\.\d+\.\d+)$/.exec(rel.tag_name || '')
+        var hasExe = rel && (rel.assets || []).some(function (a) { return /\.exe$/.test(a.name) })
+        if (v && hasExe) setDownloadVersion(v[1])
+      })
+      .catch(function () {})
   </script>
 </body>
 
