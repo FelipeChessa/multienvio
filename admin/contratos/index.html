@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>MultiEnvio — Contratos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --brand: #16a34a; --brand-dark: #065f46; --brand-light: #22c55e;
+    --ink: #0f172a; --ink-soft: #334155; --muted: #64748b;
+    --surface: #ffffff; --surface-alt: #f8fafc; --bg: #eef1f5; --border: #e2e8f0;
+    --danger: #dc2626; --danger-bg: #fef2f2; --warning: #b45309; --warning-bg: #fffbeb;
+    --info: #1d4ed8; --info-bg: #eff6ff;
+    --font-heading: 'Sora', 'Segoe UI', Arial, sans-serif;
+    --font-body: 'Inter', 'Segoe UI', Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--font-body); background: var(--bg); color: var(--ink); }
+  h1, h2, h3 { font-family: var(--font-heading); letter-spacing: -0.01em; }
+  header { background: linear-gradient(120deg, #0b1220, #16233a 55%, #0f3d33 130%); color: white; padding: 14px 24px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  header h1 { font-size: 17px; margin: 0; }
+  header nav { display: flex; gap: 6px; }
+  header nav a { color: #cbd5e1; text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 8px; }
+  header nav a.active, header nav a:hover { background: rgba(255,255,255,.1); color: white; }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 20px 60px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(15,23,42,.06); }
+  .card h2 { font-size: 16px; margin: 0 0 16px; }
+  .card h3 { font-size: 13px; margin: 20px 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  label { display: block; font-weight: 600; font-size: 12.5px; color: var(--ink-soft); margin: 10px 0 5px; }
+  input[type="text"], input[type="password"], input[type="number"], input[type="date"], input[type="email"], textarea, select {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; font-family: var(--font-body); font-size: 14px; background: white;
+  }
+  textarea { min-height: 340px; font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12.5px; line-height: 1.5; resize: vertical; }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(22,163,74,.14); }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0 14px; }
+  .span-2 { grid-column: span 2; } .span-3 { grid-column: span 3; } .span-4 { grid-column: span 4; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr 1fr; } .span-3, .span-4 { grid-column: span 2; } }
+  .checkbox-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: var(--muted); }
+  button, .btn { font-family: var(--font-heading); font-weight: 700; font-size: 13px; cursor: pointer; border-radius: 8px; text-decoration: none; display: inline-block; }
+  .btn-primary { background: linear-gradient(135deg, var(--brand-light), var(--brand-dark)); color: white; border: none; padding: 11px 20px; }
+  .btn-primary:disabled, .btn-secondary:disabled { opacity: .55; cursor: not-allowed; }
+  .btn-secondary { background: var(--surface-alt); color: var(--ink-soft); border: 1px solid var(--border); padding: 6px 11px; font-size: 12px; }
+  .btn-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid #fecaca; padding: 6px 11px; font-size: 12px; }
+  .actions-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+  .notice { margin-top: 12px; padding: 10px 12px; border-radius: 8px; font-size: 13px; display: none; }
+  .notice.visible { display: block; }
+  .notice.error { background: var(--danger-bg); color: var(--danger); }
+  .notice.success { background: #f0fdf4; color: var(--brand-dark); }
+  .tabs { display: flex; gap: 4px; margin-top: 18px; border-bottom: 1px solid var(--border); }
+  .tabs button { background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 12px; color: var(--muted); font-size: 12.5px; }
+  .tabs button.active { color: var(--brand-dark); border-bottom-color: var(--brand); }
+  .preview { border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; max-height: 460px; overflow-y: auto; font-size: 13.5px; line-height: 1.6; color: var(--ink-soft); }
+  .preview h3 { font-size: 14px; color: var(--ink); text-transform: none; letter-spacing: 0; margin: 16px 0 4px; }
+  .preview p { margin: 0 0 8px; } .preview ul { margin: 0 0 8px; padding-left: 20px; }
+  .contract-item { border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+  .contract-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .contract-head .title { font-weight: 700; font-family: var(--font-heading); font-size: 14.5px; }
+  .contract-head .meta { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+  .status-badge { padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .status-badge.assinado { background: #f0fdf4; color: var(--brand-dark); }
+  .status-badge.parcial { background: var(--info-bg); color: var(--info); }
+  .status-badge.aguardando { background: var(--warning-bg); color: var(--warning); }
+  .signer-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; padding: 8px 0; border-top: 1px solid var(--border); margin-top: 10px; }
+  .signer-row .who { min-width: 230px; flex: 1; }
+  .signer-row .who small { display: block; color: var(--muted); font-size: 11.5px; }
+  .files { margin-top: 12px; padding: 12px; background: var(--surface-alt); border-radius: 10px; }
+  .files table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .files th, .files td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--border); }
+  .files th { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+  .files .upload { display: grid; grid-template-columns: 1.3fr 1fr auto; gap: 8px; align-items: end; margin-top: 10px; }
+  @media (max-width: 720px) { .files .upload { grid-template-columns: 1fr; } }
+  .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 16px; }
+  .gate { max-width: 380px; margin: 60px auto; text-align: center; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+  <header>
+    <h1>MultiEnvio — Painel Admin</h1>
+    <nav>
+      <a href="/admin/">Licenças</a>
+      <a href="/admin/contratos/" class="active">Contratos</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="gate" class="card gate">
+      <h2>Entrar</h2>
+      <label for="token-input">Senha de admin (ADMIN_TOKEN)</label>
+      <input type="password" id="token-input" placeholder="Cole sua senha de admin" autocomplete="off" />
+      <div class="checkbox-row">
+        <input type="checkbox" id="remember-token" checked />
+        <label for="remember-token" style="margin:0;font-weight:400;">Lembrar neste navegador</label>
+      </div>
+      <button class="btn-primary" id="unlock-btn" style="width:100%; margin-top:16px;">Entrar</button>
+      <p id="gate-error" class="notice error"></p>
+    </section>
+
+    <div id="panel" class="hidden">
+      <section class="card" id="editor-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+          <h2 id="editor-title" style="margin:0;">Novo contrato — licença MultiEnvio</h2>
+          <button class="btn-secondary hidden" id="cancel-edit-btn" type="button">Cancelar edição</button>
+        </div>
+
+        <h3>Cliente (CONTRATANTE)</h3>
+        <div class="grid">
+          <div class="span-3"><label for="f-contratanteNome">Nome ou razão social</label><input type="text" id="f-contratanteNome" /></div>
+          <div><label for="f-contratanteDoc">CPF ou CNPJ</label><input type="text" id="f-contratanteDoc" /></div>
+          <div class="span-4"><label for="f-endereco">Endereço (rua, número, complemento, bairro)</label><input type="text" id="f-endereco" /></div>
+          <div class="span-2"><label for="f-cidade">Cidade</label><input type="text" id="f-cidade" /></div>
+          <div><label for="f-uf">UF</label><input type="text" id="f-uf" maxlength="2" /></div>
+          <div><label for="f-cep">CEP</label><input type="text" id="f-cep" /></div>
+          <div class="span-2"><label for="f-email">E-mail</label><input type="email" id="f-email" /></div>
+          <div class="span-2"><label for="f-telefone">Telefone / WhatsApp</label><input type="text" id="f-telefone" /></div>
+          <div class="span-2"><label for="f-representante">Quem assina pela empresa (se for CNPJ)</label><input type="text" id="f-representante" /></div>
+          <div class="span-2"><label for="f-representanteCpf">CPF de quem assina</label><input type="text" id="f-representanteCpf" /></div>
+        </div>
+
+        <h3>Condições</h3>
+        <div class="grid">
+          <div><label for="f-valor">Valor mensal (R$)</label><input type="number" id="f-valor" min="0" step="0.01" value="250" /></div>
+          <div><label for="f-meses">Meses</label><input type="number" id="f-meses" min="1" value="6" /></div>
+          <div><label for="f-inicio">Início</label><input type="date" id="f-inicio" /></div>
+          <div><label for="f-diaVencimento">Dia de vencimento</label><input type="number" id="f-diaVencimento" min="1" max="31" /></div>
+          <div class="span-2"><label for="f-pix">Sua chave PIX</label><input type="text" id="f-pix" /></div>
+          <div><label for="f-contas">Contas de WhatsApp</label><input type="number" id="f-contas" min="1" value="1" /></div>
+          <div><label for="f-contratadaCpf">Seu CPF</label><input type="text" id="f-contratadaCpf" /></div>
+        </div>
+
+        <div class="tabs">
+          <button type="button" class="active" data-tab="preview">Pré-visualizar</button>
+          <button type="button" data-tab="text">Editar texto</button>
+        </div>
+        <div id="tab-preview" class="preview" style="margin-top:12px;"></div>
+        <div id="tab-text" class="hidden" style="margin-top:12px;">
+          <p style="font-size:12.5px; color:var(--muted); margin:0 0 8px;">Mexer nos campos acima refaz o texto. Ajustes manuais aqui são mantidos até você mudar um campo.
+            Formato: <code>## Seção</code>, <code>- item</code>, <code>**negrito**</code>.</p>
+          <textarea id="body-text"></textarea>
+        </div>
+
+        <div class="actions-row">
+          <button class="btn-primary" id="save-btn">Criar contrato e gerar links</button>
+        </div>
+        <p id="save-error" class="notice error"></p>
+        <p id="save-ok" class="notice success"></p>
+      </section>
+
+      <section class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <h2 style="margin:0;">Contratos</h2>
+          <button class="btn-secondary" id="refresh-btn">Atualizar</button>
+        </div>
+        <div id="list" style="margin-top:16px;"></div>
+      </section>
+
+      <button class="btn-secondary" id="logout-btn">Sair / trocar senha</button>
+    </div>
+  </main>
+
+<script src="/assinar/contrato-render.js"></script>
+<script src="/admin/contract-template.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id)
+  const FIELDS = ['contratanteNome', 'contratanteDoc', 'endereco', 'cidade', 'uf', 'cep', 'email', 'telefone',
+    'representante', 'representanteCpf', 'valor', 'meses', 'inicio', 'diaVencimento', 'pix', 'contas', 'contratadaCpf']
+  const CONTRATADA_NAME = 'Felipe Chessa Barbero (Felipe Chessa Barbero Informática Ltda)'
+  const MAX_FILE = 3 * 1024 * 1024
+
+  let adminToken = null
+  let editingId = null
+  let bodyEdited = false
+  let contracts = []
+  const openFiles = new Set()
+
+  function showNotice(el, text, type) { el.textContent = text; el.className = 'notice visible ' + type }
+  function hideNotice(el) { el.className = 'notice' }
+
+  async function apiFetch(path, options = {}) {
+    const res = await fetch(path, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken, ...(options.headers || {}) }
+    })
+    if (options.raw) {
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Erro na requisição.') }
+      return res
+    }
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || 'Erro na requisição.')
+    return data
+  }
+
+  // ---------- login (mesma senha e mesmo armazenamento da página de licenças)
+  async function tryUnlock(token) {
+    adminToken = token
+    try {
+      contracts = await apiFetch('/api/admin/contracts')
+      $('gate').classList.add('hidden')
+      $('panel').classList.remove('hidden')
+      if ($('remember-token').checked) localStorage.setItem('adminToken', token)
+      renderList()
+      refreshBody()
+    } catch (err) {
+      adminToken = null
+      showNotice($('gate-error'), 'Senha incorreta ou servidor indisponível.', 'error')
+    }
+  }
+  $('unlock-btn').addEventListener('click', () => {
+    hideNotice($('gate-error'))
+    const token = $('token-input').value.trim()
+    if (!token) return showNotice($('gate-error'), 'Digite a senha de admin.', 'error')
+    tryUnlock(token)
+  })
+  $('token-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('unlock-btn').click() })
+  $('logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('adminToken')
+    location.reload()
+  })
+  const savedToken = localStorage.getItem('adminToken')
+  if (savedToken) tryUnlock(savedToken)
+
+  // ---------- formulário e texto
+  function readForm() {
+    const f = {}
+    FIELDS.forEach((k) => { f[k] = $('f-' + k).value.trim() })
+    f.uf = f.uf.toUpperCase()
+    return f
+  }
+  function fillForm(f) {
+    FIELDS.forEach((k) => { if (f[k] !== undefined) $('f-' + k).value = f[k] })
+  }
+  function refreshBody(force) {
+    if (!bodyEdited || force) $('body-text').value = buildMultiEnvioContract(readForm())
+    $('tab-preview').innerHTML = renderContract($('body-text').value)
+  }
+  FIELDS.forEach((k) => $('f-' + k).addEventListener('input', () => { bodyEdited = false; refreshBody() }))
+  $('body-text').addEventListener('input', () => { bodyEdited = true; $('tab-preview').innerHTML = renderContract($('body-text').value) })
+
+  document.querySelectorAll('.tabs button').forEach((btn) => btn.addEventListener('click', () => {
+    document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('active', b === btn))
+    $('tab-preview').classList.toggle('hidden', btn.dataset.tab !== 'preview')
+    $('tab-text').classList.toggle('hidden', btn.dataset.tab !== 'text')
+  }))
+
+  function resetEditor() {
+    editingId = null
+    bodyEdited = false
+    FIELDS.forEach((k) => { $('f-' + k).value = '' })
+    $('f-valor').value = '250'; $('f-meses').value = '6'; $('f-contas').value = '1'
+    $('editor-title').textContent = 'Novo contrato — licença MultiEnvio'
+    $('save-btn').textContent = 'Criar contrato e gerar links'
+    $('cancel-edit-btn').classList.add('hidden')
+    refreshBody(true)
+  }
+  $('cancel-edit-btn').addEventListener('click', resetEditor)
+
+  $('save-btn').addEventListener('click', async () => {
+    hideNotice($('save-error')); hideNotice($('save-ok'))
+    const f = readForm()
+    if (!f.contratanteNome) return showNotice($('save-error'), 'Preencha o nome do cliente.', 'error')
+    const months = Number(f.meses) || 6
+    const payload = {
+      action: editingId ? 'update' : 'create',
+      id: editingId,
+      title: 'Contrato de Licença de Uso de Software — MultiEnvio',
+      clientName: f.contratanteNome,
+      clientEmail: f.email,
+      contratadaName: CONTRATADA_NAME,
+      contratanteName: f.representante ? f.representante + ' (' + f.contratanteNome + ')' : f.contratanteNome,
+      monthlyValue: Number(f.valor) || 0,
+      months,
+      startDate: f.inicio,
+      form: f,
+      body: $('body-text').value
+    }
+    $('save-btn').disabled = true
+    try {
+      await apiFetch('/api/admin/contracts', { method: 'POST', body: JSON.stringify(payload) })
+      const msg = editingId ? 'Contrato atualizado.' : 'Contrato criado. Copie o link da cliente na lista abaixo.'
+      resetEditor()
+      showNotice($('save-ok'), msg, 'success')
+      await loadList()
+    } catch (err) {
+      showNotice($('save-error'), err.message, 'error')
+    }
+    $('save-btn').disabled = false
+  })
+
+  async function startEdit(id) {
+    try {
+      const c = await apiFetch('/api/admin/contracts?id=' + encodeURIComponent(id))
+      editingId = id
+      fillForm(c.form || {})
+      $('body-text').value = c.body
+      bodyEdited = c.body !== buildMultiEnvioContract(readForm())
+      refreshBody()
+      $('editor-title').textContent = 'Editando contrato — ' + c.clientName
+      $('save-btn').textContent = 'Salvar alterações'
+      $('cancel-edit-btn').classList.remove('hidden')
+      $('editor-card').scrollIntoView({ behavior: 'smooth' })
+    } catch (err) { alert(err.message) }
+  }
+
+  // ---------- lista
+  const STATUS_LABEL = { aguardando: 'Aguardando assinaturas', parcial: 'Falta uma assinatura', assinado: 'Assinado' }
+  function money(v) { return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) }
+  function fmtDate(iso) { return iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '' }
+  function fmtDay(iso) { if (!iso) return '—'; const [y, m, d] = iso.split('-'); return d + '/' + m + '/' + y }
+  function signLink(token) { return location.origin + '/assinar/?t=' + token }
+  function fmtSize(b) { return b > 1024 * 1024 ? (b / 1024 / 1024).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB' }
+
+  async function loadList() {
+    try { contracts = await apiFetch('/api/admin/contracts'); renderList() } catch (err) { alert(err.message) }
+  }
+  $('refresh-btn').addEventListener('click', loadList)
+
+  function renderList() {
+    const list = $('list')
+    if (!contracts.length) { list.innerHTML = '<p class="empty">Nenhum contrato ainda. Preencha o formulário acima.</p>'; return }
+    list.innerHTML = ''
+    contracts.forEach((c) => {
+      const el = document.createElement('div')
+      el.className = 'contract-item'
+      const total = (c.monthlyValue || 0) * (c.months || 0)
+      el.innerHTML =
+        '<div class="contract-head"><div>' +
+          '<div class="title">' + escapeHtml(c.clientName) + '</div>' +
+          '<div class="meta">' + money(c.monthlyValue) + '/mês × ' + c.months + ' meses = ' + money(total) +
+            ' · início ' + fmtDay(c.startDate) + ' · criado em ' + fmtDate(c.createdAt) + '</div>' +
+        '</div><span class="status-badge ' + c.status + '">' + STATUS_LABEL[c.status] + '</span></div>'
+
+      c.signers.forEach((s) => {
+        const row = document.createElement('div')
+        row.className = 'signer-row'
+        row.innerHTML = '<div class="who"><strong>' + escapeHtml(s.role) + '</strong> — ' + escapeHtml(s.name || '') +
+          '<small>' + (s.signedAt ? 'Assinou em ' + fmtDate(s.signedAt) : 'Ainda não assinou') + '</small></div>'
+        const copy = document.createElement('button')
+        copy.className = 'btn-secondary'
+        copy.textContent = 'Copiar link de assinatura'
+        copy.addEventListener('click', () => {
+          navigator.clipboard.writeText(signLink(s.token))
+          copy.textContent = 'Link copiado!'
+          setTimeout(() => { copy.textContent = 'Copiar link de assinatura' }, 1500)
+        })
+        row.appendChild(copy)
+        if (s.role === 'CONTRATANTE' && !s.signedAt) {
+          const wa = document.createElement('a')
+          wa.className = 'btn btn-secondary'
+          wa.target = '_blank'
+          wa.rel = 'noopener'
+          wa.textContent = 'Enviar no WhatsApp'
+          wa.href = 'https://wa.me/?text=' + encodeURIComponent('Olá! Segue o link para assinar o contrato do MultiEnvio: ' + signLink(s.token))
+          row.appendChild(wa)
+        }
+        if (s.role === 'CONTRATADA' && !s.signedAt) {
+          const own = document.createElement('a')
+          own.className = 'btn btn-secondary'
+          own.target = '_blank'
+          own.textContent = 'Assinar agora'
+          own.href = signLink(s.token)
+          row.appendChild(own)
+        }
+        el.appendChild(row)
+      })
+
+      const actions = document.createElement('div')
+      actions.className = 'actions-row'
+      actions.style.marginTop = '10px'
+      const pdfBtn = button('btn-secondary', 'Baixar PDF', () => download('/api/admin/contracts?id=' + c.id + '&format=pdf', 'contrato-' + c.id + '.pdf', pdfBtn))
+      const filesBtn = button('btn-secondary', 'Comprovantes de pagamento (' + c.attachmentsCount + ')', () => toggleFiles(c, el))
+      actions.append(pdfBtn, filesBtn)
+      if (c.status === 'aguardando') {
+        actions.append(button('btn-secondary', 'Editar', () => startEdit(c.id)))
+        actions.append(button('btn-danger', 'Excluir', async () => {
+          if (!confirm('Excluir o contrato de ' + c.clientName + '? Os links de assinatura param de funcionar.')) return
+          try { await apiFetch('/api/admin/contracts', { method: 'POST', body: JSON.stringify({ action: 'delete', id: c.id }) }); loadList() }
+          catch (err) { alert(err.message) }
+        }))
+      }
+      el.appendChild(actions)
+      list.appendChild(el)
+      if (openFiles.has(c.id)) toggleFiles(c, el, true)
+    })
+  }
+
+  function button(cls, text, onClick) {
+    const b = document.createElement('button')
+    b.className = cls
+    b.type = 'button'
+    b.textContent = text
+    b.addEventListener('click', onClick)
+    return b
+  }
+
+  async function download(path, filename, btn) {
+    if (btn) btn.disabled = true
+    try {
+      const res = await apiFetch(path, { raw: true })
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(url), 2000)
+    } catch (err) { alert(err.message) }
+    if (btn) btn.disabled = false
+  }
+
+  // ---------- anexos (comprovantes de pagamento)
+  async function toggleFiles(summary, el, keepOpen) {
+    const existing = el.querySelector('.files')
+    if (existing && !keepOpen) { existing.remove(); openFiles.delete(summary.id); return }
+    if (existing) existing.remove()
+    openFiles.add(summary.id)
+    const box = document.createElement('div')
+    box.className = 'files'
+    box.innerHTML = '<p class="empty" style="padding:6px;">Carregando…</p>'
+    el.appendChild(box)
+    try {
+      const c = await apiFetch('/api/admin/contracts?id=' + encodeURIComponent(summary.id))
+      renderFiles(c, box)
+    } catch (err) { box.innerHTML = '<p class="notice error visible">' + escapeHtml(err.message) + '</p>' }
+  }
+
+  function nextInstallment(c) {
+    const used = new Set((c.attachments || []).map((a) => a.description))
+    for (let i = 1; i <= (c.months || 6); i++) {
+      const label = 'Parcela ' + i + '/' + (c.months || 6)
+      if (!used.has(label)) return label
+    }
+    return ''
+  }
+
+  function renderFiles(c, box) {
+    const files = c.attachments || []
+    const options = Array.from({ length: c.months || 6 }, (_, i) => 'Parcela ' + (i + 1) + '/' + (c.months || 6))
+    box.innerHTML =
+      '<strong style="font-size:13px;">Comprovantes de pagamento</strong>' +
+      (files.length
+        ? '<table><thead><tr><th>Referência</th><th>Arquivo</th><th>Tamanho</th><th>Enviado em</th><th></th></tr></thead><tbody></tbody></table>'
+        : '<p class="empty" style="padding:8px;">Nenhum comprovante anexado.</p>') +
+      '<div class="upload">' +
+        '<div><label>Arquivo (PDF ou imagem, até 3 MB)</label><input type="file" accept="application/pdf,image/*" /></div>' +
+        '<div><label>Referência</label><input type="text" list="dl-' + c.id + '" value="' + escapeHtml(nextInstallment(c)) + '" />' +
+          '<datalist id="dl-' + c.id + '">' + options.map((o) => '<option value="' + o + '">').join('') + '</datalist></div>' +
+        '<button class="btn-primary" type="button" style="padding:9px 16px;">Anexar</button>' +
+      '</div><p class="notice error"></p>'
+
+    const tbody = box.querySelector('tbody')
+    files.forEach((f) => {
+      const tr = document.createElement('tr')
+      tr.innerHTML = '<td>' + escapeHtml(f.description || '—') + '</td><td>' + escapeHtml(f.name) + '</td><td>' + fmtSize(f.size) +
+        '</td><td>' + fmtDate(f.uploadedAt) + '</td><td style="white-space:nowrap;"></td>'
+      const cell = tr.lastChild
+      const dl = button('btn-secondary', 'Baixar', () => download('/api/admin/contracts?id=' + c.id + '&file=' + f.id, f.name, dl))
+      const del = button('btn-danger', 'Remover', async () => {
+        if (!confirm('Remover o comprovante "' + f.name + '"?')) return
+        try {
+          await apiFetch('/api/admin/contracts', { method: 'POST', body: JSON.stringify({ action: 'deleteFile', id: c.id, fileId: f.id }) })
+          await afterFilesChanged(c.id)
+        } catch (err) { alert(err.message) }
+      })
+      del.style.marginLeft = '6px'
+      cell.append(dl, del)
+      tbody.appendChild(tr)
+    })
+
+    const fileInput = box.querySelector('input[type=file]')
+    const descInput = box.querySelector('.upload input[type=text]')
+    const sendBtn = box.querySelector('.upload button')
+    const errorEl = box.querySelector('.notice.error')
+    sendBtn.addEventListener('click', async () => {
+      hideNotice(errorEl)
+      let file = fileInput.files[0]
+      if (!file) return showNotice(errorEl, 'Escolha o arquivo do comprovante.', 'error')
+      sendBtn.disabled = true
+      sendBtn.textContent = 'Enviando…'
+      try {
+        if (file.type.startsWith('image/') && file.size > MAX_FILE) file = await shrinkImage(file)
+        if (file.size > MAX_FILE) throw new Error('Arquivo maior que 3 MB.')
+        const data = await toBase64(file)
+        await apiFetch('/api/admin/contracts', {
+          method: 'POST',
+          body: JSON.stringify({ action: 'upload', id: c.id, name: file.name, type: file.type || 'application/octet-stream', data, description: descInput.value.trim() })
+        })
+        await afterFilesChanged(c.id)
+      } catch (err) {
+        showNotice(errorEl, err.message, 'error')
+        sendBtn.disabled = false
+        sendBtn.textContent = 'Anexar'
+      }
+    })
+  }
+
+  async function afterFilesChanged(id) {
+    openFiles.add(id)
+    await loadList()
+  }
+
+  function toBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(String(reader.result).split(',')[1])
+      reader.onerror = () => reject(new Error('Não foi possível ler o arquivo.'))
+      reader.readAsDataURL(file)
+    })
+  }
+
+  // Foto grande de celular: reduz para JPEG de até 2000 px antes de enviar.
+  function shrinkImage(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => {
+        const scale = Math.min(1, 2000 / Math.max(img.width, img.height))
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.round(img.width * scale)
+        canvas.height = Math.round(img.height * scale)
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height)
+        canvas.toBlob((blob) => {
+          URL.revokeObjectURL(img.src)
+          if (!blob) return reject(new Error('Não foi possível reduzir a imagem.'))
+          resolve(new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' }))
+        }, 'image/jpeg', 0.85)
+      }
+      img.onerror = () => reject(new Error('Imagem inválida.'))
+      img.src = URL.createObjectURL(file)
+    })
+  }
+
+  refreshBody(true)
+</script>
+</body>
+</html>

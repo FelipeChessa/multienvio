@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="referrer" content="no-referrer" />
+<title>Assinatura de contrato — MultiEnvio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --brand: #16a34a; --brand-dark: #065f46; --brand-light: #22c55e;
+    --ink: #0f172a; --ink-soft: #334155; --muted: #64748b;
+    --surface: #ffffff; --surface-alt: #f8fafc; --bg: #eef1f5; --border: #e2e8f0;
+    --danger: #dc2626; --danger-bg: #fef2f2; --warning: #b45309; --warning-bg: #fffbeb;
+    --font-heading: 'Sora', 'Segoe UI', Arial, sans-serif;
+    --font-body: 'Inter', 'Segoe UI', Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: var(--font-body); background: var(--bg); color: var(--ink); }
+  h1, h2, h3 { font-family: var(--font-heading); letter-spacing: -0.01em; }
+  header { background: linear-gradient(120deg, #0b1220, #16233a 55%, #0f3d33 130%); color: white; padding: 18px 24px; }
+  header h1 { font-size: 17px; margin: 0; }
+  header p { margin: 4px 0 0; font-size: 12.5px; color: #cbd5e1; }
+  main { max-width: 820px; margin: 0 auto; padding: 24px 16px 60px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(15,23,42,.06); }
+  .card h2 { font-size: 16px; margin: 0 0 14px; }
+  .contract { max-height: 60vh; overflow-y: auto; padding-right: 8px; font-size: 14px; line-height: 1.6; color: var(--ink-soft); }
+  .contract h3 { font-size: 14.5px; color: var(--ink); margin: 20px 0 6px; }
+  .contract h3:first-child { margin-top: 0; }
+  .contract p { margin: 0 0 10px; }
+  .contract ul { margin: 0 0 10px; padding-left: 20px; }
+  .hash { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 11px; color: var(--muted); word-break: break-all; margin-top: 12px; }
+  .signers { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+  .signer { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; background: var(--surface-alt); }
+  .signer .role { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .signer .name { font-weight: 600; margin: 4px 0; }
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .badge.ok { background: #f0fdf4; color: var(--brand-dark); }
+  .badge.wait { background: var(--warning-bg); color: var(--warning); }
+  label { display: block; font-weight: 600; font-size: 13px; color: var(--ink-soft); margin: 14px 0 6px; }
+  input[type="text"], input[type="email"] {
+    width: 100%; padding: 11px 12px; border: 1px solid var(--border); border-radius: 8px; font-family: var(--font-body); font-size: 15px;
+  }
+  input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(22,163,74,.14); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 560px) { .row { grid-template-columns: 1fr; } }
+  .pad-wrap { position: relative; border: 1.5px dashed #94a3b8; border-radius: 12px; background: #fff; touch-action: none; }
+  canvas { display: block; width: 100%; height: 170px; border-radius: 12px; cursor: crosshair; }
+  .pad-hint { position: absolute; left: 0; right: 0; bottom: 34px; text-align: center; color: #cbd5e1; font-size: 13px; pointer-events: none; }
+  .pad-line { position: absolute; left: 24px; right: 24px; bottom: 28px; border-bottom: 1px solid #e2e8f0; pointer-events: none; }
+  .pad-actions { display: flex; justify-content: flex-end; margin-top: 6px; }
+  .check { display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; font-size: 13.5px; color: var(--ink-soft); }
+  .check input { margin-top: 3px; width: 17px; height: 17px; }
+  button { font-family: var(--font-heading); font-weight: 700; font-size: 14px; cursor: pointer; border-radius: 8px; }
+  .btn-primary { background: linear-gradient(135deg, var(--brand-light), var(--brand-dark)); color: white; border: none; padding: 13px 22px; margin-top: 18px; width: 100%; }
+  .btn-primary:disabled { opacity: .55; cursor: not-allowed; }
+  .btn-secondary { background: var(--surface-alt); color: var(--ink-soft); border: 1px solid var(--border); padding: 7px 12px; font-size: 12.5px; text-decoration: none; display: inline-block; }
+  .notice { margin-top: 12px; padding: 10px 12px; border-radius: 8px; font-size: 13.5px; }
+  .notice.error { background: var(--danger-bg); color: var(--danger); }
+  .notice.success { background: #f0fdf4; color: var(--brand-dark); }
+  .legal { font-size: 12px; color: var(--muted); margin-top: 14px; line-height: 1.5; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Assinatura eletrônica de contrato</h1>
+    <p>MultiEnvio · Felipe Chessa Barbero Informática Ltda · CNPJ 54.978.799/0001-14</p>
+  </header>
+
+  <main>
+    <p id="loading" class="card">Carregando contrato…</p>
+    <p id="load-error" class="card notice error hidden"></p>
+
+    <div id="content" class="hidden">
+      <section class="card">
+        <h2 id="title"></h2>
+        <div id="contract" class="contract"></div>
+        <p class="hash">SHA-256 do texto: <span id="doc-hash"></span></p>
+      </section>
+
+      <section class="card">
+        <h2>Assinaturas</h2>
+        <div id="signers" class="signers"></div>
+        <p id="done-box" class="notice success hidden"></p>
+        <a id="pdf-link" class="btn-secondary hidden" style="margin-top:12px;">Baixar PDF do contrato</a>
+      </section>
+
+      <section id="sign-card" class="card hidden">
+        <h2 id="sign-title">Assinar</h2>
+        <div class="row">
+          <div>
+            <label for="name">Nome completo</label>
+            <input type="text" id="name" autocomplete="name" />
+          </div>
+          <div>
+            <label for="cpf">CPF</label>
+            <input type="text" id="cpf" inputmode="numeric" placeholder="000.000.000-00" autocomplete="off" maxlength="14" />
+          </div>
+        </div>
+        <label for="email">E-mail</label>
+        <input type="email" id="email" autocomplete="email" />
+
+        <label>Sua assinatura</label>
+        <div class="pad-wrap">
+          <canvas id="pad"></canvas>
+          <div class="pad-line"></div>
+          <div id="pad-hint" class="pad-hint">Assine aqui com o dedo ou o mouse</div>
+        </div>
+        <div class="pad-actions"><button type="button" class="btn-secondary" id="clear-pad">Limpar</button></div>
+
+        <label class="check">
+          <input type="checkbox" id="accept" />
+          <span>Li o contrato inteiro e concordo com todas as cláusulas. Reconheço esta assinatura eletrônica como válida.</span>
+        </label>
+
+        <button class="btn-primary" id="sign-btn">Assinar contrato</button>
+        <p id="sign-error" class="notice error hidden"></p>
+        <p class="legal">Ao assinar, ficam registrados seu nome, CPF, e-mail, endereço IP, data e hora, navegador e o código
+          SHA-256 do texto acima, conforme a Lei nº 14.063/2020 e a MP nº 2.200-2/2001. Esses dados vão no PDF final do contrato.</p>
+      </section>
+    </div>
+  </main>
+
+<script src="/assinar/contrato-render.js"></script>
+<script>
+  const token = new URLSearchParams(location.search).get('t') || ''
+  const $ = (id) => document.getElementById(id)
+  let view = null
+
+  function fmtDate(iso) {
+    return new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })
+  }
+
+  function render() {
+    $('loading').classList.add('hidden')
+    $('content').classList.remove('hidden')
+    $('title').textContent = view.title
+    document.title = view.title + ' — Assinatura'
+    $('contract').innerHTML = renderContract(view.body)
+    $('doc-hash').textContent = view.docHash
+
+    $('signers').innerHTML = view.signers.map((s) =>
+      '<div class="signer"><div class="role">' + escapeHtml(s.role) + '</div>' +
+      '<div class="name">' + escapeHtml(s.name || '—') + '</div>' +
+      (s.signedAt
+        ? '<span class="badge ok">Assinado em ' + fmtDate(s.signedAt) + '</span>'
+        : '<span class="badge wait">Aguardando assinatura</span>') +
+      '</div>'
+    ).join('')
+
+    $('pdf-link').href = '/api/contract?t=' + encodeURIComponent(token) + '&format=pdf'
+    $('pdf-link').classList.toggle('hidden', !view.me.signed)
+
+    if (view.me.signed) {
+      $('sign-card').classList.add('hidden')
+      $('done-box').classList.remove('hidden')
+      $('done-box').textContent = view.status === 'assinado'
+        ? 'Contrato assinado por todas as partes. Baixe o PDF para guardar.'
+        : 'Sua assinatura foi registrada em ' + fmtDate(view.me.signedAt) + '. Falta a assinatura da outra parte.'
+    } else {
+      $('sign-card').classList.remove('hidden')
+      $('sign-title').textContent = 'Assinar como ' + view.me.role
+      // "Maria Silva (Padaria Ltda)" → só o nome da pessoa que assina
+      if (!$('name').value) $('name').value = (view.me.name || '').replace(/\s*\(.*\)\s*$/, '')
+      if (!$('email').value) $('email').value = view.me.email || ''
+      setTimeout(resizePad, 0)
+    }
+  }
+
+  async function load() {
+    try {
+      const res = await fetch('/api/contract?t=' + encodeURIComponent(token))
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Não foi possível abrir o contrato.')
+      view = data
+      render()
+    } catch (err) {
+      $('loading').classList.add('hidden')
+      $('load-error').textContent = err.message
+      $('load-error').classList.remove('hidden')
+    }
+  }
+
+  // CPF com máscara
+  $('cpf').addEventListener('input', (e) => {
+    const d = e.target.value.replace(/\D/g, '').slice(0, 11)
+    e.target.value = d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2')
+  })
+
+  // Quadro de assinatura
+  const pad = $('pad')
+  const ctx = pad.getContext('2d')
+  let drawing = false
+  let hasInk = false
+  let last = null
+
+  function resizePad() {
+    const ratio = Math.max(window.devicePixelRatio || 1, 1)
+    const rect = pad.getBoundingClientRect()
+    if (!rect.width) return
+    const snapshot = hasInk ? pad.toDataURL() : null
+    pad.width = rect.width * ratio
+    pad.height = rect.height * ratio
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0)
+    ctx.lineWidth = 2.4
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.strokeStyle = '#0f172a'
+    if (snapshot) {
+      const img = new Image()
+      img.onload = () => ctx.drawImage(img, 0, 0, rect.width, rect.height)
+      img.src = snapshot
+    }
+  }
+  window.addEventListener('resize', resizePad)
+
+  function point(e) {
+    const rect = pad.getBoundingClientRect()
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
+  }
+  pad.addEventListener('pointerdown', (e) => {
+    drawing = true
+    last = point(e)
+    pad.setPointerCapture(e.pointerId)
+    ctx.beginPath()
+    ctx.arc(last.x, last.y, 1.1, 0, Math.PI * 2)
+    ctx.fillStyle = '#0f172a'
+    ctx.fill()
+    hasInk = true
+    $('pad-hint').classList.add('hidden')
+  })
+  pad.addEventListener('pointermove', (e) => {
+    if (!drawing) return
+    const p = point(e)
+    ctx.beginPath()
+    ctx.moveTo(last.x, last.y)
+    ctx.lineTo(p.x, p.y)
+    ctx.stroke()
+    last = p
+  })
+  const stop = () => { drawing = false }
+  pad.addEventListener('pointerup', stop)
+  pad.addEventListener('pointercancel', stop)
+  $('clear-pad').addEventListener('click', () => {
+    ctx.clearRect(0, 0, pad.width, pad.height)
+    hasInk = false
+    $('pad-hint').classList.remove('hidden')
+  })
+
+  function showError(text) {
+    $('sign-error').textContent = text
+    $('sign-error').classList.remove('hidden')
+  }
+
+  $('sign-btn').addEventListener('click', async () => {
+    $('sign-error').classList.add('hidden')
+    const name = $('name').value.trim()
+    const cpf = $('cpf').value
+    const email = $('email').value.trim()
+    if (name.split(/\s+/).length < 2) return showError('Digite seu nome completo.')
+    if (cpf.replace(/\D/g, '').length !== 11) return showError('Digite um CPF válido.')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('Digite um e-mail válido.')
+    if (!hasInk) return showError('Desenhe sua assinatura no quadro.')
+    if (!$('accept').checked) return showError('Marque que leu e concorda com o contrato.')
+
+    $('sign-btn').disabled = true
+    $('sign-btn').textContent = 'Assinando…'
+    try {
+      const res = await fetch('/api/contract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ t: token, name, cpf, email, image: pad.toDataURL('image/png'), accept: true, docHash: view.docHash })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Não foi possível registrar a assinatura.')
+      view = data
+      render()
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    } catch (err) {
+      showError(err.message)
+    }
+    $('sign-btn').disabled = false
+    $('sign-btn').textContent = 'Assinar contrato'
+  })
+
+  if (!token) {
+    $('loading').classList.add('hidden')
+    $('load-error').textContent = 'Link de assinatura incompleto. Confira se copiou o link inteiro.'
+    $('load-error').classList.remove('hidden')
+  } else {
+    load()
+  }
+</script>
+</body>
+</html>

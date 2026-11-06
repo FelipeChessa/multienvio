@@ -14,7 +14,7 @@ keys/
 testes/
 
 # Contratos com dados de clientes
-contratos/
+/contratos/
 
 # ferramentas locais do Claude Code / Ruflo (config e dados da máquina)
 .claude/

@@ -6,7 +6,7 @@
 // PRIVATE KEY" e tudo). Deixe expiryDays de fora (ou null) para licença vitalícia.
 
 import crypto from 'crypto'
-import { requireAdmin, base64UrlEncode } from '../../lib/verify.js'
+import { requireAdmin, base64UrlEncode, loadPrivateKey } from '../../lib/verify.js'
 
 export default function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método não permitido.' })
@@ -17,22 +17,11 @@ export default function handler(req, res) {
     return res.status(400).json({ error: 'Nome do cliente é obrigatório.' })
   }
 
-  const rawPem = process.env.LICENSE_PRIVATE_KEY
-  if (!rawPem) {
+  if (!process.env.LICENSE_PRIVATE_KEY) {
     return res.status(503).json({ error: 'LICENSE_PRIVATE_KEY não configurada nas variáveis de ambiente do projeto.' })
   }
-  let pem = rawPem.trim()
-  // Algumas UIs de variáveis de ambiente colapsam as quebras de linha do PEM em "\n" literal.
-  if (!pem.includes('\n')) pem = pem.replace(/\\n/g, '\n')
-  // Se só o corpo base64 foi colado (sem as linhas BEGIN/END), reconstrói o PEM.
-  if (!pem.includes('-----BEGIN')) {
-    pem = `-----BEGIN PRIVATE KEY-----\n${pem}\n-----END PRIVATE KEY-----`
-  }
-
-  let privateKey
-  try {
-    privateKey = crypto.createPrivateKey(pem)
-  } catch {
+  const privateKey = loadPrivateKey()
+  if (!privateKey) {
     return res.status(500).json({ error: 'A chave privada configurada no servidor é inválida.' })
   }
 
