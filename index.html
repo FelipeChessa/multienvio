@@ -763,6 +763,16 @@
 
     .mock-window video.clip { aspect-ratio: 16 / 9; height: auto; }
 
+    .demo-video { position: relative; }
+    .demo-unmute {
+      position: absolute; top: 14px; right: 14px;
+      background: rgba(15, 23, 42, .72); color: #fff; border: 1px solid rgba(255, 255, 255, .25);
+      border-radius: 999px; padding: 8px 14px; font: 600 13px var(--font-body); cursor: pointer;
+      backdrop-filter: blur(4px);
+    }
+    .demo-unmute:hover { background: rgba(15, 23, 42, .9); }
+    .demo-unmute.hidden { display: none; }
+
     .news-head { text-align: center; margin: 56px auto 24px; max-width: 620px; }
     .news-head h3 { font-family: var(--font-heading); font-size: 22px; margin: 10px 0 6px; color: var(--ink); }
     .news-head p { color: var(--muted); font-size: 14px; margin: 0; }
@@ -1301,7 +1311,7 @@
     <!-- PLANOS E PREÇOS -->
     <section class="pricing-section">
       <h2>Planos e Preços</h2>
-      <p class="pricing-sub">Acelere sua operação comercial com o plano ideal para a escala das suas vendas.</p>
+      <p class="pricing-sub">Todos os planos têm todos os recursos, suporte e atualizações. Muda só o prazo e o desconto.</p>
 
       <div class="pricing-grid">
         <!-- PLANO TRIMESTRAL -->
@@ -1317,13 +1327,6 @@
             <div class="amount">R$ 361<span>,67</span></div>
             <p class="per-month">/ mês</p>
           </div>
-          <ul class="plan-benefits">
-            <li><span class="chk">✓</span> Seven Chat — Sistema Comercial</li>
-            <li><span class="chk">✓</span> WhatsApp multi-envio</li>
-            <li><span class="chk">✓</span> Automações inteligentes</li>
-            <li><span class="chk">✓</span> Suporte especializado</li>
-            <li><span class="chk">✓</span> Atualizações inclusas</li>
-          </ul>
           <a class="plan-cta"
             href="https://wa.me/5511992876042?text=Ol%C3%A1!%20Vim%20pelo%20site%20do%20MultiEnvio%20(app%20de%20disparo%20em%20massa%20no%20WhatsApp)%20e%20quero%20contratar%20o%20Plano%20Trimestral%20(3%20meses)."
             target="_blank" rel="noopener noreferrer">
@@ -1346,13 +1349,6 @@
             <div class="amount">R$ 271<span>,25</span></div>
             <p class="per-month">/ mês</p>
           </div>
-          <ul class="plan-benefits">
-            <li><span class="chk">✓</span> Seven Chat — Sistema Comercial</li>
-            <li><span class="chk">✓</span> WhatsApp multi-envio</li>
-            <li><span class="chk">✓</span> Automações inteligentes</li>
-            <li><span class="chk">✓</span> Suporte especializado</li>
-            <li><span class="chk">✓</span> Atualizações inclusas</li>
-          </ul>
           <a class="plan-cta"
             href="https://wa.me/5511992876042?text=Ol%C3%A1!%20Vim%20pelo%20site%20do%20MultiEnvio%20(app%20de%20disparo%20em%20massa%20no%20WhatsApp)%20e%20quero%20contratar%20o%20Plano%20Semestral%20(6%20meses)."
             target="_blank" rel="noopener noreferrer">
@@ -1376,13 +1372,6 @@
             <div class="amount">R$ 180<span>,84</span></div>
             <p class="per-month">/ mês</p>
           </div>
-          <ul class="plan-benefits">
-            <li><span class="chk">✓</span> Seven Chat — Sistema Comercial</li>
-            <li><span class="chk">✓</span> WhatsApp multi-envio</li>
-            <li><span class="chk">✓</span> Automações inteligentes</li>
-            <li><span class="chk">✓</span> Suporte especializado</li>
-            <li><span class="chk">✓</span> Atualizações inclusas</li>
-          </ul>
           <a class="plan-cta"
             href="https://wa.me/5511992876042?text=Ol%C3%A1!%20Vim%20pelo%20site%20do%20MultiEnvio%20(app%20de%20disparo%20em%20massa%20no%20WhatsApp)%20e%20quero%20contratar%20o%20Plano%20Anual%20(12%20meses)."
             target="_blank" rel="noopener noreferrer">
@@ -1457,9 +1446,10 @@
       <p class="showcase-fineprint">Vídeo com dados fictícios — não são contatos reais.</p>
 
       <div class="demo-video">
-        <video controls preload="metadata" playsinline poster="media/multienvio-demo.jpg">
+        <video id="demo-video" controls autoplay muted loop playsinline preload="auto" poster="media/multienvio-demo.jpg">
           <source src="media/multienvio-demo.mp4" type="video/mp4" />
         </video>
+        <button type="button" class="demo-unmute" id="demo-unmute">🔊 Ativar som</button>
       </div>
 
       <div class="news-head">
@@ -1656,13 +1646,48 @@
   <script>
     // Botão de download: começa na versão abaixo e, se o GitHub responder, troca sozinho para a
     // versão mais recente publicada — assim o site não fica para trás a cada release.
+    // O instalador se chama "MultiEnvio.Setup.X.exe" a partir da 1.6.1 (antes: "Disparo.em.Massa.Setup").
     var version = '1.6.0'
-    function setDownloadVersion(v) {
+    function installerName(v) {
+      var p = v.split('.').map(Number)
+      var novo = p[0] > 1 || (p[0] === 1 && (p[1] > 6 || (p[1] === 6 && p[2] >= 1)))
+      return (novo ? 'MultiEnvio.Setup.' : 'Disparo.em.Massa.Setup.') + v + '.exe'
+    }
+    function setDownloadVersion(v, url) {
       document.getElementById('download-link').href =
-        'https://github.com/FelipeChessa/multienvio/releases/download/v' + v + '/Disparo.em.Massa.Setup.' + v + '.exe'
+        url || 'https://github.com/FelipeChessa/multienvio/releases/download/v' + v + '/' + installerName(v)
       document.getElementById('version-chip').textContent = 'versão atual: v' + v
     }
     setDownloadVersion(version)
+
+    // Vídeo principal: começa sozinho e no mudo assim que a pessoa entra no site (navegadores só
+    // permitem autoplay sem som). Na primeira vez que ele aparece na tela, volta para o começo,
+    // para a pessoa não pegar o vídeo pela metade. "Ativar som" liga o áudio e recomeça.
+    ;(function () {
+      var v = document.getElementById('demo-video')
+      var btn = document.getElementById('demo-unmute')
+      if (!v) return
+      v.muted = true
+      var p = v.play(); if (p && p.catch) p.catch(function () {})
+      var mexeu = false
+      v.addEventListener('pause', function () { if (!v.ended) mexeu = true })
+      v.addEventListener('volumechange', function () { btn.classList.toggle('hidden', !v.muted) })
+      btn.addEventListener('click', function () {
+        mexeu = true
+        v.muted = false
+        v.currentTime = 0
+        var q = v.play(); if (q && q.catch) q.catch(function () {})
+      })
+      if ('IntersectionObserver' in window) {
+        var visto = false
+        new IntersectionObserver(function (entries) {
+          if (visto || !entries[0].isIntersecting || mexeu) return
+          visto = true
+          v.currentTime = 0
+          var r = v.play(); if (r && r.catch) r.catch(function () {})
+        }, { threshold: 0.5 }).observe(v)
+      }
+    })()
 
     // Clipes da versão 1.6: só baixam e tocam quando aparecem na tela (economiza dados no celular)
     ;(function () {
@@ -1702,8 +1727,8 @@
       .then(function (r) { return r.ok ? r.json() : null })
       .then(function (rel) {
         var v = rel && /^v?(\d+\.\d+\.\d+)$/.exec(rel.tag_name || '')
-        var hasExe = rel && (rel.assets || []).some(function (a) { return /\.exe$/.test(a.name) })
-        if (v && hasExe) setDownloadVersion(v[1])
+        var exe = rel && (rel.assets || []).filter(function (a) { return /\.exe$/.test(a.name) })[0]
+        if (v && exe) setDownloadVersion(v[1], exe.browser_download_url)
       })
       .catch(function () {})
   </script>
