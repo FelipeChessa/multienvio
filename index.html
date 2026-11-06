@@ -764,6 +764,9 @@
     .mock-window video.clip { aspect-ratio: 16 / 9; height: auto; }
 
     .demo-video { position: relative; }
+    .hero-video { margin: 8px auto 10px; max-width: 820px; }
+    .hero-video-note { color: var(--muted); font-size: 12px; font-style: italic; margin: 0 0 20px; }
+    .news-head-top { margin-top: 0; }
     .demo-unmute {
       position: absolute; top: 14px; right: 14px;
       background: rgba(15, 23, 42, .72); color: #fff; border: 1px solid rgba(255, 255, 255, .25);
@@ -1284,7 +1287,13 @@
         <strong>WhatsApp dentro do programa</strong> — tudo com ritmo de envio pensado para reduzir o risco
         de bloqueio da sua conta. Funciona com WhatsApp comum ou Business.
       </p>
-      <a class="hero-video-link" href="#como-funciona">▶ Ver o sistema funcionando</a>
+      <div class="demo-video hero-video">
+        <video id="demo-video" controls autoplay muted loop playsinline preload="auto" poster="media/multienvio-demo.jpg">
+          <source src="media/multienvio-demo.mp4" type="video/mp4" />
+        </video>
+        <button type="button" class="demo-unmute" id="demo-unmute">🔊 Ativar som</button>
+      </div>
+      <p class="hero-video-note">O sistema funcionando de verdade · dados fictícios, não são contatos reais</p>
 
       <div class="compat-row">
         <span class="compat-chip">
@@ -1441,18 +1450,7 @@
 
     <!-- SHOWCASE SECTION -->
     <section class="showcase-section" id="como-funciona">
-      <h2>Veja como funciona</h2>
-      <p class="showcase-sub">O sistema funcionando de verdade, do disparo à venda fechada.</p>
-      <p class="showcase-fineprint">Vídeo com dados fictícios — não são contatos reais.</p>
-
-      <div class="demo-video">
-        <video id="demo-video" controls autoplay muted loop playsinline preload="auto" poster="media/multienvio-demo.jpg">
-          <source src="media/multienvio-demo.mp4" type="video/mp4" />
-        </video>
-        <button type="button" class="demo-unmute" id="demo-unmute">🔊 Ativar som</button>
-      </div>
-
-      <div class="news-head">
+      <div class="news-head news-head-top">
         <span class="news-badge">NOVO · VERSÃO 1.6</span>
         <h3>O que chegou na versão 1.6</h3>
         <p>Quem já usa recebe tudo sozinho: o programa avisa pelo sininho 🔔 e se atualiza com um clique.</p>
