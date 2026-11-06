@@ -743,6 +743,64 @@
       color: var(--ink);
     }
 
+    /* vídeo principal e clipes da versão 1.6 */
+    .demo-video {
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+      background: #0b1220;
+      aspect-ratio: 16 / 9;
+    }
+
+    .demo-video video,
+    .mock-window video.clip {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #0b1220;
+    }
+
+    .mock-window video.clip { aspect-ratio: 16 / 9; height: auto; }
+
+    .news-head { text-align: center; margin: 56px auto 24px; max-width: 620px; }
+    .news-head h3 { font-family: var(--font-heading); font-size: 22px; margin: 10px 0 6px; color: var(--ink); }
+    .news-head p { color: var(--muted); font-size: 14px; margin: 0; }
+
+    .news-badge, .new-tag {
+      display: inline-block;
+      background: #dcfce7;
+      color: var(--brand-dark);
+      font-family: var(--font-heading);
+      font-weight: 700;
+      letter-spacing: .04em;
+      border-radius: 999px;
+    }
+    .news-badge { font-size: 11.5px; padding: 5px 12px; }
+
+    .clips-grid { grid-template-columns: repeat(3, 1fr); }
+    @media (max-width: 900px) { .clips-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 600px) { .clips-grid { grid-template-columns: 1fr; } }
+
+    .news-more { padding: 18px 18px 8px; background: var(--surface); }
+    .news-more strong { display: block; font-family: var(--font-heading); font-size: 15px; color: var(--ink); margin-bottom: 8px; }
+    .news-more ul { list-style: none; margin: 0; padding: 0; }
+    .news-more li { font-size: 13px; color: var(--ink-soft); line-height: 1.45; margin-bottom: 10px; }
+    .news-more b { color: var(--ink); }
+
+    .hero-video-link {
+      display: inline-block;
+      margin: 4px 0 18px;
+      font-weight: 600;
+      font-size: 14.5px;
+      color: var(--brand);
+      text-decoration: none;
+    }
+    .hero-video-link:hover { text-decoration: underline; }
+
+    .feature.is-new { border-color: #bbf7d0; }
+    .new-tag { font-size: 10.5px; padding: 3px 8px; margin-bottom: 8px; }
+
     .mock-stats {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -1211,11 +1269,12 @@
       </div>
 
       <p class="lead">
-        Dispare mensagens, catálogos ou promoções para vários contatos de uma vez — com ritmo de
-        envio inteligente pensado para reduzir o risco de bloqueio da sua conta. Funciona com WhatsApp comum
-        ou Business: escolha por etiqueta (Business), selecione contatos já salvos, ou importe uma
-        lista de uma planilha.
+        Dispare mensagens, catálogos ou promoções para vários contatos de uma vez, com o nome de cada
+        cliente. Agora com <strong>follow-up automático</strong>, <strong>funil de vendas</strong> e o
+        <strong>WhatsApp dentro do programa</strong> — tudo com ritmo de envio pensado para reduzir o risco
+        de bloqueio da sua conta. Funciona com WhatsApp comum ou Business.
       </p>
+      <a class="hero-video-link" href="#como-funciona">▶ Ver o sistema funcionando</a>
 
       <div class="compat-row">
         <span class="compat-chip">
@@ -1392,78 +1451,58 @@
     </section>
 
     <!-- SHOWCASE SECTION -->
-    <section class="showcase-section">
+    <section class="showcase-section" id="como-funciona">
       <h2>Veja como funciona</h2>
-      <p class="showcase-sub">O painel de controle e o disparo de mensagens, na prática.</p>
-      <p class="showcase-fineprint">Ilustração da interface com dados fictícios — não são contatos reais.</p>
-      <div class="showcase-grid">
-        <div class="mock-window">
-          <div class="mock-titlebar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span
-              class="mock-dot green"></span><span>Disparo em Massa — WhatsApp</span></div>
-          <div class="mock-body">
-            <div class="mock-stats">
-              <div class="mock-stat"><b>6</b><span>ETIQUETAS</span></div>
-              <div class="mock-stat"><b>184</b><span>ENVIOS 24H</span></div>
-              <div class="mock-stat"><b>97%</b><span>SUCESSO</span></div>
-              <div class="mock-stat"><b>3</b><span>SAÍRAM</span></div>
-            </div>
-            <div class="mock-labels">
-              <div class="mock-label-row">🏷️ Clientes VIP <span class="count">42</span></div>
-              <div class="mock-label-row">🏷️ Leads do site <span class="count">128</span></div>
-              <div class="mock-label-row">🏷️ Promoção Black Friday <span class="count">315</span></div>
-            </div>
-          </div>
-          <div class="mock-caption">Painel com <strong>etiquetas</strong>, dashboard de envios e taxa de sucesso em
-            tempo real.</div>
-        </div>
+      <p class="showcase-sub">O sistema funcionando de verdade, do disparo à venda fechada.</p>
+      <p class="showcase-fineprint">Vídeo com dados fictícios — não são contatos reais.</p>
 
-        <div class="mock-window">
-          <div class="mock-titlebar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span
-              class="mock-dot green"></span><span>Disparo em Massa — WhatsApp</span></div>
-          <div class="mock-body">
-            <div class="mock-composer">
-              <div class="to-line">Enviando para: <strong>128 contatos</strong> — Leads do site</div>
-              <div class="mock-textarea">Oi {{nome}}! 🎉 Nossa promoção especial começou hoje — aproveite antes que
-                acabe.</div>
-              <div class="mock-toolbar">
-                <span class="mock-emoji">😊</span>
-                <button class="mock-send" type="button">Disparar</button>
-              </div>
-            </div>
-          </div>
-          <div class="mock-caption">Mensagem personalizada com <strong>{{nome}}</strong>, emojis e ritmo de envio
-            protegido.</div>
-        </div>
+      <div class="demo-video">
+        <video controls preload="metadata" playsinline poster="media/multienvio-demo.jpg">
+          <source src="media/multienvio-demo.mp4" type="video/mp4" />
+        </video>
+      </div>
 
-        <div class="mock-window">
-          <div class="mock-titlebar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span
-              class="mock-dot green"></span><span>Disparo em Massa — WhatsApp</span></div>
-          <div class="mock-body">
-            <div class="mock-schedule-row">🕐 Amanhã, 09:00 — Leads do site <span class="status pending">Agendado</span>
-            </div>
-            <div class="mock-schedule-row">🕐 Sex, 14:00 — Clientes VIP <span class="status pending">Agendado</span>
-            </div>
-            <div class="mock-schedule-row">✔ Ontem, 10:00 — Promoção BF <span class="status sent">Enviado</span></div>
-          </div>
-          <div class="mock-caption"><strong>Programe envios</strong> para o horário certo: o programa dispara sozinho na hora
-            marcada, basta deixá-lo aberto.</div>
-        </div>
+      <div class="news-head">
+        <span class="news-badge">NOVO · VERSÃO 1.6</span>
+        <h3>O que chegou na versão 1.6</h3>
+        <p>Quem já usa recebe tudo sozinho: o programa avisa pelo sininho 🔔 e se atualiza com um clique.</p>
+      </div>
 
+      <div class="showcase-grid clips-grid">
         <div class="mock-window">
-          <div class="mock-titlebar"><span class="mock-dot red"></span><span class="mock-dot yellow"></span><span
-              class="mock-dot green"></span><span>Disparo em Massa — WhatsApp</span></div>
-          <div class="mock-body">
-            <div class="mock-composer">
-              <div class="to-line">Fonte: <strong>planilha.xlsx</strong> — "Clientes frios" (sem etiqueta)</div>
-              <div class="mock-textarea">247 números conferidos no WhatsApp<br>231 válidos · 16 inválidos</div>
-              <div class="mock-toolbar">
-                <span class="mock-emoji">📎</span>
-                <button class="mock-send" type="button">Validar e selecionar</button>
-              </div>
-            </div>
-          </div>
-          <div class="mock-caption">Sem etiquetas? Importe uma <strong>planilha</strong> ou use qualquer contato já
-            salvo no WhatsApp.</div>
+          <video class="clip" muted loop playsinline preload="none" poster="media/clip-modelos.jpg" data-src="media/clip-modelos.mp4"></video>
+          <div class="mock-caption"><strong>Modelos prontos por ramo</strong>: dezenas de mensagens para salões, clínicas,
+            imobiliárias, academias e mais. Escolha, ajuste e dispare.</div>
+        </div>
+        <div class="mock-window">
+          <video class="clip" muted loop playsinline preload="none" poster="media/clip-followup.jpg" data-src="media/clip-followup.mp4"></video>
+          <div class="mock-caption"><strong>Follow-up automático</strong>: quem não responde recebe a próxima mensagem
+            sozinho; quem responde sai da fila na hora.</div>
+        </div>
+        <div class="mock-window">
+          <video class="clip" muted loop playsinline preload="none" poster="media/clip-funil.jpg" data-src="media/clip-funil.mp4"></video>
+          <div class="mock-caption"><strong>Funil de vendas</strong>: quem respondeu muda de coluna sozinho. Acompanhe cada
+            cliente até a venda fechada, com o nome e as etiquetas dele.</div>
+        </div>
+        <div class="mock-window">
+          <video class="clip" muted loop playsinline preload="none" poster="media/clip-whatsapp.jpg" data-src="media/clip-whatsapp.mp4"></video>
+          <div class="mock-caption"><strong>WhatsApp dentro do programa</strong>: clique no cliente do funil e a conversa
+            abre ali mesmo, sem trocar de janela.</div>
+        </div>
+        <div class="mock-window">
+          <video class="clip" muted loop playsinline preload="none" poster="media/clip-seguranca.jpg" data-src="media/clip-seguranca.mp4"></video>
+          <div class="mock-caption"><strong>Envio seguro</strong>: intervalos naturais, limite diário, pausa automática se
+            algo der errado e descadastro de quem pede para sair.</div>
+        </div>
+        <div class="mock-window news-more">
+          <strong>E mais na 1.6</strong>
+          <ul>
+            <li>🎯 <b>Prospecção</b> de clientes novos, com triagem dos números e travas contra bloqueio</li>
+            <li>📎 <b>Vários anexos</b> no mesmo envio</li>
+            <li>✍️ Números <b>digitados à mão</b>, além de etiquetas e planilhas</li>
+            <li>🏠 <b>Tela inicial</b> com o resumo do dia: quem respondeu e o que fazer agora</li>
+            <li>🔔 <b>Atualização automática</b> pelo sininho, sem baixar de novo</li>
+          </ul>
         </div>
       </div>
     </section>
@@ -1516,6 +1555,36 @@
       </div>
 
       <div class="features">
+        <div class="feature is-new">
+          <span class="new-tag">Novo</span>
+          <strong>Campanhas com follow-up</strong>
+          Monte a sequência uma vez: quem não responde recebe a próxima mensagem sozinho, no horário que você definir.
+        </div>
+        <div class="feature is-new">
+          <span class="new-tag">Novo</span>
+          <strong>Funil de vendas</strong>
+          Quem respondeu muda de coluna sozinho. Arraste até "Venda fechada" e anote cada negociação.
+        </div>
+        <div class="feature is-new">
+          <span class="new-tag">Novo</span>
+          <strong>Prospecção de clientes novos</strong>
+          Confere os números no WhatsApp, varia as mensagens e segue limites diários para proteger seu número.
+        </div>
+        <div class="feature is-new">
+          <span class="new-tag">Novo</span>
+          <strong>WhatsApp integrado</strong>
+          Converse com os clientes dentro do próprio programa, direto do funil de vendas.
+        </div>
+        <div class="feature is-new">
+          <span class="new-tag">Novo</span>
+          <strong>Vários anexos</strong>
+          Mande fotos, PDFs e áudios no mesmo envio, junto com a mensagem.
+        </div>
+        <div class="feature is-new">
+          <span class="new-tag">Novo</span>
+          <strong>Atualização automática</strong>
+          Novidades e correções chegam sozinhas: o sininho avisa e o programa se atualiza com um clique.
+        </div>
         <div class="feature">
           <strong>Por etiqueta (Business)</strong>
           Escolha uma etiqueta do WhatsApp Business e envie para todos os contatos dela de uma vez.
@@ -1594,6 +1663,27 @@
       document.getElementById('version-chip').textContent = 'versão atual: v' + v
     }
     setDownloadVersion(version)
+
+    // Clipes da versão 1.6: só baixam e tocam quando aparecem na tela (economiza dados no celular)
+    ;(function () {
+      var clips = document.querySelectorAll('video.clip[data-src]')
+      if (!('IntersectionObserver' in window)) {
+        clips.forEach(function (v) { v.src = v.dataset.src; v.autoplay = true })
+        return
+      }
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          var v = e.target
+          if (e.isIntersecting) {
+            if (!v.src) v.src = v.dataset.src
+            var p = v.play(); if (p && p.catch) p.catch(function () {})
+          } else {
+            v.pause()
+          }
+        })
+      }, { threshold: 0.4 })
+      clips.forEach(function (v) { io.observe(v) })
+    })()
 
     // Quem chega por anúncio (link com ?utm_source=google / instagram / facebook) leva a origem
     // na mensagem pronta do WhatsApp — assim dá para saber qual anúncio trouxe cada cliente.
