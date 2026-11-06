@@ -17,7 +17,6 @@ const resetSessionBtn = document.getElementById('reset-session-btn')
 const mainScreen = document.getElementById('main-screen')
 const qrImage = document.getElementById('qr-image')
 
-const labelsPanelTitle = document.getElementById('labels-panel-title')
 const labelsRefreshBtn = document.getElementById('labels-refresh-btn')
 const labelsSearchInput = document.getElementById('labels-search')
 const labelsContainer = document.getElementById('labels-container')
@@ -129,10 +128,6 @@ const optoutsBody = document.getElementById('optouts-body')
 
 const pacingSummary = document.getElementById('pacing-summary')
 
-const statLabelsCount = document.getElementById('stat-labels-count')
-const statUsage24h = document.getElementById('stat-usage-24h')
-const statSuccessRate = document.getElementById('stat-success-rate')
-const statOptoutsCount = document.getElementById('stat-optouts-count')
 
 const toastContainer = document.getElementById('toast-container')
 
@@ -171,6 +166,7 @@ const tutorialSteps = Array.from(document.querySelectorAll('.tutorial-step'))
 let selectedLabelIds = new Set()
 let lastLabelsContactCount = 0
 let selectedFile = null
+let selectedFiles = []
 let selectedAlbumFiles = []
 const MAX_ALBUM_FILES = 5
 let lastLabelsFetch = []
@@ -282,12 +278,10 @@ async function pollStatus() {
     updateConnectionButtons(data.status)
 
     if (data.status === 'unlicensed') {
-      badge.textContent = 'não ativado'
-      badge.className = 'badge error'
+      setConnectionChip('error', 'Não ativado', 'Programa ainda não ativado.')
       setScreen('unlicensed')
     } else if (data.status === 'connected') {
-      badge.textContent = 'conectado'
-      badge.className = 'badge connected'
+      setConnectionChip('ok', 'Conectado', 'Conectado e pronto para enviar.')
       if (lastLabelsFetch.length === 0) {
         setScreen('syncing')
         await refreshLabels()
@@ -296,25 +290,21 @@ async function pollStatus() {
         setScreen('main')
       }
     } else if (data.status === 'qr' && data.qrDataUrl) {
-      badge.textContent = 'aguardando pareamento'
-      badge.className = 'badge'
+      setConnectionChip('warn', 'Aguardando QR Code', 'Escaneie o QR Code na tela para conectar.')
       qrImage.src = data.qrDataUrl
+      if (qrBeforeRefresh !== null && data.qrDataUrl !== qrBeforeRefresh) finishQrRefresh()
       setScreen('pairing')
     } else if (data.status === 'disconnected') {
-      badge.textContent = 'desconectado'
-      badge.className = 'badge disconnected'
+      setConnectionChip('off', 'Desconectado', 'Desconectado. Use Reconectar para voltar.')
       setScreen('disconnected')
     } else if (data.status === 'logged_out') {
-      badge.textContent = 'sessão expirada'
-      badge.className = 'badge error'
+      setConnectionChip('error', 'Sessão expirada', 'O WhatsApp encerrou a sessão. Gere um novo QR Code.')
       setScreen('logged_out')
     } else {
-      badge.textContent = data.status === 'closed' ? 'reconectando...' : 'conectando...'
-      badge.className = 'badge'
+      setConnectionChip('warn', data.status === 'closed' ? 'Reconectando…' : 'Conectando…', 'Estabelecendo a conexão com o WhatsApp…')
     }
   } catch (err) {
-    badge.textContent = 'erro de conexão com o servidor'
-    badge.className = 'badge error'
+    setConnectionChip('error', 'Sem resposta', 'O programa não está respondendo. Feche e abra de novo.')
   }
 }
 
@@ -322,43 +312,145 @@ async function pollStatus() {
 // pronta pra instalar). O botão "Atualizar" só aparece quando a atualização já terminou de
 // baixar — antes disso, mostra "baixando..." desabilitado, já que instalar sem terminar o
 // download não funciona (electron-updater exige o arquivo completo em disco).
+// Status da conexão no cabeçalho: discreto quando está tudo bem (bolinha verde estática), e só
+// chama atenção quando precisa de ação (âmbar = conectando/QR, vermelho = problema). O detalhe
+// fica no menu que abre ao clicar no indicador.
+function setConnectionChip(kind, text, detail) {
+  badge.textContent = text
+  badge.className = `status-chip ${kind}`
+  badge.title = detail
+  const dispatchStatus = document.getElementById('conn-dispatch-status')
+  if (dispatchStatus) dispatchStatus.textContent = detail
+}
+
+// Versão: discreta, só no menu ("Sobre"). Só vira aviso no cabeçalho quando há uma atualização
+// já baixada e pronta pra instalar — aí é uma ação útil, não decoração.
 async function pollAppVersion() {
   try {
     const res = await fetch('/api/app-version')
     const data = await res.json()
     versionBadge.textContent = `v${data.currentVersion}`
+    const versionDetail = document.getElementById('version-detail')
+    const menuDot = document.getElementById('menu-update-dot')
+    menuDot.classList.add('hidden') // o aviso de versão nova agora é o sininho
+    renderUpdateBell(data)
+    // enquanto baixa, atualiza a barra de progresso mais rápido que o ciclo normal de 30 s
+    clearTimeout(updateFastPoll)
+    if (data.updateAvailable && !data.downloaded) updateFastPoll = setTimeout(pollAppVersion, 3000)
     if (data.updateAvailable) {
-      versionBadge.className = 'badge update-available'
-      versionBadge.title = `Versão instalada: ${data.currentVersion} — nova versão disponível: ${data.latestVersion}`
-      updateNowBtn.classList.remove('hidden')
-      updateNowBtn.disabled = !data.downloaded
-      updateNowBtn.textContent = data.downloaded
-        ? `Atualizar para v${data.latestVersion}`
-        : 'Baixando atualização...'
+      versionDetail.textContent = data.downloaded
+        ? `Nova versão v${data.latestVersion} pronta: clique no sininho 🔔 para atualizar.`
+        : `Baixando a nova versão v${data.latestVersion}…`
     } else {
-      versionBadge.className = 'badge up-to-date'
-      versionBadge.title = 'Versão instalada (em dia)'
-      updateNowBtn.classList.add('hidden')
+      versionDetail.textContent = 'Você está na versão mais recente.'
     }
   } catch {
     // servidor ainda subindo ou fora do ar — mantém o que já estava mostrado, sem quebrar a UI
   }
 }
 
-updateNowBtn.addEventListener('click', async () => {
+// Sininho de atualização: aparece só quando há versão nova. Baixa sozinha em segundo plano;
+// quando termina, "Atualizar agora" fecha o programa, instala e abre de novo já atualizado.
+let updateInstalling = false
+let updateFastPoll = null
+function renderUpdateBell(data) {
+  const wrap = document.getElementById('update-wrap')
+  wrap.classList.toggle('hidden', !data.updateAvailable)
+  if (!data.updateAvailable) return
+  const ready = !!data.downloaded
+  document.getElementById('update-bell').title = ready
+    ? `Versão v${data.latestVersion} pronta para instalar`
+    : `Baixando a versão v${data.latestVersion}…`
+  wrap.classList.toggle('ready', ready)
+  document.getElementById('update-title').textContent = `Versão ${data.latestVersion} disponível`
+
+  const notes = String(data.releaseNotes || '').split('\n').filter(Boolean)
+  const list = document.getElementById('update-notes')
+  list.innerHTML = notes.map((n) => `<li>${escapeHtml(n)}</li>`).join('')
+  list.classList.toggle('hidden', notes.length === 0)
+
+  const bar = document.getElementById('update-progress')
+  bar.classList.toggle('hidden', ready)
+  bar.querySelector('i').style.width = `${Math.max(4, Number(data.progress) || 0)}%`
+
+  if (updateInstalling) return
+  document.getElementById('update-hint').textContent = ready
+    ? 'O programa fecha, atualiza e abre de novo sozinho. Leva alguns segundos.'
+    : `Baixando em segundo plano… ${Number(data.progress) || 0}%. Pode continuar usando.`
+  updateNowBtn.disabled = !ready
+  updateNowBtn.textContent = 'Atualizar agora'
+}
+
+// Resumo de uma linha das "Opções de envio" recolhidas — mostra o que está ativo sem abrir.
+function updateSendOptionsSummary() {
+  const el = document.getElementById('send-options-summary')
+  if (!el) return
+  const parts = []
+  if (document.getElementById('simulate-typing-toggle').checked) parts.push('digitando…')
+  if (document.getElementById('skip-blocked-toggle').checked) parts.push('pula bloqueados')
+  if (document.getElementById('mark-read-toggle').checked) parts.push('marca como lida')
+  const apply = document.getElementById('apply-label-select')
+  const remove = document.getElementById('remove-label-select')
+  if (apply.value) parts.push(`+ etiqueta ${apply.selectedOptions[0].textContent}`)
+  if (remove.value) parts.push(`− etiqueta ${remove.selectedOptions[0].textContent}`)
+  el.textContent = parts.join(' · ')
+}
+for (const id of ['simulate-typing-toggle', 'skip-blocked-toggle', 'mark-read-toggle', 'apply-label-select', 'remove-label-select']) {
+  document.getElementById(id).addEventListener('change', updateSendOptionsSummary)
+}
+updateSendOptionsSummary()
+
+// Menus suspensos do cabeçalho (status da conexão e menu ⋯): abrem no clique, fecham ao
+// clicar fora, ao escolher um item ou com Esc.
+const headerMenus = [
+  [document.getElementById('connection-badge'), document.getElementById('connection-menu')],
+  [document.getElementById('main-menu-btn'), document.getElementById('main-menu')],
+  [document.getElementById('update-bell'), document.getElementById('update-menu')]
+]
+
+function closeHeaderMenus(except) {
+  for (const [btn, menu] of headerMenus) {
+    if (menu === except) continue
+    menu.classList.add('hidden')
+    btn.setAttribute('aria-expanded', 'false')
+  }
+}
+
+for (const [btn, menu] of headerMenus) {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation()
+    const opening = menu.classList.contains('hidden')
+    closeHeaderMenus(menu)
+    menu.classList.toggle('hidden', !opening)
+    btn.setAttribute('aria-expanded', String(opening))
+  })
+  menu.addEventListener('click', (e) => {
+    e.stopPropagation()
+    if (e.target.closest('.dropdown-item, .dropdown-actions button')) closeHeaderMenus()
+  })
+}
+document.addEventListener('click', () => closeHeaderMenus())
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeHeaderMenus() })
+
+updateNowBtn.addEventListener('click', async (e) => {
+  e.stopPropagation() // mantém o menu aberto mostrando "Atualizando…"
+  const hint = document.getElementById('update-hint')
+  updateInstalling = true
   updateNowBtn.disabled = true
-  updateNowBtn.textContent = 'Atualizando...'
+  updateNowBtn.textContent = 'Atualizando…'
+  hint.textContent = 'Fechando o programa para atualizar. Ele abre de novo sozinho.'
   try {
     const res = await fetch('/api/app-version/install', { method: 'POST' })
     if (!res.ok) {
       const data = await res.json()
-      showNotice('error', data.error || 'Não foi possível atualizar agora.')
-      pollAppVersion() // repõe o texto/estado corretos do botão
+      updateInstalling = false
+      hint.textContent = data.error || 'Não foi possível atualizar agora.'
+      updateNowBtn.disabled = false
+      updateNowBtn.textContent = 'Tentar de novo'
     }
     // se deu certo o app fecha e reabre sozinho na nova versão — não precisa fazer mais nada aqui
-  } catch (err) {
-    showNotice('error', 'Não foi possível atualizar agora: ' + err.message)
-    pollAppVersion()
+  } catch {
+    // a conexão cai quando o programa fecha para instalar: é o esperado
   }
 })
 
@@ -427,6 +519,44 @@ reconnectBtn.addEventListener('click', async () => {
     showToast('Erro ao reconectar: ' + err.message, 'error')
   }
   reconnectBtn.disabled = false
+  pollStatus()
+})
+
+// Botão na própria tela do QR Code: descarta a tentativa de pareamento atual (que nunca chegou
+// a conectar, então não há sessão válida a perder) e pede um código novo do zero. Fica
+// desabilitado até o QR novo chegar, pra não disparar vários reinícios seguidos.
+const refreshQrBtn = document.getElementById('refresh-qr-btn')
+let qrBeforeRefresh = null
+let refreshQrTimeout = null
+
+function finishQrRefresh() {
+  clearTimeout(refreshQrTimeout)
+  refreshQrTimeout = null
+  qrBeforeRefresh = null
+  refreshQrBtn.disabled = false
+  refreshQrBtn.textContent = '↻ Gerar novo QR Code'
+  qrImage.style.opacity = ''
+}
+
+refreshQrBtn.addEventListener('click', async () => {
+  refreshQrBtn.disabled = true
+  refreshQrBtn.textContent = 'Gerando novo QR Code...'
+  qrImage.style.opacity = '0.25'
+  qrBeforeRefresh = qrImage.src
+  refreshQrTimeout = setTimeout(finishQrRefresh, 20000)
+  try {
+    const res = await fetch('/api/connection/reset', { method: 'POST' })
+    const data = await res.json()
+    if (!res.ok) {
+      showToast(data.error || 'Erro ao gerar novo QR Code.', 'error')
+      finishQrRefresh()
+      return
+    }
+  } catch (err) {
+    showToast('Erro ao gerar novo QR Code: ' + err.message, 'error')
+    finishQrRefresh()
+    return
+  }
   pollStatus()
 })
 
@@ -534,7 +664,6 @@ function switchSidebarTab(tab) {
   if (tab === activeContactSource) return
   activeContactSource = tab
   for (const btn of sidebarTabs) btn.classList.toggle('active', btn.dataset.tab === tab)
-  labelsPanelTitle.textContent = tab === 'allContacts' ? 'Todos os contatos' : tab === 'coldContacts' ? 'Clientes frios' : 'Etiquetas'
   allContactsSearchInput.classList.toggle('hidden', tab !== 'allContacts')
   allContactsBulkActions.classList.toggle('hidden', tab !== 'allContacts')
   labelsContainer.classList.toggle('hidden', tab === 'coldContacts')
@@ -1140,23 +1269,65 @@ function renderPacingSummary(settings, usage) {
 
 // faixa de métricas no topo da tela principal
 
+// Painel de início (src/dashboardRoutes.js): quem está esperando resposta, resultados, envios
+// de hoje e saúde do número. O nome refreshStats ficou porque já é chamado em vários lugares.
 async function refreshStats() {
+  let d
   try {
-    const [usageRes, optOutsRes] = await Promise.all([
-      fetch('/api/settings/usage'),
-      fetch('/api/optouts')
-    ])
-    const usage = await usageRes.json()
-    const optOuts = await optOutsRes.json()
-    statLabelsCount.textContent = lastLabelsFetch.length
-    statUsage24h.textContent = usage.last24h.total
-    const rate = usage.last24h.total > 0 ? Math.round((usage.last24h.sent / usage.last24h.total) * 100) : null
-    statSuccessRate.textContent = rate === null ? '–' : `${rate}%`
-    statOptoutsCount.textContent = optOuts.length
-  } catch (err) {
-    // faixa de métricas é informativa — não bloqueia o resto da tela se der erro
+    d = await (await fetch('/api/dashboard')).json()
+  } catch {
+    return // informativo — não trava o resto da tela
   }
+  const ago = (ms) => {
+    if (!ms) return ''
+    const min = Math.round((Date.now() - ms) / 60000)
+    if (min < 60) return `há ${Math.max(1, min)} min`
+    const h = Math.round(min / 60)
+    return h < 24 ? `há ${h} h` : `há ${Math.round(h / 24)} dia(s)`
+  }
+
+  // aguardando resposta: clicar no nome abre a conversa (WhatsApp embutido quando disponível)
+  document.getElementById('dash-waiting-count').textContent = d.waiting.count
+  const list = document.getElementById('dash-waiting-list')
+  list.innerHTML = d.waiting.count === 0
+    ? '<li class="dash-empty">Ninguém esperando. Quando um cliente responder uma campanha, ele aparece aqui.</li>'
+    : d.waiting.items.map((w, i) => `<li data-i="${i}" title="Abrir conversa"><b>${escapeHtml(w.name || (w.phone ? '+' + w.phone : 'Cliente'))}</b>
+        <span>💬 ${escapeHtml((w.lastReply || '').slice(0, 70))}</span><small>${ago(w.lastReplyAt)} · ${escapeHtml(w.campaignName)}</small></li>`).join('')
+  list.querySelectorAll('li[data-i]').forEach((li) => {
+    const w = d.waiting.items[Number(li.dataset.i)]
+    li.addEventListener('click', () => {
+      if (w.phone && typeof openWhatsAppChat === 'function') openWhatsAppChat(w.phone, { returnCampaignId: w.campaignId, name: w.name })
+      else openCampaignBoard(w.campaignId)
+    })
+  })
+
+  // resultados
+  document.getElementById('dash-won').textContent = `${d.sales.won7d} venda(s)`
+  document.getElementById('dash-sales-sub').innerHTML = [
+    `${d.sales.negotiating} em negociação`,
+    d.sales.replyRate7d === null ? 'Sem envios de campanha na semana' : `${Math.round(d.sales.replyRate7d * 100)}% responderam (${d.sales.sent7d} enviados)`
+  ].join('<br>')
+
+  // envios de hoje
+  const s = d.sending
+  document.getElementById('dash-sent').textContent = s.dailyLimit > 0 ? `${s.last24h} de ${s.dailyLimit}` : `${s.last24h}`
+  document.getElementById('dash-sent-bar').style.width = s.dailyLimit > 0 ? `${Math.min(100, Math.round((s.last24h / s.dailyLimit) * 100))}%` : '0%'
+  const next = []
+  if (s.followupsToday) next.push(`${s.followupsToday} follow-up(s) previstos`)
+  if (s.prospectToday) next.push(`${s.prospectToday} da prospecção`)
+  if (s.nextScheduledAt) next.push(`agendado ${new Date(s.nextScheduledAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}`)
+  document.getElementById('dash-sending-sub').textContent = next.length ? 'Ainda hoje: ' + next.join(' · ') : 'Nada mais previsto para hoje (limite das últimas 24h).'
+
+  // saúde do número
+  const labels = { ok: 'Boa', attention: 'Atenção', risk: 'Risco' }
+  document.getElementById('dash-health').textContent = labels[d.health.level]
+  document.getElementById('dash-health-card').className = `dash-card dash-health dash-${d.health.level}`
+  document.getElementById('dash-health-sub').textContent = d.health.reasons.length
+    ? d.health.reasons.join(' ')
+    : 'Sem falhas nem pedidos de saída fora do normal. Continue com ritmo moderado.'
 }
+
+document.getElementById('dash-open-campaigns').addEventListener('click', () => openCampaignsModal())
 
 // tutorial de primeiro uso
 
@@ -1218,30 +1389,113 @@ dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover
 dropzone.addEventListener('drop', (e) => {
   e.preventDefault()
   dropzone.classList.remove('dragover')
-  if (e.dataTransfer.files.length > 0) setFile(e.dataTransfer.files[0])
+  if (e.dataTransfer.files.length > 0) addFiles(e.dataTransfer.files)
 })
 fileInput.addEventListener('change', () => {
-  if (fileInput.files.length > 0) setFile(fileInput.files[0])
+  if (fileInput.files.length > 0) addFiles(fileInput.files)
+  fileInput.value = '' // permite escolher o mesmo arquivo de novo depois de removê-lo
 })
 
+// Vários anexos (tipo "Arquivo/texto"): a lista fica em selectedFiles; selectedFile continua
+// existindo (= primeiro anexo) pra quem só precisa saber "tem anexo?".
+const MAX_ATTACHMENTS = 10
+const attachmentsList = document.getElementById('attachments-list')
+const attachmentsHint = document.getElementById('attachments-hint')
+const albumToggle = document.getElementById('album-toggle')
+const albumToggleLabel = document.getElementById('album-toggle-label')
+albumToggle.addEventListener('change', () => renderAttachments())
+
+// "Mensagem" com 2 a 5 fotos/vídeos e a opção de álbum marcada vai como álbum de verdade
+function shouldSendAsAlbum() {
+  const n = selectedFiles.length
+  return albumToggle.checked && n >= 2 && n <= MAX_ALBUM_FILES &&
+    selectedFiles.every((f) => f.type.startsWith('image/') || f.type.startsWith('video/'))
+}
+const voiceNoteText = document.getElementById('voice-note-text')
+
+function formatFileSize(bytes) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`
+}
+
+function fileIcon(file) {
+  if (file.type.startsWith('image/')) return '🖼️'
+  if (file.type.startsWith('video/')) return '🎬'
+  if (file.type.startsWith('audio/')) return '🎵'
+  if (file.type === 'application/pdf') return '📄'
+  return '📎'
+}
+
+function addFiles(fileList) {
+  const incoming = Array.from(fileList)
+  const room = MAX_ATTACHMENTS - selectedFiles.length
+  const accepted = incoming
+    .filter((f) => !selectedFiles.some((s) => s.name === f.name && s.size === f.size))
+    .slice(0, Math.max(0, room))
+  if (incoming.length > accepted.length && selectedFiles.length + accepted.length >= MAX_ATTACHMENTS) {
+    showToast(`Máximo de ${MAX_ATTACHMENTS} anexos por envio.`, 'error')
+  }
+  selectedFiles = [...selectedFiles, ...accepted]
+  renderAttachments()
+}
+
 function setFile(file) {
-  selectedFile = file
-  dropzone.classList.add('has-file')
-  dropzoneText.textContent = `Arquivo selecionado: ${file.name} (clique para trocar)`
-  removeFileBtn.classList.remove('hidden')
-  const isAudio = file.type.startsWith('audio/')
-  voiceNoteLabel.classList.toggle('hidden', !isAudio)
-  if (!isAudio) voiceNoteToggle.checked = false
+  addFiles([file])
+}
+
+function removeAttachment(index) {
+  selectedFiles.splice(index, 1)
+  renderAttachments()
+}
+
+function renderAttachments() {
+  selectedFile = selectedFiles[0] || null
+  const count = selectedFiles.length
+  dropzone.classList.toggle('has-file', count > 0)
+  dropzoneText.textContent = count === 0
+    ? 'Arraste arquivos aqui ou clique para selecionar (pode escolher vários)'
+    : count >= MAX_ATTACHMENTS
+      ? `${count} anexos (máximo atingido)`
+      : `${count} anexo(s) — clique ou arraste para adicionar mais`
+  removeFileBtn.classList.toggle('hidden', count === 0)
+
+  attachmentsList.innerHTML = ''
+  selectedFiles.forEach((file, index) => {
+    const li = document.createElement('li')
+    li.innerHTML = `
+      <span class="att-icon">${fileIcon(file)}</span>
+      <span class="att-name" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</span>
+      <span class="att-size">${formatFileSize(file.size)}</span>
+      <button type="button" class="att-remove" title="Remover este anexo">&times;</button>
+    `
+    li.querySelector('.att-remove').addEventListener('click', () => removeAttachment(index))
+    attachmentsList.appendChild(li)
+  })
+  attachmentsList.classList.toggle('hidden', count === 0)
+
+  // álbum: só faz sentido com 2 a 5 fotos/vídeos (limite do WhatsApp/servidor)
+  const visual = selectedFiles.filter((f) => f.type.startsWith('image/') || f.type.startsWith('video/')).length
+  const albumEligible = count >= 2 && visual === count && count <= MAX_ALBUM_FILES
+  albumToggleLabel.classList.toggle('hidden', !albumEligible)
+  const asAlbum = albumEligible && albumToggle.checked
+  attachmentsHint.classList.toggle('hidden', count < 2 || asAlbum)
+  document.getElementById('message-hint').innerHTML = count > 0
+    ? (asAlbum ? 'A mensagem vai como legenda do álbum.' : 'A mensagem vai como legenda do primeiro anexo.') + ' Use <code>{{nome}}</code> para personalizar com o nome de cada contato.'
+    : 'Dica: use <code>{{nome}}</code> na mensagem para personalizar com o nome de cada contato.'
+
+  const audioCount = selectedFiles.filter((f) => f.type.startsWith('audio/')).length
+  voiceNoteLabel.classList.toggle('hidden', audioCount === 0)
+  if (audioCount === 0) voiceNoteToggle.checked = false
+  voiceNoteText.textContent = audioCount > 1 || count > 1
+    ? 'Enviar os áudios como nota de voz (nota de voz não tem legenda)'
+    : 'Enviar como nota de voz (sem legenda — se houver mensagem, ela vai separada, como texto)'
 }
 
 function clearFile() {
-  selectedFile = null
+  selectedFiles = []
   fileInput.value = ''
-  dropzone.classList.remove('has-file')
-  dropzoneText.textContent = 'Arraste um arquivo aqui ou clique para selecionar'
-  removeFileBtn.classList.add('hidden')
-  voiceNoteLabel.classList.add('hidden')
   voiceNoteToggle.checked = false
+  renderAttachments()
 }
 
 removeFileBtn.addEventListener('click', (e) => {
@@ -1775,20 +2029,17 @@ function buildPreviewHtml() {
     return `<div class="preview-card-row"><div class="preview-card-title">👤 ${escapeHtml(card.name || '(nome do contato)')}</div>${escapeHtml(card.phone || '')}</div>${previewTimeMeta()}`
   }
 
-  if (messageType === 'album') {
-    const count = Math.max(selectedAlbumFiles.length, 2)
-    const grid = `<div class="preview-album-grid">${'<div>🖼️</div>'.repeat(count)}</div>`
-    const caption = formatWhatsAppText(albumMessageInput.value.replace(/\{\{nome\}\}/g, sampleName))
+  if (messageType === 'media' && shouldSendAsAlbum()) {
+    const grid = `<div class="preview-album-grid">${selectedFiles.map((f) => `<div>${fileIcon(f)}</div>`).join('')}</div>`
+    const caption = formatWhatsAppText(messageInput.value.replace(/\{\{nome\}\}/g, sampleName))
     return `${grid}${caption}${previewTimeMeta()}`
   }
 
   // media (padrão) — pode ter arquivo anexado e/ou nota de voz
-  let attachmentNote = ''
-  if (voiceNoteToggle.checked && selectedFile) {
-    attachmentNote = '<div class="preview-card-row">🎤 Nota de voz</div>'
-  } else if (selectedFile) {
-    attachmentNote = `<div class="preview-card-row">📎 ${escapeHtml(selectedFile.name)}</div>`
-  }
+  const attachmentNote = selectedFiles.map((f) => {
+    if (voiceNoteToggle.checked && f.type.startsWith('audio/')) return '<div class="preview-card-row">🎤 Nota de voz</div>'
+    return `<div class="preview-card-row">${fileIcon(f)} ${escapeHtml(f.name)}</div>`
+  }).join('')
   const caption = formatWhatsAppText(messageInput.value.replace(/\{\{nome\}\}/g, sampleName))
   return `${attachmentNote}${caption}${previewTimeMeta()}`
 }
@@ -1846,16 +2097,38 @@ function updateMessageTypeFields() {
   pollFields.classList.toggle('hidden', type !== 'poll')
   locationFields.classList.toggle('hidden', type !== 'location')
   contactFields.classList.toggle('hidden', type !== 'contact')
+  for (const card of document.querySelectorAll('#type-cards .type-card')) {
+    const on = card.dataset.type === type
+    card.classList.toggle('active', on)
+    card.setAttribute('aria-checked', String(on))
+  }
 }
 messageTypeSelect.addEventListener('change', updateMessageTypeFields)
+
+// Cartões de tipo de mensagem: só trocam o <select> escondido, que segue sendo a fonte da
+// verdade pro resto do código (validação, envio, agendamento, pré-visualização).
+for (const card of document.querySelectorAll('#type-cards .type-card')) {
+  card.addEventListener('click', () => {
+    if (messageTypeSelect.value === card.dataset.type) return
+    messageTypeSelect.value = card.dataset.type
+    messageTypeSelect.dispatchEvent(new Event('change'))
+  })
+}
 
 function renderProfileSummaries() {
   locationSummary.textContent = currentProfile.location.lat != null
     ? `Configurado: ${currentProfile.location.name || currentProfile.location.address || (currentProfile.location.lat + ', ' + currentProfile.location.lng)}`
     : 'Nenhuma localização configurada ainda.'
   contactCardSummary.textContent = currentProfile.businessCard.name
-    ? `Configurado: ${currentProfile.businessCard.name} — ${currentProfile.businessCard.phone}`
-    : 'Nenhum cartão de contato configurado ainda.'
+    ? `${currentProfile.businessCard.name} — ${currentProfile.businessCard.phone}`
+    : 'Nenhum cartão configurado ainda — configure seu nome e número uma vez.'
+  if (currentProfile.location.lat != null) {
+    locationSummary.textContent = currentProfile.location.name || currentProfile.location.address || `${currentProfile.location.lat}, ${currentProfile.location.lng}`
+  } else {
+    locationSummary.textContent = 'Nenhuma localização configurada ainda — configure o endereço uma vez.'
+  }
+  configureLocationBtn.textContent = currentProfile.location.lat != null ? 'Alterar' : 'Configurar localização'
+  configureContactBtn.textContent = currentProfile.businessCard.name ? 'Alterar' : 'Configurar seu contato'
 }
 
 async function refreshProfile() {
@@ -1868,15 +2141,113 @@ async function refreshProfile() {
   renderProfileSummaries()
 }
 
+// ===== Janela "Seu contato e localização" =====
+// Em vez de pedir latitude/longitude (ninguém sabe a da própria loja), aceita o link do Google
+// Maps e tira as coordenadas dele. Telefone: aceita do jeito que a pessoa digitar e completa o +55.
+
+const profileMapsLink = document.getElementById('profile-maps-link')
+const profileMapsHint = document.getElementById('profile-maps-hint')
+const profilePhoneHint = document.getElementById('profile-phone-hint')
+const profileContactPreview = document.getElementById('profile-contact-preview')
+const profileLocationPreview = document.getElementById('profile-location-preview')
+const MAPS_HINT_DEFAULT = profileMapsHint.innerHTML
+
+function normalizeBusinessPhone(raw) {
+  const digits = String(raw || '').replace(/\D/g, '')
+  if (!digits) return ''
+  if (digits.length === 10 || digits.length === 11) return '+55' + digits
+  return '+' + digits
+}
+
+function formatPhoneBR(e164) {
+  const m = /^\+55(\d{2})(\d{4,5})(\d{4})$/.exec(e164 || '')
+  return m ? `+55 (${m[1]}) ${m[2]}-${m[3]}` : e164
+}
+
+// Coordenadas de um link do Maps (vários formatos) ou de um "lat, lng" colado direto
+function parseMapsCoords(text) {
+  const t = decodeURIComponent(String(text || ''))
+  const patterns = [/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/, /@(-?\d+\.\d+),(-?\d+\.\d+)/, /[?&](?:q|query|ll|destination)=(-?\d+\.\d+),\s*(-?\d+\.\d+)/, /^\s*(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)\s*$/]
+  for (const re of patterns) {
+    const m = re.exec(t)
+    if (m) {
+      const lat = Number(m[1]), lng = Number(m[2])
+      if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng }
+    }
+  }
+  return null
+}
+
+function setMapsHint(html, tone = '') {
+  profileMapsHint.innerHTML = html
+  profileMapsHint.className = `field-hint profile-hint ${tone}`
+}
+
+let mapsResolveSeq = 0
+async function handleMapsLink() {
+  const value = profileMapsLink.value.trim()
+  if (!value) { setMapsHint(MAPS_HINT_DEFAULT); return }
+  let coords = parseMapsCoords(value)
+  if (!coords && /goo\.gl|google\./i.test(value)) {
+    const seq = ++mapsResolveSeq
+    setMapsHint('Lendo o link…')
+    try {
+      const res = await fetch(`/api/resolve-maps-link?url=${encodeURIComponent(value)}`)
+      const data = await res.json()
+      if (seq !== mapsResolveSeq) return
+      if (!res.ok) throw new Error(data.error)
+      coords = parseMapsCoords(data.finalUrl)
+    } catch (err) {
+      setMapsHint(escapeHtml(err.message || 'Não consegui ler esse link.'), 'warn')
+      return
+    }
+  }
+  if (!coords) {
+    setMapsHint('Não encontrei a localização nesse link. Abra a loja no Google Maps, toque em <strong>Compartilhar → Copiar link</strong> e cole de novo.', 'warn')
+    return
+  }
+  profileFields.locationLat.value = coords.lat
+  profileFields.locationLng.value = coords.lng
+  setMapsHint('✓ Localização encontrada.', 'ok')
+  updateProfilePreviews()
+}
+
+function updateProfilePreviews() {
+  const name = profileFields.businessName.value.trim()
+  const phone = normalizeBusinessPhone(profileFields.businessPhone.value)
+  profilePhoneHint.textContent = phone ? `Vai como ${formatPhoneBR(phone)}` : 'Com DDD. O +55 é colocado sozinho.'
+  profileContactPreview.classList.toggle('hidden', !name && !phone)
+  profileContactPreview.innerHTML = `<span class="pp-label">Como chega</span><div class="pp-card"><span class="pp-avatar">👤</span><div><b>${escapeHtml(name || 'Seu nome')}</b><small>${escapeHtml(phone ? formatPhoneBR(phone) : 'seu número')}</small></div><span class="pp-action">Salvar</span></div>`
+
+  const lat = Number(profileFields.locationLat.value), lng = Number(profileFields.locationLng.value)
+  const hasCoords = profileFields.locationLat.value.trim() !== '' && profileFields.locationLng.value.trim() !== '' && Number.isFinite(lat) && Number.isFinite(lng)
+  profileLocationPreview.classList.toggle('hidden', !hasCoords)
+  if (hasCoords) {
+    const place = profileFields.locationName.value.trim() || 'Sua localização'
+    const address = profileFields.locationAddress.value.trim()
+    profileLocationPreview.innerHTML = `<span class="pp-label">Como chega</span><div class="pp-card"><span class="pp-avatar">📍</span><div><b>${escapeHtml(place)}</b><small>${escapeHtml(address || `${lat.toFixed(5)}, ${lng.toFixed(5)}`)}</small></div><a class="pp-action" href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener noreferrer">Conferir no mapa ↗</a></div>`
+  }
+}
+
+profileMapsLink.addEventListener('change', handleMapsLink)
+profileMapsLink.addEventListener('paste', () => setTimeout(handleMapsLink, 0))
+for (const el of [profileFields.businessName, profileFields.businessPhone, profileFields.locationName, profileFields.locationAddress, profileFields.locationLat, profileFields.locationLng]) {
+  el.addEventListener('input', updateProfilePreviews)
+}
+
 function openProfileModal() {
   profileFields.businessName.value = currentProfile.businessCard.name || ''
-  profileFields.businessPhone.value = currentProfile.businessCard.phone || ''
+  profileFields.businessPhone.value = currentProfile.businessCard.phone ? formatPhoneBR(currentProfile.businessCard.phone) : ''
   profileFields.locationName.value = currentProfile.location.name || ''
   profileFields.locationAddress.value = currentProfile.location.address || ''
   profileFields.locationLat.value = currentProfile.location.lat ?? ''
   profileFields.locationLng.value = currentProfile.location.lng ?? ''
+  profileMapsLink.value = ''
+  setMapsHint(MAPS_HINT_DEFAULT)
+  updateProfilePreviews()
   profileError.classList.add('hidden')
   profileModal.classList.remove('hidden')
+  profileFields.businessName.focus()
 }
 
 function closeProfileModal() {
@@ -1890,12 +2261,21 @@ profileCancelBtn.addEventListener('click', closeProfileModal)
 profileModal.addEventListener('click', (e) => { if (e.target === profileModal) closeProfileModal() })
 
 profileSaveBtn.addEventListener('click', async () => {
-  const lat = profileFields.locationLat.value.trim()
-  const lng = profileFields.locationLng.value.trim()
+  const lat = profileFields.locationLat.value.trim().replace(',', '.')
+  const lng = profileFields.locationLng.value.trim().replace(',', '.')
+  const name = profileFields.businessName.value.trim()
+  const phone = normalizeBusinessPhone(profileFields.businessPhone.value)
+  const showProfileError = (msg) => { profileError.textContent = msg; profileError.classList.remove('hidden') }
+  if (name && !phone) return showProfileError('Informe o WhatsApp do negócio para o cartão de contato.')
+  if (phone && !name) return showProfileError('Informe o nome que vai aparecer no cartão de contato.')
+  if (phone && !/^\+\d{10,15}$/.test(phone)) return showProfileError('Esse número parece incompleto. Use DDD + número, ex: (11) 99999-9999.')
+  if ((lat && !lng) || (!lat && lng) || (lat && (!Number.isFinite(Number(lat)) || !Number.isFinite(Number(lng))))) {
+    return showProfileError('A localização ficou incompleta. Cole o link do Google Maps de novo.')
+  }
   const payload = {
     businessCard: {
-      name: profileFields.businessName.value.trim(),
-      phone: profileFields.businessPhone.value.trim()
+      name,
+      phone
     },
     location: {
       lat: lat ? Number(lat) : null,
@@ -1935,8 +2315,8 @@ function validateDispatchFields() {
   }
   const messageType = messageTypeSelect.value
   const message = messageInput.value.trim()
-  if (messageType === 'media' && !message) {
-    return 'Escreva a mensagem.'
+  if (messageType === 'media' && !message && selectedFiles.length === 0) {
+    return 'Escreva a mensagem ou anexe uma foto, vídeo, PDF ou áudio.'
   }
   if (messageType === 'album' && selectedAlbumFiles.length < 2) {
     return 'Selecione pelo menos 2 fotos/vídeos para o álbum.'
@@ -1954,11 +2334,12 @@ function validateDispatchFields() {
   if (messageType === 'contact' && !currentProfile.businessCard.name) {
     return 'Configure o cartão de contato antes de continuar.'
   }
-  return null
+  return validateCampaignFields() // public/campaigns.js
 }
 
 function buildDispatchFormData() {
-  const messageType = messageTypeSelect.value
+  // "Mensagem" com 2 a 5 fotos/vídeos e a opção de álbum marcada vira o tipo álbum do servidor
+  const messageType = messageTypeSelect.value === 'media' && shouldSendAsAlbum() ? 'album' : messageTypeSelect.value
   const message = messageInput.value.trim()
   const formData = new FormData()
   if (adHocContacts) {
@@ -1968,12 +2349,14 @@ function buildDispatchFormData() {
   }
   formData.append('messageType', messageType)
   if (messageType === 'album') {
-    formData.append('message', albumMessageInput.value.trim())
-    for (const albumFile of selectedAlbumFiles) formData.append('files', albumFile)
+    formData.append('message', message)
+    for (const albumFile of selectedFiles) formData.append('files', albumFile)
   } else {
     formData.append('message', message)
   }
-  if (selectedFile) formData.append('file', selectedFile)
+  if (messageType === 'media') {
+    for (const f of selectedFiles) formData.append('attachments', f)
+  }
   formData.append('asVoiceNote', voiceNoteToggle.checked ? 'true' : 'false')
   if (messageType === 'poll') {
     formData.append('pollQuestion', pollQuestionInput.value.trim())
@@ -1986,6 +2369,7 @@ function buildDispatchFormData() {
   formData.append('markAsRead', markReadToggle.checked ? 'true' : 'false')
   if (applyLabelSelect.value) formData.append('applyLabelId', applyLabelSelect.value)
   if (removeLabelSelect.value) formData.append('removeLabelId', removeLabelSelect.value)
+  appendCampaignFields(formData) // public/campaigns.js
   return formData
 }
 
@@ -2003,7 +2387,8 @@ dispatchBtn.addEventListener('click', async () => {
     const target = adHocContacts
       ? `${adHocContacts.length} contato(s) selecionado(s)`
       : `${lastLabelsContactCount} contato(s) da(s) etiqueta(s) "${lastLabelsFetch.filter((l) => selectedLabelIds.has(l.id)).map((l) => l.name).join(', ')}"`
-    showNotice('confirm', `Clique em "Confirmar envio" para disparar para ${target}.`)
+    const campaignNote = isCampaignSelected() ? ' Eles vão entrar na campanha, com follow-up automático para quem não responder.' : ''
+    showNotice('confirm', `Clique em "Confirmar envio" para disparar para ${target}.${campaignNote}`)
     return
   }
 
@@ -2027,6 +2412,10 @@ dispatchBtn.addEventListener('click', async () => {
       dispatchBtn.disabled = false
       scheduleBtn.disabled = false
       return
+    }
+    if (data.campaignId) {
+      showToast('Campanha criada — acompanhe as respostas em "Campanhas".', 'success')
+      resetCampaignForm()
     }
     listenToJob(data.jobId)
   } catch (err) {
@@ -2075,7 +2464,9 @@ scheduleBtn.addEventListener('click', async () => {
       scheduleBtn.disabled = false
       return
     }
-    showToast(`Envio programado para ${scheduledFor.toLocaleString('pt-BR')}`, 'success')
+    const withCampaign = isCampaignSelected() ? ' — a campanha começa nesse horário' : ''
+    showToast(`Envio programado para ${scheduledFor.toLocaleString('pt-BR')}${withCampaign}`, 'success')
+    resetCampaignForm()
     scheduleToggle.checked = false
     scheduleFields.classList.add('hidden')
     dispatchBtn.classList.remove('hidden')

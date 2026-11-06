@@ -20,18 +20,75 @@
       </span>
       <div class="brand-text">
         <h1>Disparo em Massa</h1>
-        <div class="brand-subtitle">Mensagens por etiqueta do WhatsApp Business</div>
       </div>
     </div>
+    <!-- Cabeçalho enxuto: navegação principal no centro, status discreto e menu à direita.
+         Versão, configurações e ações de conexão ficam em menus — só aparecem quando pedidos
+         ou quando exigem ação (atualização pronta, conexão com problema). -->
+    <nav class="header-nav">
+      <button id="whatsapp-btn" class="nav-btn" title="WhatsApp Web dentro do sistema">
+        💬 WhatsApp
+        <span id="wa-web-dot" class="nav-dot hidden" title=""></span>
+        <span id="wa-web-unread" class="nav-count hidden"></span>
+      </button>
+      <button id="campaigns-btn" class="nav-btn">Campanhas</button>
+      <button id="prospecting-btn" class="nav-btn" title="Disparo seguro para leads frios (quem não tem seu número)">🎯 Prospecção</button>
+    </nav>
     <div class="header-actions">
-      <span id="version-badge" class="badge up-to-date" title="Versão instalada">v...</span>
-      <button id="update-now-btn" class="header-btn hidden">Atualizar para versão mais recente</button>
-      <span id="connection-badge" class="badge">verificando...</span>
-      <button id="products-btn" class="header-btn">Produtos</button>
-      <button id="settings-btn" class="header-btn">Configurações de envio</button>
-      <button id="help-btn" class="icon-btn" title="Como usar">?</button>
-      <button id="disconnect-btn" class="header-btn hidden">Desconectar</button>
-      <button id="reconnect-btn" class="header-btn hidden">Reconectar</button>
+      <!-- Sininho: só aparece quando existe versão nova (baixando ou pronta para instalar) -->
+      <div class="menu-wrap hidden" id="update-wrap">
+        <button id="update-bell" class="icon-btn" aria-haspopup="true" aria-expanded="false" title="Nova versão disponível">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          <span class="menu-dot"></span>
+        </button>
+        <div id="update-menu" class="dropdown update-menu hidden" role="menu">
+          <div class="dropdown-section">
+            <div class="dropdown-label">Nova versão</div>
+            <div class="update-title" id="update-title">—</div>
+            <ul class="update-notes hidden" id="update-notes"></ul>
+            <div class="update-progress hidden" id="update-progress"><i></i></div>
+            <div class="update-hint" id="update-hint"></div>
+            <div class="dropdown-actions">
+              <button id="update-now-btn" class="small" disabled>Atualizar agora</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="menu-wrap">
+        <button id="connection-badge" class="status-chip" aria-haspopup="true" aria-expanded="false" title="Status da conexão">verificando...</button>
+        <div id="connection-menu" class="dropdown hidden" role="menu">
+          <div class="dropdown-section">
+            <div class="dropdown-label">WhatsApp dos disparos</div>
+            <div class="dropdown-status" id="conn-dispatch-status">—</div>
+            <div class="dropdown-actions">
+              <button id="disconnect-btn" class="secondary small hidden">Desconectar</button>
+              <button id="reconnect-btn" class="secondary small hidden">Reconectar</button>
+            </div>
+          </div>
+          <div class="dropdown-section">
+            <div class="dropdown-label">WhatsApp Web (aba WhatsApp)</div>
+            <div class="dropdown-status" id="conn-web-status">Não aberto ainda</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="menu-wrap">
+        <button id="main-menu-btn" class="icon-btn" aria-haspopup="true" aria-expanded="false" title="Menu">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+          <span id="menu-update-dot" class="menu-dot hidden"></span>
+        </button>
+        <div id="main-menu" class="dropdown hidden" role="menu">
+          <button id="settings-btn" class="dropdown-item" role="menuitem">⚙️ Configurações de envio</button>
+          <button id="products-btn" class="dropdown-item" role="menuitem">🏷️ Produtos</button>
+          <button id="help-btn" class="dropdown-item" role="menuitem">❓ Como usar</button>
+          <div class="dropdown-sep"></div>
+          <div class="dropdown-about">
+            Disparo em Massa <span id="version-badge">v...</span>
+            <div id="version-detail" class="dropdown-about-detail">Você está na versão mais recente.</div>
+          </div>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -49,6 +106,9 @@
       <p>Abra o WhatsApp Business no celular → Configurações → Aparelhos conectados → Conectar
         um aparelho, e escaneie o código abaixo.</p>
       <img id="qr-image" alt="QR Code de pareamento" />
+      <p class="qr-hint">O código se renova sozinho a cada poucos segundos. Se o celular disser que ele é
+        inválido ou não conseguir conectar, gere um novo:</p>
+      <button type="button" id="refresh-qr-btn" class="secondary small">↻ Gerar novo QR Code</button>
     </section>
 
     <section id="syncing-screen" class="screen hidden">
@@ -73,49 +133,45 @@
     </section>
 
     <section id="main-screen" class="screen hidden">
-      <div class="stats-row">
-        <div class="stat-card">
-          <div class="stat-icon accent-blue">
-            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h8l10 10-8 8L3 11V3z"/><circle cx="7.5" cy="7.5" r="1.3" fill="currentColor" stroke="none"/></svg></span>
-          </div>
-          <div class="stat-value" id="stat-labels-count">–</div>
-          <div class="stat-label">Etiquetas ativas</div>
+      <!-- Painel de início: responde "o que eu faço agora?" (em vez de contadores soltos) -->
+      <div class="home-dash" id="home-dash">
+        <div class="dash-card dash-waiting">
+          <div class="dash-head"><span class="dash-title">💬 Aguardando sua resposta</span><button type="button" class="dash-link" id="dash-open-campaigns">Ver funil →</button></div>
+          <div class="dash-big" id="dash-waiting-count">–</div>
+          <ul class="dash-list" id="dash-waiting-list"></ul>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon accent-green">
-            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="3" x2="10" y2="14"/><polygon points="21 3 14 21 10 14 3 10 21 3"/></svg></span>
-          </div>
-          <div class="stat-value" id="stat-usage-24h">–</div>
-          <div class="stat-label">Envios nas últimas 24h</div>
+        <div class="dash-card">
+          <div class="dash-head"><span class="dash-title">🏆 Resultados (7 dias)</span></div>
+          <div class="dash-big" id="dash-won">–</div>
+          <div class="dash-sub" id="dash-sales-sub"></div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon accent-green">
-            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="8 12 11 15 16 9"/></svg></span>
-          </div>
-          <div class="stat-value" id="stat-success-rate">–</div>
-          <div class="stat-label">Taxa de sucesso</div>
+        <div class="dash-card">
+          <div class="dash-head"><span class="dash-title">📤 Envios hoje</span></div>
+          <div class="dash-big" id="dash-sent">–</div>
+          <div class="dash-meter"><i id="dash-sent-bar"></i></div>
+          <div class="dash-sub" id="dash-sending-sub"></div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon accent-amber">
-            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.4"/><path d="M15 20c0-2.4 1.1-4.4 2.8-5.4"/></svg></span>
-          </div>
-          <div class="stat-value" id="stat-optouts-count">–</div>
-          <div class="stat-label">Contatos que saíram</div>
+        <div class="dash-card dash-health" id="dash-health-card">
+          <div class="dash-head"><span class="dash-title">🛡️ Saúde do número</span></div>
+          <div class="dash-big" id="dash-health">–</div>
+          <div class="dash-sub" id="dash-health-sub"></div>
         </div>
       </div>
 
       <div class="layout">
         <aside id="labels-list">
           <div class="panel-header">
-            <h2 id="labels-panel-title">Etiquetas</h2>
+            <h2 id="labels-panel-title">Destinatários</h2>
             <button id="labels-refresh-btn" class="secondary small">Atualizar</button>
           </div>
 
           <div class="sidebar-tabs">
             <button type="button" class="sidebar-tab active" data-tab="labels">Etiquetas</button>
             <button type="button" class="sidebar-tab" data-tab="allContacts">Todos os contatos</button>
-            <button type="button" class="sidebar-tab" data-tab="coldContacts">Clientes frios</button>
+            <button type="button" class="sidebar-tab hidden" data-tab="coldContacts">Clientes frios</button>
           </div>
+          <p class="sidebar-cold-hint">Lista de números que ainda não têm seu contato? Use
+            <a href="#" class="open-prospecting-link">🎯 Prospecção</a> — com as travas contra bloqueio.</p>
 
           <input type="text" id="labels-search" class="labels-search hidden" placeholder="Buscar etiqueta..." />
           <input type="text" id="all-contacts-search" class="labels-search hidden" placeholder="Buscar contato por nome ou número..." />
@@ -172,31 +228,67 @@
             bloqueio pelo WhatsApp. Prefira lotes menores e mantenha o ritmo de envio em
             "Configurações de envio" dentro da faixa recomendada.
           </p>
-          <h2 id="dispatch-title">Disparar mensagem</h2>
-          <p id="dispatch-count" class="muted"></p>
+          <div class="dispatch-head">
+            <div>
+              <h2 id="dispatch-title">Disparar mensagem</h2>
+              <p id="dispatch-count" class="muted"></p>
+            </div>
+            <button type="button" id="dispatch-close-btn" class="secondary small" title="Desmarcar os destinatários e voltar à tela inicial">← Início</button>
+          </div>
 
-          <label for="message-type-select">Tipo de mensagem</label>
-          <select id="message-type-select">
-            <option value="media">Arquivo/texto</option>
-            <option value="album">Álbum (várias fotos/vídeos)</option>
+          <!-- Tipo de mensagem em cartões que dizem o que o cliente recebe (em vez de um menu com
+               nomes técnicos). O <select> escondido continua sendo a fonte da verdade pro resto do
+               código; "Álbum" deixou de ser um tipo separado: é uma opção dos anexos de "Mensagem". -->
+          <label>O que você quer enviar?</label>
+          <div class="type-cards" id="type-cards" role="radiogroup" aria-label="Tipo de mensagem">
+            <button type="button" class="type-card active" data-type="media" role="radio" aria-checked="true">
+              <span class="tc-icon">💬</span>
+              <span class="tc-title">Mensagem</span>
+              <span class="tc-desc">Texto, com fotos, vídeos, PDF ou áudio se quiser</span>
+            </button>
+            <button type="button" class="type-card" data-type="poll" role="radio" aria-checked="false">
+              <span class="tc-icon">📊</span>
+              <span class="tc-title">Enquete</span>
+              <span class="tc-desc">Uma pergunta com opções para o cliente tocar e votar</span>
+            </button>
+            <button type="button" class="type-card" data-type="location" role="radio" aria-checked="false">
+              <span class="tc-icon">📍</span>
+              <span class="tc-title">Localização</span>
+              <span class="tc-desc">O endereço da sua loja como um pin no mapa</span>
+            </button>
+            <button type="button" class="type-card" data-type="contact" role="radio" aria-checked="false">
+              <span class="tc-icon">👤</span>
+              <span class="tc-title">Seu contato</span>
+              <span class="tc-desc">Um cartão para o cliente salvar seu número com 1 toque</span>
+            </button>
+          </div>
+          <select id="message-type-select" hidden>
+            <option value="media">Mensagem</option>
+            <option value="album">Álbum</option>
             <option value="poll">Enquete</option>
             <option value="location">Localização</option>
-            <option value="contact">Cartão de contato</option>
+            <option value="contact">Seu contato</option>
           </select>
 
           <div id="media-fields">
-            <label>Arquivo (PDF, imagem, vídeo ou áudio) — opcional</label>
+            <label>Fotos, vídeos, PDF ou áudio — opcional (até 10)</label>
             <div id="dropzone" class="dropzone">
-              <span id="dropzone-text">Arraste um arquivo aqui ou clique para selecionar</span>
-              <button id="remove-file-btn" class="remove-file-btn hidden" type="button" title="Remover anexo">&times;</button>
-              <input type="file" id="file-input" accept=".pdf,image/*,video/*,audio/*" hidden />
+              <span id="dropzone-text">Arraste arquivos aqui ou clique para selecionar (pode escolher vários)</span>
+              <button id="remove-file-btn" class="remove-file-btn hidden" type="button" title="Remover todos os anexos">&times;</button>
+              <input type="file" id="file-input" accept=".pdf,image/*,video/*,audio/*" multiple hidden />
             </div>
+            <ul id="attachments-list" class="attachments-list hidden"></ul>
+            <label id="album-toggle-label" class="checkbox-field hidden">
+              <input type="checkbox" id="album-toggle" checked />
+              <span>Mostrar as fotos e vídeos juntos, como álbum (aparecem agrupados numa grade, com a mensagem como legenda)</span>
+            </label>
+            <p id="attachments-hint" class="field-hint hidden">Cada anexo chega como uma mensagem, um atrás do outro, com uma pausa curta entre eles. O texto vai como legenda do primeiro anexo (fora nota de voz). Para cada contato, conta como 1 envio no limite diário.</p>
             <div class="record-audio-row">
               <button type="button" id="record-audio-btn" class="secondary small">🎙️ Gravar áudio</button>
             </div>
             <label id="voice-note-label" class="checkbox-field hidden">
               <input type="checkbox" id="voice-note-toggle" />
-              Enviar como nota de voz (sem legenda — se houver mensagem, ela vai separada, como texto)
+              <span id="voice-note-text">Enviar como nota de voz (sem legenda — se houver mensagem, ela vai separada, como texto)</span>
             </label>
 
             <label class="field-label-row" for="message-input">
@@ -208,7 +300,7 @@
               </span>
             </label>
             <textarea id="message-input" rows="5" placeholder="Ex: Olá! Passando para avisar sobre uma novidade importante para você."></textarea>
-            <p class="field-hint">Dica: use <code>{{nome}}</code> na mensagem para personalizar com o nome de cada contato.</p>
+            <p class="field-hint" id="message-hint">Dica: use <code>{{nome}}</code> na mensagem para personalizar com o nome de cada contato.</p>
           </div>
 
           <div id="album-fields" class="hidden">
@@ -233,6 +325,9 @@
           </div>
 
           <div id="poll-fields" class="hidden">
+            <p class="type-explain">O cliente vê a pergunta com as opções e <strong>toca numa delas para votar</strong> — você
+              acompanha os votos no seu WhatsApp. Ótimo para puxar conversa sem esforço do cliente.
+              <span class="type-example">Ex: "Qual horário prefere para a entrega?", "Qual sabor você quer na próxima fornada?"</span></p>
             <label for="poll-question-input">Pergunta da enquete</label>
             <input type="text" id="poll-question-input" placeholder="Ex: Qual horário prefere?" />
             <label for="poll-options-input">Opções (uma por linha, mínimo 2)</label>
@@ -240,15 +335,36 @@
           </div>
 
           <div id="location-fields" class="hidden">
-            <p class="field-hint" id="location-summary">Nenhuma localização configurada ainda.</p>
-            <button type="button" id="configure-location-btn" class="secondary small">Configurar localização</button>
+            <p class="type-explain">O cliente recebe um <strong>mapa com o pin do seu endereço</strong> e abre a rota no Google
+              Maps ou Waze com um toque.
+              <span class="type-example">Use para: inauguração, mudança de endereço, evento na loja, "venha retirar aqui".</span></p>
+            <div class="type-config">
+              <span class="type-config-icon">📍</span>
+              <span class="type-config-text" id="location-summary">Nenhuma localização configurada ainda.</span>
+              <button type="button" id="configure-location-btn" class="secondary small">Configurar localização</button>
+            </div>
           </div>
 
           <div id="contact-fields" class="hidden">
-            <p class="field-hint" id="contact-card-summary">Nenhum cartão de contato configurado ainda.</p>
-            <button type="button" id="configure-contact-btn" class="secondary small">Configurar cartão de contato</button>
+            <p class="type-explain">O cliente recebe um <strong>cartão com seu nome e número</strong> e salva nos contatos dele
+              com um toque. Quem tem seu número salvo vê suas mensagens normalmente — quem não tem pode
+              receber como "número desconhecido".
+              <span class="type-example">Use para: clientes novos (planilha), primeiro contato, depois de uma venda.</span></p>
+            <div class="type-config">
+              <span class="type-config-icon">👤</span>
+              <span class="type-config-text" id="contact-card-summary">Nenhum cartão configurado ainda.</span>
+              <button type="button" id="configure-contact-btn" class="secondary small">Configurar seu contato</button>
+            </div>
           </div>
 
+          <!-- Opções que quase nunca mudam ficam recolhidas (divulgação progressiva): o resumo
+               mostra o que está ativo sem ocupar a tela. -->
+          <details id="send-options" class="send-options">
+            <summary>
+              <span class="send-options-title">Opções de envio</span>
+              <span id="send-options-summary" class="send-options-summary"></span>
+            </summary>
+            <div class="send-options-body">
           <label for="apply-label-select">Aplicar etiqueta após o envio — opcional</label>
           <select id="apply-label-select">
             <option value="">Nenhuma</option>
@@ -273,6 +389,26 @@
           </label>
 
           <div id="pacing-summary" class="pacing-summary"></div>
+            </div>
+          </details>
+
+          <div class="campaign-box">
+            <label class="checkbox-field">
+              <input type="checkbox" id="campaign-toggle" />
+              <span><strong>Criar como campanha</strong> — follow-up automático para quem não responder e funil de vendas</span>
+            </label>
+            <div id="campaign-fields" class="hidden">
+              <label for="campaign-name-input">Nome da campanha</label>
+              <input type="text" id="campaign-name-input" maxlength="80" placeholder="Ex: Black Friday — clientes antigos" />
+              <p class="field-hint">Quem receber esta mensagem entra no funil da campanha. Quem responder vai
+                sozinho para "Respondeu" e para de receber follow-up.</p>
+              <div id="followup-steps"></div>
+              <button type="button" id="add-followup-btn" class="secondary small">+ Adicionar follow-up</button>
+              <p id="followup-window-hint" class="field-hint" style="margin-top: 10px;"></p>
+              <p class="field-hint">Quer mais opções (modelos prontos por ramo, variáveis como <code>{{cupom}}</code>,
+                horário próprio, etiqueta automática para quem responder)? Use <a href="#" id="open-builder-link">Campanhas → Nova campanha</a>.</p>
+            </div>
+          </div>
 
           <label class="checkbox-field">
             <input type="checkbox" id="schedule-toggle" />
@@ -296,6 +432,42 @@
             <div id="progress-bar"><div id="progress-fill"></div></div>
             <p id="progress-summary"></p>
             <ul id="progress-log"></ul>
+          </div>
+        </section>
+
+        <!-- Tela inicial: ocupa a área central sempre que nenhum destinatário está selecionado
+             (antes ficava em branco). Mostra os caminhos possíveis, o que está em andamento e,
+             para quem está começando, os primeiros passos. Ver public/home.js. -->
+        <section id="home-panel" class="home-panel">
+          <div class="home-hero">
+            <h2>O que você quer fazer agora?</h2>
+            <p>Escolha um caminho abaixo — ou marque etiquetas ou contatos à esquerda para enviar uma mensagem.</p>
+          </div>
+          <div class="home-actions">
+            <button type="button" class="home-action" data-action="send">
+              <span class="ha-icon">📨</span><b>Enviar uma mensagem</b>
+              <span>Para etiquetas ou contatos do seu WhatsApp — agora ou programada.</span>
+            </button>
+            <button type="button" class="home-action" data-action="campaign">
+              <span class="ha-icon">🔁</span><b>Criar campanha</b>
+              <span>Mensagem + lembretes automáticos para quem não responder, com funil de vendas.</span>
+            </button>
+            <button type="button" class="home-action" data-action="prospect">
+              <span class="ha-icon">🎯</span><b>Prospectar leads</b>
+              <span>Lista de planilha para quem ainda não tem seu número, com proteção contra bloqueio.</span>
+            </button>
+            <button type="button" class="home-action" data-action="whatsapp">
+              <span class="ha-icon">💬</span><b>Atender no WhatsApp</b>
+              <span>Responda seus clientes sem sair do sistema.</span>
+            </button>
+          </div>
+          <div class="home-box home-steps hidden" id="home-steps">
+            <h3>Primeiros passos</h3>
+            <ol id="home-steps-list"></ol>
+          </div>
+          <div class="home-columns">
+            <div class="home-box"><h3>Em andamento</h3><ul class="home-list" id="home-running"></ul></div>
+            <div class="home-box"><h3>Últimos envios</h3><ul class="home-list" id="home-recent"></ul></div>
           </div>
         </section>
       </div>
@@ -497,44 +669,211 @@
     </div>
   </div>
 
+  <!-- WhatsApp Web oficial embutido (só no programa instalado — ver electron/main.js) -->
+  <div id="whatsapp-panel" class="whatsapp-panel" aria-hidden="true">
+    <div class="whatsapp-toolbar">
+      <button type="button" id="whatsapp-close-btn" class="secondary small">&larr; Voltar ao painel</button>
+      <button type="button" id="whatsapp-back-campaign-btn" class="secondary small hidden"></button>
+      <span id="whatsapp-status" class="muted"></span>
+      <button type="button" id="whatsapp-reload-btn" class="secondary small">↻ Recarregar</button>
+    </div>
+    <div id="whatsapp-notice" class="whatsapp-notice hidden" role="status"></div>
+    <div id="whatsapp-host" class="whatsapp-host"></div>
+  </div>
+
+  <!-- Prospecção de leads frios (public/prospecting.js) -->
+  <div id="prospects-modal" class="modal-overlay hidden">
+    <div class="modal-card campaigns-card">
+      <div id="pr-list-view">
+        <div class="modal-header">
+          <h2>🎯 Prospecção</h2>
+          <div class="campaigns-header-actions">
+            <button type="button" id="pr-new-btn" class="small">+ Nova lista</button>
+            <button type="button" class="icon-btn pr-close" title="Fechar">&times;</button>
+          </div>
+        </div>
+        <p class="modal-intro">Envio para quem <strong>ainda não tem o seu número salvo</strong> (lista de planilha). É o tipo de
+          envio com mais risco de bloqueio do WhatsApp, por isso aqui as mensagens variam para cada pessoa, o envio é lento e
+          espalhado ao longo dos dias, e para sozinho se aparecer qualquer sinal de problema.</p>
+        <div id="pr-list"></div>
+        <p id="pr-empty" class="empty-state hidden">Nenhuma lista ainda. Clique em "+ Nova lista" e envie sua planilha.</p>
+      </div>
+
+      <div id="pr-wizard-view" class="hidden">
+        <div class="modal-header">
+          <div class="campaign-board-title">
+            <button type="button" id="pr-wizard-cancel" class="secondary small">&larr; Listas</button>
+            <h2>Nova lista de prospecção</h2>
+          </div>
+          <button type="button" class="icon-btn pr-close" title="Fechar">&times;</button>
+        </div>
+        <ol class="builder-steps" id="pr-steps"></ol>
+        <div class="builder-body" id="pr-body"></div>
+        <p id="pr-error" class="notice error hidden"></p>
+        <div class="builder-footer">
+          <button type="button" id="pr-back" class="secondary">Voltar</button>
+          <span id="pr-footer-info" class="muted"></span>
+          <button type="button" id="pr-next">Próximo</button>
+        </div>
+      </div>
+
+      <div id="pr-detail-view" class="hidden">
+        <div class="modal-header">
+          <div class="campaign-board-title">
+            <button type="button" id="pr-detail-back" class="secondary small">&larr; Listas</button>
+            <h2 id="pr-detail-name"></h2>
+            <span id="pr-detail-status" class="campaign-status"></span>
+          </div>
+          <div class="campaigns-header-actions">
+            <button type="button" id="pr-funnel-btn" class="secondary small">Ver funil de respostas</button>
+            <button type="button" id="pr-toggle-btn" class="secondary small"></button>
+            <button type="button" id="pr-delete-btn" class="secondary small danger-text">Excluir</button>
+            <button type="button" class="icon-btn pr-close" title="Fechar">&times;</button>
+          </div>
+        </div>
+        <p id="pr-detail-banner" class="notice confirm hidden"></p>
+        <div id="pr-detail-stats" class="campaign-stats"></div>
+        <div id="pr-detail-progress" class="pr-progress"></div>
+        <div id="pr-detail-filters" class="pr-filters"></div>
+        <div id="pr-detail-table" class="pr-table-wrap"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="campaigns-modal" class="modal-overlay hidden">
+    <div class="modal-card campaigns-card">
+      <!-- Lista de campanhas -->
+      <div id="campaigns-list-view">
+        <div class="modal-header">
+          <h2>Campanhas</h2>
+          <div class="campaigns-header-actions">
+            <button type="button" id="campaign-window-btn" class="secondary small">Horário padrão dos follow-ups</button>
+            <button type="button" id="campaign-new-btn" class="small">+ Nova campanha</button>
+            <button id="campaigns-close-btn" class="icon-btn" title="Fechar">&times;</button>
+          </div>
+        </div>
+        <p class="modal-intro">
+          Uma campanha manda a primeira mensagem e depois os follow-ups sozinhos para quem não responder
+          (com o app aberto, no horário configurado). Quem responde vai para o funil de vendas. Comece por
+          um modelo pronto do seu ramo ou monte do zero em <strong>"+ Nova campanha"</strong>.
+        </p>
+
+        <div id="campaign-window-panel" class="campaign-window-panel hidden">
+          <div class="campaign-window-days" id="campaign-window-days"></div>
+          <div class="campaign-window-hours">
+            <label>Das <input type="time" id="campaign-window-start" /></label>
+            <label>às <input type="time" id="campaign-window-end" /></label>
+            <button type="button" id="campaign-window-save-btn" class="small">Salvar horário</button>
+          </div>
+          <p id="campaign-window-error" class="notice error hidden"></p>
+        </div>
+
+        <div id="campaigns-list"></div>
+        <p id="campaigns-empty" class="empty-state hidden">Nenhuma campanha ainda.</p>
+      </div>
+
+      <!-- Funil de uma campanha -->
+      <div id="campaign-board-view" class="hidden">
+        <div class="modal-header">
+          <div class="campaign-board-title">
+            <button type="button" id="campaign-back-btn" class="secondary small">&larr; Campanhas</button>
+            <h2 id="campaign-board-name"></h2>
+            <span id="campaign-board-status" class="campaign-status"></span>
+          </div>
+          <div class="campaigns-header-actions">
+            <button type="button" id="campaign-toggle-status-btn" class="secondary small"></button>
+            <button type="button" id="campaign-delete-btn" class="secondary small danger-text">Excluir</button>
+            <button id="campaigns-close-btn-2" class="icon-btn" title="Fechar">&times;</button>
+          </div>
+        </div>
+
+        <p id="campaign-board-paused-reason" class="notice confirm hidden"></p>
+
+        <div class="campaign-stats" id="campaign-board-stats"></div>
+        <div class="campaign-steps" id="campaign-board-steps"></div>
+
+        <input type="text" id="campaign-board-search" class="labels-search" placeholder="Buscar contato por nome ou número..." />
+        <div class="kanban" id="campaign-kanban"></div>
+      </div>
+
+      <!-- Assistente: nova campanha -->
+      <div id="campaign-builder-view" class="hidden">
+        <div class="modal-header">
+          <div class="campaign-board-title">
+            <button type="button" id="builder-cancel-btn" class="secondary small">&larr; Campanhas</button>
+            <h2>Nova campanha</h2>
+          </div>
+          <button id="campaigns-close-btn-3" class="icon-btn" title="Fechar">&times;</button>
+        </div>
+        <ol class="builder-steps" id="builder-steps"></ol>
+        <div class="builder-body" id="builder-body"></div>
+        <p id="builder-error" class="notice error hidden"></p>
+        <div class="builder-footer">
+          <button type="button" id="builder-back-btn" class="secondary">Voltar</button>
+          <span id="builder-footer-info" class="muted"></span>
+          <button type="button" id="builder-next-btn">Próximo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="profile-modal" class="modal-overlay hidden">
-    <div class="modal-card">
+    <div class="modal-card profile-card">
       <div class="modal-header">
-        <h2>Cartão de contato e localização</h2>
+        <h2>Seu contato e localização</h2>
         <button id="profile-close-btn" class="icon-btn" title="Fechar">&times;</button>
       </div>
+      <p class="modal-intro">Configure uma vez. É o que o cliente recebe quando você escolhe enviar
+        <strong>"Seu contato"</strong> ou <strong>"Localização"</strong>.</p>
 
-      <p class="modal-intro">
-        Usados pelos tipos de mensagem "Cartão de contato" e "Localização" — configure uma vez,
-        fica salvo pros próximos disparos.
-      </p>
+      <section class="profile-section">
+        <div class="profile-section-head">
+          <span class="profile-section-icon">👤</span>
+          <div><h3>Seu contato</h3><p>O cartão que o cliente salva com um toque.</p></div>
+        </div>
+        <div class="settings-grid">
+          <div class="field">
+            <label for="profile-business-name">Nome que vai aparecer</label>
+            <input type="text" id="profile-business-name" placeholder="Ex: Loja da Maria" maxlength="60" />
+          </div>
+          <div class="field">
+            <label for="profile-business-phone">WhatsApp do negócio</label>
+            <input type="tel" id="profile-business-phone" placeholder="(11) 99999-9999" />
+            <span class="field-hint profile-hint" id="profile-phone-hint">Com DDD. O +55 é colocado sozinho.</span>
+          </div>
+        </div>
+        <div class="profile-preview hidden" id="profile-contact-preview"></div>
+      </section>
 
-      <div class="settings-grid">
-        <div class="field">
-          <label for="profile-business-name">Nome do negócio</label>
-          <input type="text" id="profile-business-name" placeholder="Ex: Empresa X" />
+      <section class="profile-section">
+        <div class="profile-section-head">
+          <span class="profile-section-icon">📍</span>
+          <div><h3>Localização</h3><p>O pin no mapa que abre a rota no Google Maps ou Waze.</p></div>
         </div>
         <div class="field">
-          <label for="profile-business-phone">Telefone (com DDI)</label>
-          <input type="text" id="profile-business-phone" placeholder="+5511999999999" />
+          <label for="profile-maps-link">Link do Google Maps</label>
+          <input type="url" id="profile-maps-link" placeholder="Cole aqui o link da sua loja no Google Maps" />
+          <span class="field-hint profile-hint" id="profile-maps-hint">No Google Maps, procure sua loja → <strong>Compartilhar</strong> → <strong>Copiar link</strong> e cole aqui.</span>
         </div>
-        <div class="field">
-          <label for="profile-location-name">Nome do local — opcional</label>
-          <input type="text" id="profile-location-name" placeholder="Ex: Loja Centro" />
+        <div class="settings-grid" style="margin-top:10px">
+          <div class="field">
+            <label for="profile-location-name">Nome do local <span class="label-optional">opcional</span></label>
+            <input type="text" id="profile-location-name" placeholder="Ex: Loja Centro" />
+          </div>
+          <div class="field">
+            <label for="profile-location-address">Endereço <span class="label-optional">opcional</span></label>
+            <input type="text" id="profile-location-address" placeholder="Ex: Rua Exemplo, 123 — Centro" />
+          </div>
         </div>
-        <div class="field">
-          <label for="profile-location-address">Endereço — opcional</label>
-          <input type="text" id="profile-location-address" placeholder="Rua Exemplo, 123" />
-        </div>
-        <div class="field">
-          <label for="profile-location-lat">Latitude</label>
-          <input type="text" id="profile-location-lat" placeholder="Ex: -23.55052" />
-        </div>
-        <div class="field">
-          <label for="profile-location-lng">Longitude</label>
-          <input type="text" id="profile-location-lng" placeholder="Ex: -46.633308" />
-        </div>
-      </div>
+        <div class="profile-preview hidden" id="profile-location-preview"></div>
+        <details class="profile-advanced">
+          <summary>Prefiro digitar latitude e longitude</summary>
+          <div class="settings-grid" style="margin-top:10px">
+            <div class="field"><label for="profile-location-lat">Latitude</label><input type="text" id="profile-location-lat" placeholder="Ex: -23.55052" /></div>
+            <div class="field"><label for="profile-location-lng">Longitude</label><input type="text" id="profile-location-lng" placeholder="Ex: -46.633308" /></div>
+          </div>
+        </details>
+      </section>
 
       <p id="profile-error" class="notice error hidden"></p>
 
@@ -632,5 +971,11 @@
 
   <script src="emoji-data.js"></script>
   <script src="app.js"></script>
+  <script src="campaign-templates.js"></script>
+  <script src="campaigns.js"></script>
+  <script src="campaign-builder.js"></script>
+  <script src="whatsapp-web.js"></script>
+  <script src="prospecting.js"></script>
+  <script src="home.js"></script>
 </body>
 </html>

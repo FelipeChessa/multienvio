@@ -9,3 +9,17 @@ keys/
 .claude-flow/data/
 .claude-flow/logs/
 .claude-flow/sessions/
+
+# planilhas de teste locais
+testes/
+
+# Contratos com dados de clientes
+contratos/
+
+# ferramentas locais do Claude Code / Ruflo (config e dados da máquina)
+.claude/
+.claude-flow/
+.swarm/
+
+# logs dos scripts do comercial
+marketing/**/*.log

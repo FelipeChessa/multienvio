@@ -95,11 +95,54 @@ async function sendAlbum(sock, jid, albumFiles, message, delayMinMs, delayMaxMs)
   }
 }
 
+// {{nome}} = nome como está salvo no contato; {{primeiro_nome}} = só a primeira palavra
+// ("Maria da Silva" -> "Maria"), que soa bem mais natural numa saudação. Sem nome salvo (ou
+// quando o "nome" é só um número de telefone), os dois viram "cliente".
 function personalizeMessage(message, contactName) {
-  return message.replace(/\{\{\s*nome\s*\}\}/gi, contactName || 'cliente')
+  const cleanName = contactName && /\p{L}/u.test(contactName) ? contactName.trim() : ''
+  const firstName = cleanName ? cleanName.split(/\s+/)[0] : ''
+  return message
+    .replace(/\{\{\s*primeiro_nome\s*\}\}/gi, firstName || 'cliente')
+    .replace(/\{\{\s*nome\s*\}\}/gi, cleanName || 'cliente')
 }
 
-function startDispatch({ labelIds, labelName, message, file, contacts: explicitContacts, messageType, asVoiceNote, pollQuestion, pollOptions, simulateTyping, skipBlocked, markAsRead, applyLabelId, removeLabelId, albumFiles }) {
+// Vários anexos no tipo "Arquivo/texto": cada arquivo vira uma mensagem, com uma pausa curta e
+// aleatória entre eles (como alguém mandando um arquivo atrás do outro). O texto vai como
+// legenda do primeiro arquivo que aceita legenda — nota de voz não aceita; se só houver notas
+// de voz, o texto vai sozinho no final (mesmo comportamento do anexo único).
+async function sendMultipleFiles(sock, jid, files, message, asVoiceNote, profile) {
+  const isVoice = (f) => asVoiceNote && f.mimetype.startsWith('audio/')
+  const captionIdx = message ? files.findIndex((f) => !isVoice(f)) : -1
+  for (let i = 0; i < files.length; i++) {
+    const payloads = buildMessagePayloads({
+      messageType: 'media',
+      message: i === captionIdx ? message : '',
+      file: files[i],
+      asVoiceNote: isVoice(files[i]),
+      profile
+    })
+    // nota de voz sem texto devolve só o áudio; sem legenda, documento/imagem vão sem caption
+    await sendPayloads(sock, jid, payloads.filter((p) => !('text' in p) || p.text))
+    if (i < files.length - 1) await sleep(randomDelay(1200, 3000))
+  }
+  if (message && captionIdx === -1) {
+    await sleep(randomDelay(800, 1800))
+    await sock.sendMessage(jid, { text: message })
+  }
+}
+
+function isBusy() {
+  return activeJobId !== null
+}
+
+// Ganchos opcionais usados pelas campanhas (src/campaigns.js) — o disparo normal não passa nada:
+// - shouldSend(contact): conferido logo antes de cada envio; false pula o contato em silêncio
+//   (ex: ele respondeu enquanto o lote estava em andamento, ou acabou o horário comercial)
+// - onResult(contact, status): chamado depois de cada envio, com 'sent' ou 'failed'
+// - onFinish(summary): chamado uma vez quando o disparo termina, aborta ou dá erro
+function startDispatch({ labelIds, labelName, message, file, files, contacts: explicitContacts, messageType, asVoiceNote, pollQuestion, pollOptions, simulateTyping, skipBlocked, markAsRead, applyLabelId, removeLabelId, albumFiles, shouldSend, onResult, onFinish, messageFor, pacing }) {
+  // `files` (vários anexos) é o novo; `file` (um só) continua aceito por quem já chamava assim
+  const attachments = Array.isArray(files) && files.length > 0 ? files : (file ? [file] : [])
   if (activeJobId) {
     throw new Error('Já existe um disparo em andamento. Aguarde ele terminar antes de iniciar outro.')
   }
@@ -118,7 +161,9 @@ function startDispatch({ labelIds, labelName, message, file, contacts: explicitC
   const jobId = randomUUID()
   activeJobId = jobId
 
-  const settings = store.getSettings()
+  // pacing: ritmo próprio de quem chama (ex: prospecção de leads frios, bem mais lenta); sem
+  // ele, vale o ritmo das Configurações de envio. Limite diário e disjuntor são sempre os globais.
+  const settings = { ...store.getSettings(), ...(pacing || {}) }
   const profile = store.getMessagingProfile()
   const effectiveMessageType = messageType || 'media'
   const delayMinMs = settings.delayMinSec * 1000
@@ -135,9 +180,19 @@ function startDispatch({ labelIds, labelName, message, file, contacts: explicitC
     emitter.emit('event', event)
   }
 
+  const safeCall = (fn, ...args) => {
+    if (typeof fn !== 'function') return
+    try {
+      fn(...args)
+    } catch (err) {
+      console.error('Falha num gancho do disparo:', err.message)
+    }
+  }
+
   const finish = () => {
     job.done = true
     if (activeJobId === jobId) activeJobId = null
+    safeCall(onFinish, job.summary || { aborted: true, reason: 'error' })
   }
 
   ;(async () => {
@@ -197,8 +252,20 @@ function startDispatch({ labelIds, labelName, message, file, contacts: explicitC
         return
       }
 
+      if (typeof shouldSend === 'function') {
+        let allowed = true
+        try {
+          allowed = shouldSend(contact) !== false
+        } catch (err) {
+          console.error('Falha ao conferir contato antes do envio:', err.message)
+        }
+        if (!allowed) continue
+      }
+
       const label = contact.name || contact.jid
-      const personalizedMessage = personalizeMessage(message || '', contact.name)
+      // messageFor(contact): texto próprio por contato (variações da prospecção); senão, o mesmo pra todos
+      const baseMessage = typeof messageFor === 'function' ? (messageFor(contact) ?? message) : message
+      const personalizedMessage = personalizeMessage(baseMessage || '', contact.name)
 
       // Simula digitação antes de enviar — best-effort, não interrompe o envio se falhar.
       if (simulateTyping) {
@@ -217,11 +284,14 @@ function startDispatch({ labelIds, labelName, message, file, contacts: explicitC
           // conta como 1 envio (pro disjuntor/limite diário), mesmo sendo 1+N mensagens no
           // protocolo — é 1 disparo do ponto de vista do usuário.
           await sendAlbum(sock, contact.jid, albumFiles, personalizedMessage, delayMinMs, delayMaxMs)
+        } else if (effectiveMessageType === 'media' && attachments.length > 1) {
+          // vários anexos: também conta como 1 envio (disjuntor/limite diário), como o álbum
+          await sendMultipleFiles(sock, contact.jid, attachments, personalizedMessage, asVoiceNote, profile)
         } else {
           const payloads = buildMessagePayloads({
             messageType: effectiveMessageType,
             message: personalizedMessage,
-            file,
+            file: attachments[0] || null,
             asVoiceNote,
             pollQuestion,
             pollOptions,
@@ -257,11 +327,13 @@ function startDispatch({ labelIds, labelName, message, file, contacts: explicitC
         }
 
         store.logSend(jobId, logLabelId, effectiveLabelName, contact.jid, contact.name, 'sent', null)
+        safeCall(onResult, contact, 'sent')
         emit({ type: 'progress', jid: contact.jid, name: label, status: 'sent', sent, failed, total: dispatchContacts.length })
       } catch (err) {
         failed += 1
         consecutiveFailures += 1
         store.logSend(jobId, logLabelId, effectiveLabelName, contact.jid, contact.name, 'failed', String(err?.message || err))
+        safeCall(onResult, contact, 'failed')
         emit({ type: 'progress', jid: contact.jid, name: label, status: 'failed', error: String(err?.message || err), sent, failed, total: dispatchContacts.length })
       }
 
@@ -301,6 +373,7 @@ function startDispatch({ labelIds, labelName, message, file, contacts: explicitC
     finish()
   })().catch((err) => {
     emit({ type: 'error', error: String(err?.message || err) })
+    job.summary = { aborted: true, reason: 'error', error: String(err?.message || err) }
     finish()
   })
 
@@ -319,4 +392,4 @@ function subscribeToJob(jobId, onEvent) {
   return () => job.emitter.off('event', handler)
 }
 
-export { startDispatch, subscribeToJob }
+export { startDispatch, subscribeToJob, isBusy, sendMultipleFiles }

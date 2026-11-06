@@ -4,7 +4,7 @@
 // endereço, e não existe janela preta de terminal — fechar a janela só minimiza para a bandeja,
 // e sair de verdade é pelo ícone da bandeja (como qualquer app de mensagens de verdade).
 
-import { app, BrowserWindow, Tray, Menu, nativeImage } from 'electron'
+import { app, BrowserWindow, Tray, Menu, Notification, nativeImage, shell, session } from 'electron'
 import electronUpdaterPkg from 'electron-updater'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -21,6 +21,21 @@ const ICON_PATH = path.join(__dirname, '..', 'build', 'icon.ico')
 
 let mainWindow = null
 let tray = null
+
+// Só para desenvolvimento/testes: roda o app com outra pasta de dados (auth/, data/, sessão do
+// WhatsApp Web), sem misturar com a instalação de verdade do usuário.
+if (process.env.DISPARO_USER_DATA_DIR) {
+  app.setPath('userData', process.env.DISPARO_USER_DATA_DIR)
+}
+
+// `npm run app:teste`: abre a janela do programa usando os dados do repositório (auth/ e data/,
+// os mesmos do `node src/server.js`), para testar o WhatsApp embutido com as campanhas de teste.
+// A sessão do WhatsApp Web fica numa pasta própria de caminho curto (caminhos longos quebram o
+// banco de dados dele no Windows). Nunca vale no programa instalado.
+const USE_PROJECT_DATA = !app.isPackaged && process.argv.includes('--dados-do-projeto')
+if (USE_PROJECT_DATA && !process.env.DISPARO_USER_DATA_DIR) {
+  app.setPath('userData', path.join(process.env.LOCALAPPDATA || app.getPath('temp'), 'DisparoTeste'))
+}
 
 const gotLock = app.requestSingleInstanceLock()
 
@@ -41,8 +56,9 @@ if (!gotLock) {
     // define onde ficam auth/ e data/ ANTES de importar o servidor — dentro do app
     // empacotado, o código roda de um lugar que pode não ser gravável (asar ou Program
     // Files), então usamos a pasta de dados do usuário de verdade do Windows
-    process.env.ELECTRON_USER_DATA_DIR = app.getPath('userData')
+    if (!USE_PROJECT_DATA) process.env.ELECTRON_USER_DATA_DIR = app.getPath('userData')
     await import('../src/server.js')
+    setupWhatsAppWeb()
     createWindow()
     createTray()
     setupAutoUpdater()
@@ -69,17 +85,102 @@ function createWindow() {
     backgroundColor: '#eef1f5',
     webPreferences: {
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      webviewTag: true // aba "WhatsApp": o WhatsApp Web oficial embutido (ver setupWhatsAppWeb)
     }
   })
 
   mainWindow.loadURL(`http://localhost:${PORT}`)
+
+  // A única <webview> permitida é a do WhatsApp Web, na sessão própria dela, sem nenhum
+  // acesso a Node — mesmo que algo na página tente criar outra apontando pra outro lugar.
+  mainWindow.webContents.on('will-attach-webview', (event, webPreferences, params) => {
+    if (!isWhatsAppUrl(params.src) || params.partition !== WHATSAPP_PARTITION) {
+      event.preventDefault()
+      return
+    }
+    delete webPreferences.preload
+    webPreferences.nodeIntegration = false
+    webPreferences.contextIsolation = true
+    webPreferences.sandbox = true
+  })
+
+  // Links externos (ex: "Abrir conversa" no funil de campanhas, que aponta pra wa.me) abrem no
+  // navegador padrão do usuário, não numa janela nova do próprio app.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url) && !url.startsWith(`http://localhost:${PORT}`)) {
+      shell.openExternal(url)
+    }
+    return { action: 'deny' }
+  })
 
   mainWindow.on('close', (event) => {
     if (!app.isQuitting) {
       event.preventDefault()
       mainWindow.hide()
     }
+  })
+}
+
+// ===== WhatsApp Web embutido (aba "WhatsApp") =====
+//
+// É o WhatsApp Web oficial (web.whatsapp.com) dentro do app, numa <webview> — não recriamos
+// nada. Ele é mais um "aparelho conectado" no celular (o disparo já é um; o WhatsApp permite
+// até 4), com sessão própria e persistente: escaneia o QR uma vez e fica logado.
+
+const WHATSAPP_PARTITION = 'persist:whatsapp'
+
+function isWhatsAppUrl(url) {
+  try {
+    const { protocol, hostname } = new URL(url)
+    return protocol === 'https:' && (hostname === 'whatsapp.com' || hostname.endsWith('.whatsapp.com') || hostname.endsWith('.whatsapp.net'))
+  } catch {
+    return false
+  }
+}
+
+function setupWhatsAppWeb() {
+  const waSession = session.fromPartition(WHATSAPP_PARTITION)
+
+  // O WhatsApp Web só aceita navegadores que ele reconhece — com o "Electron/30" no user agent
+  // ele pede pra "atualizar o Chrome". Usamos o mesmo Chromium que já vem no Electron, só
+  // sem a marca do Electron.
+  waSession.setUserAgent(
+    `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${process.versions.chrome} Safari/537.36`
+  )
+
+  // Libera só o que o WhatsApp Web usa: notificações de mensagem nova, microfone/câmera (nota
+  // de voz, foto), copiar pra área de transferência e — sem esses dois ele mostra "erro no
+  // banco de dados do seu navegador" e não gera o QR — armazenamento persistente (guarda a
+  // sessão logada) e sincronização em segundo plano. Todo o resto é negado.
+  const allowed = new Set([
+    'notifications', 'media', 'clipboard-sanitized-write', 'clipboard-read', 'fullscreen',
+    'persistent-storage', 'background-sync'
+  ])
+  waSession.setPermissionRequestHandler((webContents, permission, callback, details) => {
+    const ok = allowed.has(permission) && isWhatsAppUrl(details.requestingUrl || webContents.getURL())
+    if (process.env.DISPARO_DEBUG_PERMISSIONS) console.log('[whatsapp] pedido de permissão:', permission, ok)
+    callback(ok)
+  })
+  waSession.setPermissionCheckHandler((webContents, permission, requestingOrigin) => {
+    const ok = allowed.has(permission) && isWhatsAppUrl(requestingOrigin)
+    if (process.env.DISPARO_DEBUG_PERMISSIONS) console.log('[whatsapp] checagem de permissão:', permission, ok)
+    return ok
+  })
+
+  // Links clicados dentro das conversas (sites, Google Maps, etc.) abrem no navegador padrão,
+  // nunca dentro da aba do WhatsApp nem numa janela solta do app.
+  app.on('web-contents-created', (event, contents) => {
+    if (contents.getType() !== 'webview') return
+    contents.setWindowOpenHandler(({ url }) => {
+      if (/^https?:\/\//i.test(url)) shell.openExternal(url)
+      return { action: 'deny' }
+    })
+    contents.on('will-navigate', (navEvent, url) => {
+      if (isWhatsAppUrl(url)) return
+      navEvent.preventDefault()
+      if (/^https?:\/\//i.test(url)) shell.openExternal(url)
+    })
   })
 }
 
@@ -109,13 +210,12 @@ function refreshTrayMenu() {
     { type: 'separator' },
     ...(updateReadyToInstall
       ? [{
-          label: 'Reiniciar para atualizar',
+          label: 'Atualizar agora',
           click: () => {
-            app.isQuitting = true
-            autoUpdater.quitAndInstall()
+            try { updateState.requestInstall() } catch (err) { console.error('[autoUpdater]', err.message) }
           }
         }]
-      : [{ label: 'Verificar atualizações', click: () => autoUpdater.checkForUpdatesAndNotify().catch(() => {}) }]),
+      : [{ label: 'Verificar atualizações', click: () => autoUpdater.checkForUpdates().catch(() => {}) }]),
     { type: 'separator' },
     {
       label: 'Sair',
@@ -143,7 +243,9 @@ function setupAutoUpdater() {
     onCheck: () => autoUpdater.checkForUpdates(),
     onInstall: () => {
       app.isQuitting = true
-      autoUpdater.quitAndInstall()
+      // silencioso (sem abrir o assistente de instalação de novo, mantém a pasta escolhida) e
+      // reabre o programa sozinho já na versão nova
+      autoUpdater.quitAndInstall(true, true)
     }
   })
 
@@ -155,16 +257,39 @@ function setupAutoUpdater() {
   })
   autoUpdater.on('update-available', (info) => {
     console.log('[autoUpdater] atualização disponível:', info.version)
-    updateState.setState({ checking: false, updateAvailable: true, latestVersion: info.version })
+    updateState.setState({
+      checking: false,
+      updateAvailable: true,
+      latestVersion: info.version,
+      releaseNotes: updateState.notesToText(info.releaseNotes),
+      progress: 0
+    })
+  })
+  autoUpdater.on('download-progress', (p) => {
+    updateState.setState({ progress: Math.round(p.percent || 0) })
   })
   autoUpdater.on('update-downloaded', (info) => {
-    console.log('[autoUpdater] atualização baixada, será instalada ao sair:', info.version)
+    console.log('[autoUpdater] atualização baixada, pronta para instalar:', info.version)
     updateReadyToInstall = true
-    updateState.setState({ downloaded: true })
+    updateState.setState({ downloaded: true, progress: 100, latestVersion: info.version })
     refreshTrayMenu()
+    // aviso do Windows (aparece mesmo com o programa só na bandeja); clicar abre a janela
+    if (Notification.isSupported()) {
+      const n = new Notification({
+        title: `Nova versão do Disparo em Massa (v${info.version})`,
+        body: 'Clique no sininho 🔔 no topo do programa e em "Atualizar agora". Leva alguns segundos.',
+        icon: ICON_PATH
+      })
+      n.on('click', () => {
+        if (!mainWindow) return
+        mainWindow.show()
+        mainWindow.focus()
+      })
+      n.show()
+    }
   })
 
-  const check = () => autoUpdater.checkForUpdatesAndNotify().catch((err) => console.error('[autoUpdater] falha ao checar atualização:', err.message))
+  const check = () => autoUpdater.checkForUpdates().catch((err) => console.error('[autoUpdater] falha ao checar atualização:', err.message))
   check()
   setInterval(check, 4 * 60 * 60 * 1000) // o app fica rodando na bandeja por dias — reconfere periodicamente
 }

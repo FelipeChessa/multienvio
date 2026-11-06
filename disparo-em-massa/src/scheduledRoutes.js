@@ -2,8 +2,9 @@ import express from 'express'
 import multer from 'multer'
 import * as store from './db.js'
 import * as license from './license.js'
-import { convertWebmToOggOpus } from './audio.js'
+import { prepareAttachments, MAX_ATTACHMENTS } from './attachments.js'
 import { scheduleMessage, cancelScheduledMessage } from './scheduler.js'
+import { parseCampaignInput, persistCampaignInput, MAX_FOLLOWUPS } from './campaigns.js'
 
 // Rotas de mensagem agendada, num router separado pra não inchar mais src/server.js. A
 // validação aqui espelha a de POST /api/dispatch (mesmos tipos de mensagem, mesmas regras) —
@@ -12,7 +13,9 @@ const MAX_ALBUM_FILES = 5
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 30 * 1024 * 1024 } })
 const uploadFiles = upload.fields([
   { name: 'file', maxCount: 1 },
-  { name: 'files', maxCount: MAX_ALBUM_FILES }
+  { name: 'attachments', maxCount: MAX_ATTACHMENTS },
+  { name: 'files', maxCount: MAX_ALBUM_FILES },
+  { name: 'followupFiles', maxCount: MAX_FOLLOWUPS }
 ])
 
 const router = express.Router()
@@ -47,8 +50,9 @@ router.post('/api/scheduled', uploadFiles, (req, res) => {
     return res.status(400).json({ error: 'Escolha um horário no futuro.' })
   }
 
-  if (messageType === 'media' && (!message || !message.trim())) {
-    return res.status(400).json({ error: 'Mensagem é obrigatória.' })
+  const hasAttachments = (req.files?.file?.length || 0) + (req.files?.attachments?.length || 0) > 0
+  if (messageType === 'media' && (!message || !message.trim()) && !hasAttachments) {
+    return res.status(400).json({ error: 'Escreva a mensagem ou anexe um arquivo.' })
   }
 
   let pollQuestion = null
@@ -122,14 +126,17 @@ router.post('/api/scheduled', uploadFiles, (req, res) => {
     }
   }
 
+  let campaignInput = null
+  try {
+    campaignInput = parseCampaignInput(req.body, req.files).input
+  } catch (err) {
+    return res.status(400).json({ error: err.message })
+  }
+
   // mesma remuxagem de nota de voz gravada que POST /api/dispatch faz (ver src/audio.js) —
   // feita agora, na criação do agendamento, não no disparo futuro, pra já persistir o arquivo
   // final certo em disco.
-  let file = req.files?.file?.[0] || null
-  if (file && asVoiceNote && file.mimetype.startsWith('audio/webm')) {
-    const ogg = convertWebmToOggOpus(file.buffer)
-    if (ogg) file = { ...file, buffer: ogg, mimetype: 'audio/ogg; codecs=opus' }
-  }
+  const files = prepareAttachments(req.files, asVoiceNote)
 
   try {
     const entry = scheduleMessage({
@@ -147,8 +154,11 @@ router.post('/api/scheduled', uploadFiles, (req, res) => {
       markAsRead,
       applyLabelId,
       removeLabelId,
-      file,
-      albumFiles
+      files,
+      albumFiles,
+      // a campanha só é criada quando o envio sair de fato (src/scheduler.js); até lá os
+      // anexos dos follow-ups ficam gravados em disco junto com o agendamento
+      campaign: campaignInput ? persistCampaignInput(campaignInput) : null
     })
     res.json({ ok: true, scheduled: entry })
   } catch (err) {

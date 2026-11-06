@@ -16,11 +16,33 @@ let state = {
   updateAvailable: false,
   latestVersion: null,
   downloaded: false,
+  progress: 0, // % do download da versão nova
+  releaseNotes: '', // "o que mudou", vem do texto do release no GitHub (build/release-notes.md)
   error: null
 }
 
 let checkHandler = null
 let installHandler = null
+let busyCheck = () => null // devolve um texto quando não dá pra fechar o programa agora
+
+// O texto do release vem do GitHub como HTML (ou lista, em atualizações que pulam versões).
+// Vira texto simples, uma novidade por linha, para a UI mostrar com segurança.
+export function notesToText(notes) {
+  if (!notes) return ''
+  const raw = Array.isArray(notes) ? notes.map((n) => n?.note || '').join('\n') : String(notes)
+  return raw
+    .replace(/<\/(p|li|h\d|div)>|<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .split('\n').map((l) => l.replace(/^\s*[-*•]\s*/, '').trim()).filter(Boolean)
+    .slice(0, 12)
+    .join('\n')
+    .slice(0, 1500)
+}
+
+export function setBusyCheck(fn) {
+  busyCheck = fn
+}
 
 export function getState() {
   return { ...state }
@@ -43,5 +65,7 @@ export function requestCheck() {
 export function requestInstall() {
   if (!installHandler) throw new Error('Atualização não disponível neste modo (rode o app instalado, não node src/server.js).')
   if (!state.downloaded) throw new Error('A atualização ainda não terminou de baixar.')
+  const busy = busyCheck()
+  if (busy) throw new Error(busy)
   return installHandler()
 }

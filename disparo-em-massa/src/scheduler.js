@@ -3,6 +3,7 @@ import * as store from './db.js'
 import * as whatsapp from './whatsapp.js'
 import { startDispatch } from './sender.js'
 import * as scheduledFiles from './scheduledFiles.js'
+import { createCampaign, deleteCampaign, discardPersistedInput, initialDispatchHooks, describeInitialMessage } from './campaigns.js'
 
 // Se o app ficou fechado e o horário agendado já passou há mais que isso quando reabre, não
 // dispara sozinho um disparo potencialmente muito atrasado — marca como falho e deixa o
@@ -18,9 +19,20 @@ function armTimer(entry) {
   timers.set(entry.id, timer)
 }
 
+function attachmentRefsOf(payload) {
+  if (Array.isArray(payload.attachmentRefs)) return payload.attachmentRefs.filter(Boolean)
+  return payload.fileRef ? [payload.fileRef] : []
+}
+
 function cleanupFiles(entry) {
-  scheduledFiles.deleteFile(entry.payload.fileRef)
+  for (const ref of attachmentRefsOf(entry.payload)) scheduledFiles.deleteFile(ref)
   for (const ref of entry.payload.albumFileRefs || []) scheduledFiles.deleteFile(ref)
+}
+
+// Anexos dos follow-ups de uma campanha agendada que não chegou a ser criada (cancelada ou
+// falhou antes de sair). Se a campanha foi criada, os anexos passam a ser dela e ficam.
+function cleanupCampaignFiles(entry) {
+  if (entry.payload.campaign) discardPersistedInput(entry.payload.campaign)
 }
 
 function fire(id) {
@@ -32,13 +44,28 @@ function fire(id) {
     whatsapp.getSock()
   } catch (err) {
     cleanupFiles(entry)
+    cleanupCampaignFiles(entry)
     store.updateScheduledMessage(id, { status: 'failed', error: 'WhatsApp desconectado no horário agendado: ' + err.message })
     return
   }
 
   const { payload } = entry
+  // agendamentos antigos guardavam um anexo só em `fileRef`
+  const files = attachmentRefsOf(payload).map((ref) => scheduledFiles.readFile(ref))
+  const file = files[0] || null
+  const albumFiles = (payload.albumFileRefs || []).map((ref) => scheduledFiles.readFile(ref))
+
+  let campaign = null
+  if (payload.campaign) {
+    campaign = createCampaign(payload.campaign, {
+      origin: payload.labelName || (payload.contacts ? `${payload.contacts.length} contato(s) selecionado(s)` : null),
+      initialPreview: describeInitialMessage(payload.messageType, payload.message, payload.pollQuestion, file, albumFiles, files.length)
+    })
+  }
+
   try {
     startDispatch({
+      ...(campaign ? initialDispatchHooks(campaign.id) : {}),
       labelIds: payload.labelIds,
       labelName: payload.labelName,
       contacts: payload.contacts,
@@ -52,11 +79,18 @@ function fire(id) {
       markAsRead: payload.markAsRead,
       applyLabelId: payload.applyLabelId,
       removeLabelId: payload.removeLabelId,
-      file: scheduledFiles.readFile(payload.fileRef),
-      albumFiles: (payload.albumFileRefs || []).map((ref) => scheduledFiles.readFile(ref))
+      files,
+      albumFiles
     })
-    store.updateScheduledMessage(id, { status: 'sent' })
+    store.updateScheduledMessage(id, { status: 'sent', campaignId: campaign?.id || null })
   } catch (err) {
+    if (campaign) {
+      try {
+        deleteCampaign(campaign.id) // apaga a campanha vazia e os anexos dos follow-ups
+      } catch {
+        // já não existe
+      }
+    }
     store.updateScheduledMessage(id, { status: 'failed', error: err.message })
   }
   cleanupFiles(entry)
@@ -86,8 +120,11 @@ export function scheduleMessage(input) {
       markAsRead: input.markAsRead,
       applyLabelId: input.applyLabelId,
       removeLabelId: input.removeLabelId,
-      fileRef: scheduledFiles.storeFile(input.file),
-      albumFileRefs: (input.albumFiles || []).map((f) => scheduledFiles.storeFile(f))
+      // vários anexos (`files`) ou um só (`file`, ainda usado pelo assistente de campanhas)
+      attachmentRefs: (input.files && input.files.length ? input.files : (input.file ? [input.file] : []))
+        .map((f) => scheduledFiles.storeFile(f)),
+      albumFileRefs: (input.albumFiles || []).map((f) => scheduledFiles.storeFile(f)),
+      campaign: input.campaign || null
     }
   }
   store.addScheduledMessage(entry)
@@ -103,6 +140,7 @@ export function cancelScheduledMessage(id) {
   if (timer) clearTimeout(timer)
   timers.delete(id)
   cleanupFiles(entry)
+  cleanupCampaignFiles(entry)
   store.removeScheduledMessage(id)
 }
 
@@ -115,6 +153,7 @@ export function initScheduler() {
     const due = new Date(entry.scheduledFor).getTime()
     if (due < now - GRACE_MS) {
       cleanupFiles(entry)
+      cleanupCampaignFiles(entry)
       store.updateScheduledMessage(entry.id, { status: 'failed', error: 'O app estava fechado quando o horário agendado chegou.' })
       continue
     }

@@ -84,8 +84,25 @@ function emptyState() {
     messagingProfile: buildDefaultMessagingProfile(),
     scheduledMessages: [],
     templates: [],
-    products: []
+    products: [],
+    campaigns: [],
+    prospects: [],
+    campaignSettings: buildDefaultCampaignSettings()
   }
+}
+
+// Janela em que os follow-ups automáticos das campanhas podem sair (horário local do
+// computador). days usa o padrão do JS: 0 = domingo ... 6 = sábado.
+function buildDefaultCampaignSettings() {
+  return {
+    sendWindow: { days: [1, 2, 3, 4, 5, 6], start: '09:00', end: '19:00' }
+  }
+}
+
+function mergeCampaignSettings(saved) {
+  const defaults = buildDefaultCampaignSettings()
+  if (!saved || typeof saved !== 'object') return defaults
+  return { ...defaults, ...saved, sendWindow: { ...defaults.sendWindow, ...(saved.sendWindow || {}) } }
 }
 
 function loadState() {
@@ -108,7 +125,10 @@ function loadState() {
         messagingProfile: profile,
         scheduledMessages: parsed.scheduledMessages || [],
         templates: parsed.templates || [],
-        products: parsed.products || []
+        products: parsed.products || [],
+        campaigns: parsed.campaigns || [],
+        prospects: parsed.prospects || [],
+        campaignSettings: mergeCampaignSettings(parsed.campaignSettings)
       }
     }
   } catch (err) {
@@ -184,11 +204,40 @@ function applyAssociation(association, type) {
   persist()
 }
 
-function upsertContact(jid, name) {
+// savedName = nome salvo na agenda do celular; pushName = nome que a própria pessoa colocou no
+// WhatsApp. `name` continua existindo (agenda primeiro) para quem já usava o campo.
+// undefined = "não veio nesta atualização" (contacts.update é parcial), então mantém o anterior.
+function upsertContact(jid, savedName, pushName) {
   if (!jid) return
-  const existing = state.contacts[jid]
-  state.contacts[jid] = { jid, name: name || existing?.name || null }
+  const existing = state.contacts[jid] || {}
+  const saved = savedName !== undefined ? (savedName || null) : (existing.savedName ?? null)
+  const push = pushName !== undefined ? (pushName || null) : (existing.pushName ?? null)
+  const name = saved || push || existing.name || null
+  if (existing.jid && existing.savedName === saved && existing.pushName === push && existing.name === name) return
+  state.contacts[jid] = { jid, name, savedName: saved, pushName: push }
   persist()
+}
+
+// Nome e etiquetas de uma pessoa, olhando todos os jids dela (número e LID).
+function getContactInfo(jids) {
+  const list = (jids || []).filter(Boolean)
+  let savedName = null
+  let pushName = null
+  let name = null
+  for (const jid of list) {
+    const c = state.contacts[jid]
+    if (!c) continue
+    savedName = savedName || c.savedName || null
+    pushName = pushName || c.pushName || null
+    name = name || c.name || null
+  }
+  const keys = new Set(list)
+  const labelIds = new Set(state.associations.filter((a) => keys.has(a.chatId)).map((a) => a.labelId))
+  const labels = [...labelIds]
+    .map((id) => state.labels[id])
+    .filter((l) => l && !l.deleted)
+    .map((l) => ({ id: l.id, name: l.name, color: l.color }))
+  return { savedName, pushName, name, labels }
 }
 
 function listLabels() {
@@ -396,6 +445,7 @@ function listSendLogsForExport() {
     .slice()
     .reverse()
     .map((l) => ({
+      jobId: l.jobId, // agrupa por disparo na tela inicial ("últimos envios"); o CSV não usa
       createdAt: l.createdAt,
       labelName: l.labelName,
       name: l.name,
@@ -472,10 +522,78 @@ function makeCrud(collectionName) {
 const templatesCrud = makeCrud('templates')
 const productsCrud = makeCrud('products')
 
+// Campanhas (follow-up automático + funil de vendas) — a lógica fica em src/campaigns.js.
+// Aqui só a persistência. As campanhas são mutadas no lugar por campaigns.js (contatos mudam
+// de etapa o tempo todo); depois de mutar, ele chama saveCampaigns() pra agendar a escrita.
+function listCampaigns() {
+  return state.campaigns
+}
+
+function getCampaign(id) {
+  return state.campaigns.find((c) => c.id === id) || null
+}
+
+function addCampaign(campaign) {
+  state.campaigns.push(campaign)
+  persist()
+  return campaign
+}
+
+function removeCampaign(id) {
+  const idx = state.campaigns.findIndex((c) => c.id === id)
+  if (idx === -1) return null
+  const [removed] = state.campaigns.splice(idx, 1)
+  persist()
+  return removed
+}
+
+// Listas de prospecção (leads frios) — lógica em src/prospecting.js. Mesmo padrão das campanhas:
+// prospecting.js muta no lugar e chama saveProspects() pra agendar a escrita.
+function listProspects() {
+  return state.prospects
+}
+
+function getProspect(id) {
+  return state.prospects.find((p) => p.id === id) || null
+}
+
+function addProspect(prospect) {
+  state.prospects.push(prospect)
+  persist()
+  return prospect
+}
+
+function removeProspect(id) {
+  const idx = state.prospects.findIndex((p) => p.id === id)
+  if (idx === -1) return null
+  const [removed] = state.prospects.splice(idx, 1)
+  persist()
+  return removed
+}
+
+function saveProspects() {
+  persist()
+}
+
+function saveCampaigns() {
+  persist()
+}
+
+function getCampaignSettings() {
+  return JSON.parse(JSON.stringify(state.campaignSettings))
+}
+
+function updateCampaignSettings(partial) {
+  state.campaignSettings = mergeCampaignSettings({ ...state.campaignSettings, ...partial })
+  persist()
+  return getCampaignSettings()
+}
+
 export {
   upsertLabel,
   applyAssociation,
   upsertContact,
+  getContactInfo,
   listLabels,
   listContactsForLabel,
   listContactsForLabels,
@@ -500,5 +618,17 @@ export {
   updateScheduledMessage,
   removeScheduledMessage,
   templatesCrud,
-  productsCrud
+  productsCrud,
+  listCampaigns,
+  getCampaign,
+  addCampaign,
+  removeCampaign,
+  saveCampaigns,
+  listProspects,
+  getProspect,
+  addProspect,
+  removeProspect,
+  saveProspects,
+  getCampaignSettings,
+  updateCampaignSettings
 }

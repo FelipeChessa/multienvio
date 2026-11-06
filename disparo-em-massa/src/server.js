@@ -8,7 +8,7 @@ import multer from 'multer'
 import * as whatsapp from './whatsapp.js'
 import * as store from './db.js'
 import * as license from './license.js'
-import { startDispatch, subscribeToJob } from './sender.js'
+import { startDispatch, subscribeToJob, isBusy } from './sender.js'
 import { parseSpreadsheetRows } from './spreadsheet.js'
 import { normalizePhoneCandidates } from './phone.js'
 import { convertWebmToOggOpus } from './audio.js'
@@ -17,6 +17,12 @@ import scheduledRoutes from './scheduledRoutes.js'
 import { initScheduler } from './scheduler.js'
 import templateRoutes from './templateRoutes.js'
 import productRoutes from './productRoutes.js'
+import campaignRoutes from './campaignRoutes.js'
+import prospectRoutes from './prospectRoutes.js'
+import dashboardRoutes from './dashboardRoutes.js'
+import { initProspecting } from './prospecting.js'
+import { prepareAttachments, MAX_ATTACHMENTS } from './attachments.js'
+import { initCampaigns, parseCampaignInput, persistCampaignInput, createCampaign, deleteCampaign, initialDispatchHooks, describeInitialMessage, MAX_FOLLOWUPS } from './campaigns.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -25,7 +31,9 @@ const MAX_ALBUM_FILES = 5
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 30 * 1024 * 1024 } })
 const uploadDispatchFiles = upload.fields([
   { name: 'file', maxCount: 1 },
-  { name: 'files', maxCount: MAX_ALBUM_FILES }
+  { name: 'attachments', maxCount: MAX_ATTACHMENTS },
+  { name: 'files', maxCount: MAX_ALBUM_FILES },
+  { name: 'followupFiles', maxCount: MAX_FOLLOWUPS }
 ])
 
 let whatsappStarted = false
@@ -44,10 +52,17 @@ app.use(express.static(path.join(__dirname, '..', 'public')))
 app.use(scheduledRoutes)
 app.use(templateRoutes)
 app.use(productRoutes)
+app.use(campaignRoutes)
+app.use(prospectRoutes)
+app.use(dashboardRoutes)
 
 // rearma os agendamentos pendentes salvos em data/app.json — precisa vir depois que o app
 // (express) já existe mas independe de licença/conexão WhatsApp (a checagem é no disparo)
 initScheduler()
+// liga a detecção de respostas e a fila de follow-ups das campanhas
+initCampaigns()
+// envio gota a gota das listas de prospecção (leads frios)
+initProspecting()
 
 app.get('/api/license/status', (req, res) => {
   res.json(license.getStatus())
@@ -75,6 +90,9 @@ app.get('/api/status', (req, res) => {
 app.get('/api/app-version', (req, res) => {
   res.json(updateState.getState())
 })
+
+// Atualizar fecha o programa: nunca no meio de um envio (disparo, follow-up ou prospecção).
+updateState.setBusyCheck(() => (isBusy() ? 'Tem um envio em andamento. Atualize quando ele terminar.' : null))
 
 app.post('/api/app-version/check', (req, res) => {
   try {
@@ -327,6 +345,28 @@ app.put('/api/messaging-profile', (req, res) => {
   res.json(store.updateMessagingProfile(req.body || {}))
 })
 
+// Link curto do Google Maps (maps.app.goo.gl/...) não tem as coordenadas no texto — só depois
+// do redirecionamento. Aqui seguimos o redirecionamento e devolvemos o endereço final, para a
+// tela tirar a latitude/longitude dele. Só aceita domínios do Google Maps.
+const MAPS_HOSTS = /^(maps\.app\.goo\.gl|goo\.gl|maps\.google\.[a-z.]+|(www\.)?google\.[a-z.]+)$/i
+app.get('/api/resolve-maps-link', async (req, res) => {
+  let url
+  try {
+    url = new URL(String(req.query.url || ''))
+  } catch {
+    return res.status(400).json({ error: 'Link inválido.' })
+  }
+  if (url.protocol !== 'https:' || !MAPS_HOSTS.test(url.hostname)) {
+    return res.status(400).json({ error: 'Use um link do Google Maps.' })
+  }
+  try {
+    const response = await fetch(url.href, { redirect: 'follow', signal: AbortSignal.timeout(8000) })
+    res.json({ finalUrl: response.url })
+  } catch {
+    res.status(502).json({ error: 'Não consegui abrir esse link agora. Confira a internet ou cole o link completo.' })
+  }
+})
+
 app.post('/api/dispatch', uploadDispatchFiles, (req, res) => {
   if (!license.isActivated()) {
     return res.status(403).json({ error: 'Licença não ativada.' })
@@ -348,8 +388,9 @@ app.post('/api/dispatch', uploadDispatchFiles, (req, res) => {
 
   // enquete/localização/cartão de contato não têm um "texto livre" obrigatório — cada um tem
   // sua própria validação abaixo. Só o tipo "media" (o padrão) exige mensagem.
-  if (messageType === 'media' && (!message || !message.trim())) {
-    return res.status(400).json({ error: 'Mensagem é obrigatória.' })
+  const hasAttachments = (req.files?.file?.length || 0) + (req.files?.attachments?.length || 0) > 0
+  if (messageType === 'media' && (!message || !message.trim()) && !hasAttachments) {
+    return res.status(400).json({ error: 'Escreva a mensagem ou anexe um arquivo.' })
   }
 
   let pollQuestion = null
@@ -427,6 +468,13 @@ app.post('/api/dispatch', uploadDispatchFiles, (req, res) => {
     }
   }
 
+  let campaignInput = null
+  try {
+    campaignInput = parseCampaignInput(req.body, req.files).input
+  } catch (err) {
+    return res.status(400).json({ error: err.message })
+  }
+
   try {
     whatsapp.getSock()
   } catch (err) {
@@ -446,19 +494,28 @@ app.post('/api/dispatch', uploadDispatchFiles, (req, res) => {
   // nota de voz de verdade (ver src/audio.js). Se a conversão falhar por algum motivo, manda
   // o webm original mesmo assim — pior um áudio que talvez não vire bolha de nota de voz do
   // que o disparo inteiro falhar.
-  let file = req.files?.file?.[0] || null
-  if (file && asVoiceNote && file.mimetype.startsWith('audio/webm')) {
-    const ogg = convertWebmToOggOpus(file.buffer)
-    if (ogg) file = { ...file, buffer: ogg, mimetype: 'audio/ogg; codecs=opus' }
+  const files = prepareAttachments(req.files, asVoiceNote)
+  const file = files[0] || null
+
+  // campanha: criada antes do disparo começar, e quem receber a primeira mensagem entra no
+  // funil (initialDispatchHooks). Se o disparo for recusado, desfaz a campanha.
+  let campaign = null
+  if (campaignInput) {
+    const persisted = persistCampaignInput(campaignInput)
+    campaign = createCampaign(persisted, {
+      origin: labelName || (explicitContacts ? `${explicitContacts.length} contato(s) selecionado(s)` : null),
+      initialPreview: describeInitialMessage(messageType, message, pollQuestion, file, albumFiles, files.length)
+    })
   }
 
   let jobId
   try {
     jobId = startDispatch({
+      ...(campaign ? initialDispatchHooks(campaign.id) : {}),
       labelIds: explicitContacts ? null : labelIds,
       labelName,
       message: (message || '').trim(),
-      file,
+      files,
       albumFiles,
       contacts: explicitContacts,
       messageType,
@@ -472,10 +529,17 @@ app.post('/api/dispatch', uploadDispatchFiles, (req, res) => {
       removeLabelId
     })
   } catch (err) {
+    if (campaign) {
+      try {
+        deleteCampaign(campaign.id)
+      } catch {
+        // já não existe — nada a desfazer
+      }
+    }
     return res.status(409).json({ error: err.message })
   }
 
-  res.json({ jobId })
+  res.json({ jobId, campaignId: campaign?.id || null })
 })
 
 app.get('/api/dispatch/:jobId/stream', (req, res) => {
@@ -506,6 +570,12 @@ app.get('/api/dispatch/:jobId/stream', (req, res) => {
 // devem virar uma página de erro HTML — o front sempre espera JSON de volta.
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_UNEXPECTED_FILE' || err.code === 'LIMIT_FILE_COUNT') {
+      return res.status(400).json({ error: `Arquivos demais: o máximo é ${MAX_ATTACHMENTS} anexos (ou ${MAX_ALBUM_FILES} no álbum).` })
+    }
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'Um dos arquivos passa de 30 MB, o limite do envio.' })
+    }
     return res.status(400).json({ error: 'Erro no arquivo enviado: ' + err.message })
   }
   next(err)

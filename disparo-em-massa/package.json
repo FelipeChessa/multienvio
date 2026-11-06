@@ -1,6 +1,6 @@
 {
   "name": "tabelas-whatsapp",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "Automacao local para envio de mensagens em massa por etiqueta do WhatsApp Business",
   "author": "Vanessa",
   "type": "module",
@@ -10,22 +10,23 @@
   },
   "scripts": {
     "start": "electron .",
+    "app:teste": "electron . --dados-do-projeto",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win",
     "dist:win:nsis": "electron-builder --win --x64"
   },
   "dependencies": {
     "@whiskeysockets/baileys": "^7.0.0-rc14",
+    "electron-updater": "^6.1.0",
     "exceljs": "^4.4.0",
     "express": "^4.21.2",
-    "electron-updater": "^6.1.0",
     "ffmpeg-static": "^5.3.0",
     "multer": "^2.0.1",
     "pino": "^9.6.0",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
-    "electron": "^30.0.0",
+    "electron": "^44.10.2",
     "electron-builder": "^25.0.0",
     "sharp": "^0.35.4"
   },
@@ -80,6 +81,10 @@
     }
   },
   "allowScripts": {
-    "electron-winstaller@5.4.0": true
+    "electron-winstaller@5.4.0": true,
+    "@whiskeysockets/baileys@7.0.0-rc14": true,
+    "ffmpeg-static@5.3.0": true,
+    "protobufjs@7.6.6": true,
+    "electron@44.10.2": true
   }
 }

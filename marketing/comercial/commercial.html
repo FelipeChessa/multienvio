@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>MultiEnvio — comercial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
+<style>
+  /* Comercial em motion graphics. Tudo é desenhado por render(t) (t em segundos), de forma
+     determinística — o script de render chama render(t) quadro a quadro e grava o vídeo. */
+  :root {
+    --navy: #070d1a;
+    --navy2: #0d1830;
+    --green: #22c55e;
+    --green2: #16a34a;
+    --wa: #25d366;
+    --ink: #e8eef9;
+    --muted: #93a3bd;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--navy); }
+  body { font-family: 'Inter', 'Segoe UI', sans-serif; color: var(--ink); }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: radial-gradient(1200px 800px at 70% 30%, #0f2244 0%, var(--navy) 60%); }
+  #bg-canvas { position: absolute; inset: 0; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(90px); opacity: .55; }
+  #blob1 { width: 760px; height: 760px; background: radial-gradient(circle, rgba(34,197,94,.55), rgba(34,197,94,0) 70%); }
+  #blob2 { width: 900px; height: 900px; background: radial-gradient(circle, rgba(37,99,235,.45), rgba(37,99,235,0) 70%); }
+  #blob3 { width: 600px; height: 600px; background: radial-gradient(circle, rgba(16,185,129,.4), rgba(16,185,129,0) 70%); }
+  #vignette { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%); pointer-events: none; }
+  #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+
+  .scene { position: absolute; inset: 0; opacity: 0; }
+  .h1 { font-family: 'Sora', sans-serif; font-weight: 800; letter-spacing: -0.03em; line-height: 1.02; }
+  .word { display: inline-block; will-change: transform, opacity, filter; }
+  .accent { background: linear-gradient(90deg, #4ade80, #22d3ee); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  /* ---- Cena 1: gancho ---- */
+  #s1-l1 { position: absolute; left: 0; right: 0; top: 330px; text-align: center; font-size: 104px; }
+  #s1-l2 { position: absolute; left: 0; right: 0; top: 490px; text-align: center; font-size: 58px; color: var(--muted); font-weight: 700; }
+  .notif { position: absolute; padding: 16px 22px; border-radius: 18px 18px 18px 4px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); backdrop-filter: blur(6px); font-size: 24px; font-weight: 500; white-space: nowrap; box-shadow: 0 18px 40px rgba(0,0,0,.35); }
+  .notif b { color: #4ade80; font-weight: 700; margin-right: 8px; }
+  #s1-counter { position: absolute; left: 50%; top: 640px; transform: translateX(-50%); padding: 14px 30px; border-radius: 999px; background: #ef4444; color: #fff; font-size: 34px; font-weight: 800; box-shadow: 0 0 60px rgba(239,68,68,.5); }
+
+  /* ---- Cena 2 / 9: marca ---- */
+  .logo-icon { position: absolute; width: 190px; height: 190px; border-radius: 48px; background: linear-gradient(135deg, #4ade80, #0f766e); display: grid; place-items: center; box-shadow: 0 30px 90px rgba(34,197,94,.45), inset 0 2px 0 rgba(255,255,255,.35); }
+  .logo-icon svg { width: 98px; height: 98px; }
+  .ring { position: absolute; border-radius: 50%; border: 3px solid rgba(74,222,128,.8); }
+  #s2-icon { left: 865px; top: 250px; }
+  #s2-name { position: absolute; left: 0; right: 0; top: 500px; text-align: center; font-size: 150px; }
+  #s2-tag { position: absolute; left: 0; right: 0; top: 690px; text-align: center; font-size: 40px; color: var(--muted); font-weight: 600; }
+  #s2-line { position: absolute; left: 760px; top: 760px; height: 4px; width: 400px; border-radius: 4px; background: linear-gradient(90deg, #22c55e, #22d3ee); transform-origin: left center; }
+
+  /* ---- Cenas de recurso ---- */
+  .feat-copy { position: absolute; left: 110px; top: 250px; width: 600px; }
+  .step-chip { display: inline-flex; align-items: center; gap: 12px; padding: 10px 18px; border-radius: 999px; background: rgba(74,222,128,.12); border: 1px solid rgba(74,222,128,.4); color: #86efac; font-size: 22px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .feat-title { margin-top: 28px; font-size: 76px; }
+  .feat-sub { margin-top: 26px; font-size: 30px; line-height: 1.45; color: var(--muted); font-weight: 500; }
+  .pills { margin-top: 34px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .pill { padding: 14px 22px; border-radius: 999px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.16); font-size: 24px; font-weight: 600; }
+
+  .window { position: absolute; border-radius: 22px; overflow: hidden; background: #fff; box-shadow: 0 60px 140px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.12), 0 0 120px rgba(34,197,94,.18); transform-style: preserve-3d; }
+  .window .bar { height: 40px; background: #e9edf3; display: flex; align-items: center; gap: 9px; padding: 0 16px; }
+  .window .bar i { width: 13px; height: 13px; border-radius: 50%; display: block; }
+  .window .bar i:nth-child(1) { background: #ff5f57; } .window .bar i:nth-child(2) { background: #febc2e; } .window .bar i:nth-child(3) { background: #28c840; }
+  .window .bar span { margin-left: 14px; font-size: 15px; color: #64748b; font-weight: 600; }
+  .shot-wrap { position: relative; width: 1600px; height: 1000px; transform-origin: 0 0; }
+  .shot-wrap img { display: block; width: 1600px; height: 1000px; }
+  .hl { position: absolute; border-radius: 14px; border: 4px solid #22c55e; box-shadow: 0 0 0 9999px rgba(7,13,26,.35), 0 0 40px rgba(34,197,94,.8); }
+  .callout { position: absolute; padding: 14px 24px; border-radius: 16px; background: #0b1220; color: #fff; font-size: 30px; font-weight: 800; box-shadow: 0 20px 50px rgba(0,0,0,.45), 0 0 0 2px rgba(74,222,128,.7); white-space: nowrap; }
+  .callout small { display: block; font-size: 18px; color: #86efac; font-weight: 600; margin-top: 2px; }
+
+  /* cena 4 */
+  .big-num { font-family: 'Sora', sans-serif; font-weight: 800; font-size: 120px; line-height: 1; }
+  .big-num-label { font-size: 26px; color: var(--muted); font-weight: 600; margin-top: 6px; }
+  #s4-nums { margin-top: 40px; display: flex; gap: 60px; }
+  .marquee { position: absolute; left: 0; z-index: 3; white-space: nowrap; display: flex; gap: 18px; }
+  .chip { display: inline-flex; align-items: center; gap: 12px; padding: 16px 26px; border-radius: 18px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); font-size: 26px; font-weight: 600; }
+
+  /* cena 5: linha do tempo */
+  #s5-graph { position: absolute; left: 0; right: 0; top: 520px; height: 420px; }
+  #s5-line-bg { position: absolute; left: 240px; right: 240px; top: 230px; height: 6px; border-radius: 6px; background: rgba(255,255,255,.1); }
+  #s5-line { position: absolute; left: 240px; top: 230px; height: 6px; border-radius: 6px; background: linear-gradient(90deg, #22c55e, #22d3ee); transform-origin: left center; width: 1440px; }
+  .node { position: absolute; top: 196px; width: 74px; height: 74px; margin-left: -37px; border-radius: 50%; background: #0b1220; border: 5px solid #22c55e; display: grid; place-items: center; font-size: 30px; box-shadow: 0 0 40px rgba(34,197,94,.55); }
+  .node-label { position: absolute; top: 290px; width: 360px; margin-left: -180px; text-align: center; font-size: 26px; font-weight: 700; }
+  .node-label small { display: block; color: var(--muted); font-weight: 500; font-size: 22px; margin-top: 4px; }
+  .bubble { position: absolute; max-width: 430px; padding: 18px 22px; border-radius: 20px 20px 20px 6px; background: #d9fdd3; color: #0b1a10; font-size: 23px; line-height: 1.35; font-weight: 500; box-shadow: 0 20px 50px rgba(0,0,0,.4); }
+  .bubble.me { border-radius: 20px 20px 6px 20px; }
+  .bubble.client { background: #ffffff; }
+  #s5-stamp { position: absolute; padding: 14px 22px; border-radius: 14px; background: #fbbf24; color: #1c1300; font-size: 24px; font-weight: 800; box-shadow: 0 20px 50px rgba(0,0,0,.4); }
+  #s5-hours { position: absolute; right: 120px; top: 270px; }
+
+  /* cena 6 */
+  #s6-card { position: absolute; width: 214px; padding: 12px 13px; border-radius: 10px; background: #fff; color: #0f172a; font-size: 14px; box-shadow: 0 30px 70px rgba(0,0,0,.45), 0 0 0 3px #22c55e; }
+  #s6-card b { display: block; font-size: 15px; }
+  #s6-card .r { margin-top: 6px; background: #f0fdf4; border-radius: 6px; padding: 6px 8px; color: #334155; }
+  #s6-money { position: absolute; padding: 12px 22px; border-radius: 999px; background: #22c55e; color: #052e14; font-size: 30px; font-weight: 800; box-shadow: 0 0 50px rgba(34,197,94,.8); }
+
+  /* cena 7: WhatsApp embutido (mock genérico, sem dados reais) */
+  #s7-win { left: 820px; top: 150px; width: 1000px; height: 780px; background: #f0f2f5; }
+  .app-head { height: 74px; background: linear-gradient(90deg, #0b1220, #12304a); display: flex; align-items: center; padding: 0 22px; gap: 14px; color: #fff; }
+  .app-head .mini-logo { width: 40px; height: 40px; border-radius: 11px; background: linear-gradient(135deg, #4ade80, #0f766e); }
+  .app-head .t { font-family: 'Sora'; font-weight: 700; font-size: 19px; }
+  .app-head .tabs { margin-left: auto; display: flex; gap: 10px; }
+  .app-head .tabs span { padding: 9px 15px; border-radius: 10px; font-size: 15px; font-weight: 700; border: 1px solid rgba(255,255,255,.2); }
+  .app-head .tabs span.on { background: #25d366; border-color: #25d366; color: #fff; }
+  .wa-body { display: flex; height: calc(100% - 114px); }
+  .wa-list { width: 330px; background: #fff; border-right: 1px solid #e5e7eb; }
+  .wa-item { display: flex; gap: 12px; align-items: center; padding: 14px 16px; border-bottom: 1px solid #f1f5f9; color: #0f172a; }
+  .wa-item.on { background: #f0f2f5; }
+  .av { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 17px; flex: none; }
+  .wa-item b { display: block; font-size: 16px; }
+  .wa-item small { color: #64748b; font-size: 14px; }
+  .wa-chat { flex: 1; position: relative; background: #efeae2; }
+  .wa-chat-head { height: 62px; background: #f0f2f5; display: flex; align-items: center; gap: 12px; padding: 0 18px; color: #0f172a; border-bottom: 1px solid #e2e8f0; }
+  .wa-chat .bubble { font-size: 19px; max-width: 420px; padding: 12px 16px; box-shadow: 0 1px 1px rgba(0,0,0,.1); }
+  .typing { position: absolute; padding: 14px 18px; border-radius: 16px; background: #fff; display: flex; gap: 6px; }
+  .typing i { width: 9px; height: 9px; border-radius: 50%; background: #94a3b8; display: block; }
+
+  /* cena 8 */
+  #s8-grid { position: absolute; left: 160px; right: 160px; top: 420px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; }
+  .sec-card { padding: 34px 28px; border-radius: 26px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); min-height: 330px; }
+  .sec-ico { width: 84px; height: 84px; border-radius: 22px; display: grid; place-items: center; font-size: 42px; background: rgba(74,222,128,.15); border: 1px solid rgba(74,222,128,.4); }
+  .sec-card h3 { margin-top: 26px; font-family: 'Sora'; font-size: 31px; line-height: 1.15; }
+  .sec-card p { margin-top: 14px; font-size: 21px; line-height: 1.45; color: var(--muted); }
+  .sec-bar { margin-top: 22px; height: 8px; border-radius: 8px; background: rgba(255,255,255,.1); overflow: hidden; }
+  .sec-bar i { display: block; height: 100%; background: linear-gradient(90deg, #22c55e, #22d3ee); transform-origin: left center; }
+  #s8-title { position: absolute; left: 0; right: 0; top: 190px; text-align: center; font-size: 82px; }
+  #s8-sub { position: absolute; left: 0; right: 0; top: 300px; text-align: center; font-size: 30px; color: var(--muted); font-weight: 500; }
+
+  /* cena 9 */
+  #s9-icon { left: 865px; top: 160px; }
+  #s9-name { position: absolute; left: 0; right: 0; top: 390px; text-align: center; font-size: 140px; }
+  #s9-slogan { position: absolute; left: 0; right: 0; top: 570px; text-align: center; font-size: 64px; }
+  #s9-cta { position: absolute; left: 0; right: 0; top: 720px; display: flex; justify-content: center; gap: 22px; }
+  .cta-pill { padding: 20px 34px; border-radius: 999px; font-size: 30px; font-weight: 700; }
+  .cta-pill.primary { background: linear-gradient(135deg, #22c55e, #15803d); color: #fff; box-shadow: 0 20px 60px rgba(34,197,94,.45); }
+  .cta-pill.ghost { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.2); }
+  #s9-small { position: absolute; left: 0; right: 0; top: 860px; text-align: center; font-size: 24px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="blob1" class="blob"></div>
+  <div id="blob2" class="blob"></div>
+  <div id="blob3" class="blob"></div>
+  <canvas id="bg-canvas" width="1920" height="1080"></canvas>
+
+  <!-- 1. Gancho -->
+  <div class="scene" id="s1">
+    <div id="s1-l1" class="h1"><span class="word">Seu</span> <span class="word">WhatsApp</span> <span class="word accent">vende.</span></div>
+    <div id="s1-l2"><span class="word">Mas</span> <span class="word">ninguém</span> <span class="word">consegue</span> <span class="word">responder</span> <span class="word">todo</span> <span class="word">mundo</span> <span class="word">na</span> <span class="word">mão.</span></div>
+    <div class="notif" style="left:150px;top:150px"><b>Ana</b>Oi! Ainda tem promoção?</div>
+    <div class="notif" style="left:1360px;top:120px"><b>Bruno</b>Qual o valor do kit?</div>
+    <div class="notif" style="left:90px;top:760px"><b>Carla</b>Vocês entregam hoje?</div>
+    <div class="notif" style="left:1380px;top:800px"><b>Diego</b>Tem no tamanho M?</div>
+    <div class="notif" style="left:640px;top:880px"><b>Elisa</b>Me manda o catálogo 🙏</div>
+    <div class="notif" style="left:700px;top:110px"><b>Fábio</b>Ainda dá tempo de comprar?</div>
+    <div class="notif" style="left:1500px;top:640px"><b>Gabi</b>Aceita Pix?</div>
+    <div class="notif" style="left:110px;top:640px"><b>Heitor</b>Oi, bom dia!</div>
+    <div id="s1-counter">+248 mensagens sem resposta</div>
+  </div>
+
+  <!-- 2. Marca -->
+  <div class="scene" id="s2">
+    <div class="ring" id="s2-ring1"></div>
+    <div class="ring" id="s2-ring2"></div>
+    <div class="logo-icon" id="s2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg></div>
+    <div id="s2-name" class="h1"><span class="word">M</span><span class="word">u</span><span class="word">l</span><span class="word">t</span><span class="word">i</span><span class="word accent">E</span><span class="word accent">n</span><span class="word accent">v</span><span class="word accent">i</span><span class="word accent">o</span></div>
+    <div id="s2-tag">Disparo em massa inteligente para WhatsApp Business</div>
+    <div id="s2-line"></div>
+  </div>
+
+  <!-- 3. Público -->
+  <div class="scene" id="s3">
+    <div class="feat-copy">
+      <div class="step-chip" id="s3-chip">01 · Público</div>
+      <div class="feat-title h1" id="s3-title"><span class="word">Fale</span> <span class="word">com</span> <span class="word">quem</span> <span class="word accent">importa.</span></div>
+      <div class="feat-sub" id="s3-sub">Use as etiquetas do seu WhatsApp Business, escolha contatos ou importe uma planilha. Cada mensagem sai com o nome do cliente.</div>
+      <div class="pills"><span class="pill" id="s3-p1">🏷️ Etiquetas</span><span class="pill" id="s3-p2">👥 Contatos</span><span class="pill" id="s3-p3">📄 Planilhas</span></div>
+    </div>
+    <div class="window" id="s3-win" style="left:790px;top:170px;width:1240px;height:815px">
+      <div class="bar"><i></i><i></i><i></i><span>Disparo em Massa</span></div>
+      <div class="shot-wrap" id="s3-shotwrap">
+        <img src="shots/01-painel.png" />
+        <div class="hl" id="s3-hl" style="left:250px;top:508px;width:264px;height:150px"></div>
+        <div class="callout" id="s3-call" style="left:560px;top:236px">46 contatos selecionados<small>Black Friday + Clientes VIP</small></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Modelos -->
+  <div class="scene" id="s4">
+    <div class="feat-copy" style="top:200px">
+      <div class="step-chip" id="s4-chip">02 · Campanhas prontas</div>
+      <div class="feat-title h1" id="s4-title"><span class="word">Modelos</span> <span class="word">para</span> <span class="word">o</span> <span class="word accent">seu</span> <span class="word accent">ramo.</span></div>
+      <div class="feat-sub" id="s4-sub">Mensagens que puxam conversa, prontas para usar. Escolha, ajuste e dispare.</div>
+      <div id="s4-nums">
+        <div><div class="big-num accent" id="s4-n1">42</div><div class="big-num-label">modelos prontos</div></div>
+        <div><div class="big-num accent" id="s4-n2">14</div><div class="big-num-label">ramos de atuação</div></div>
+      </div>
+    </div>
+    <div class="window" id="s4-win" style="left:850px;top:130px;width:1000px;height:665px">
+      <div class="bar"><i></i><i></i><i></i><span>Nova campanha</span></div>
+      <div class="shot-wrap" id="s4-shotwrap"><img src="shots/02-modelos.png" /></div>
+    </div>
+    <div class="marquee" id="s4-m1" style="top:880px">
+      <span class="chip">👗 Moda</span><span class="chip">🍔 Restaurantes</span><span class="chip">💇 Salões e barbearias</span><span class="chip">🩺 Clínicas</span><span class="chip">🏠 Imobiliárias</span><span class="chip">🏋️ Academias</span><span class="chip">🎓 Cursos</span>
+      <span class="chip">🚗 Oficinas</span><span class="chip">🐶 Pet shops</span><span class="chip">💼 Contabilidade</span><span class="chip">🎉 Eventos</span><span class="chip">🛍️ Varejo</span><span class="chip">🤝 Vendas B2B</span><span class="chip">🙏 ONGs</span>
+      <span class="chip">👗 Moda</span><span class="chip">🍔 Restaurantes</span><span class="chip">💇 Salões e barbearias</span><span class="chip">🩺 Clínicas</span><span class="chip">🏠 Imobiliárias</span><span class="chip">🏋️ Academias</span>
+    </div>
+    <div class="marquee" id="s4-m2" style="top:975px">
+      <span class="chip">🔁 Reativar clientes</span><span class="chip">🔥 Liquidação relâmpago</span><span class="chip">📅 Lembrete de retorno</span><span class="chip">⭐ Pedido de avaliação</span><span class="chip">🎁 Datas comemorativas</span><span class="chip">🚀 Lançamentos</span>
+      <span class="chip">🤝 Indicação</span><span class="chip">📢 Avisos</span><span class="chip">🔁 Reativar clientes</span><span class="chip">🔥 Liquidação relâmpago</span><span class="chip">📅 Lembrete de retorno</span><span class="chip">⭐ Pedido de avaliação</span>
+    </div>
+  </div>
+
+  <!-- 5. Follow-up -->
+  <div class="scene" id="s5">
+    <div class="feat-copy" style="top:120px;width:1100px">
+      <div class="step-chip" id="s5-chip">03 · Follow-up automático</div>
+      <div class="feat-title h1" id="s5-title"><span class="word">Ninguém</span> <span class="word">fica</span> <span class="word accent">sem</span> <span class="word accent">resposta.</span></div>
+      <div class="feat-sub" id="s5-sub">Quem não responde recebe a próxima mensagem sozinho. Quem responde sai da fila na hora.</div>
+    </div>
+    <div id="s5-graph">
+      <div id="s5-line-bg"></div>
+      <div id="s5-line"></div>
+      <div class="node" id="s5-n1" style="left:240px">💬</div>
+      <div class="node" id="s5-n2" style="left:960px">🔁</div>
+      <div class="node" id="s5-n3" style="left:1680px">🔁</div>
+      <div class="node-label" id="s5-l1" style="left:240px">Dia 0<small>1ª mensagem</small></div>
+      <div class="node-label" id="s5-l2" style="left:960px">Dia 2<small>Follow-up 1</small></div>
+      <div class="node-label" id="s5-l3" style="left:1680px">Dia 5<small>Follow-up 2</small></div>
+      <div class="bubble me" id="s5-b1" style="left:120px;top:40px">Oi, Maria! A coleção nova chegou 🌸 Quer ver?</div>
+      <div class="bubble me" id="s5-b2" style="left:770px;top:40px">As peças mais pedidas estão acabando!</div>
+      <div class="bubble client" id="s5-b3" style="left:1120px;top:-40px">Tenho interesse! Tem no M? 😍</div>
+      <div id="s5-stamp" style="left:1440px;top:96px;white-space:nowrap">⏸ Pausado: cliente respondeu</div>
+    </div>
+    <div class="pill" id="s5-hours">🕘 Só em horário comercial</div>
+  </div>
+
+  <!-- 6. Funil -->
+  <div class="scene" id="s6">
+    <div class="feat-copy" style="top:70px;left:0;right:0;width:auto;text-align:center">
+      <div class="step-chip" id="s6-chip">04 · Funil de vendas</div>
+      <div class="feat-title h1" id="s6-title" style="font-size:68px;margin-top:20px"><span class="word">Da</span> <span class="word">resposta</span> <span class="word">à</span> <span class="word accent">venda.</span></div>
+    </div>
+    <div class="window" id="s6-win" style="left:310px;top:255px;width:1300px;height:853px">
+      <div class="bar"><i></i><i></i><i></i><span>Campanha · Black Friday</span></div>
+      <div class="shot-wrap" id="s6-shotwrap">
+        <img src="shots/07-funil.png" />
+        <div class="callout" id="s6-call1" style="left:430px;top:30px">50% responderam</div>
+        <div class="callout" id="s6-call2" style="left:930px;top:30px">vendas fechadas ✓</div>
+        <div id="s6-card"><b>Ana Souza</b><div class="r">💬 Oi! Tem o vestido preto no M?</div></div>
+        <div id="s6-money">+ R$ 289,90</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. WhatsApp embutido -->
+  <div class="scene" id="s7">
+    <div class="feat-copy" style="top:270px;width:640px">
+      <div class="step-chip" id="s7-chip">05 · WhatsApp integrado</div>
+      <div class="feat-title h1" id="s7-title"><span class="word">Atenda</span> <span class="word">sem</span> <span class="word accent">trocar</span> <span class="word accent">de</span> <span class="word accent">janela.</span></div>
+      <div class="feat-sub" id="s7-sub">O WhatsApp Web fica dentro do sistema: clique no cliente do funil e a conversa abre ali mesmo.</div>
+    </div>
+    <div class="window" id="s7-win">
+      <div class="bar"><i></i><i></i><i></i><span>Disparo em Massa</span></div>
+      <div class="app-head"><div class="mini-logo"></div><div class="t">Disparo em Massa</div><div class="tabs"><span class="on">💬 WhatsApp</span><span>Campanhas</span><span>Produtos</span></div></div>
+      <div class="wa-body">
+        <div class="wa-list">
+          <div class="wa-item on"><div class="av" style="background:#ec4899">AS</div><div><b>Ana Souza</b><small>Perfeito, vou querer!</small></div></div>
+          <div class="wa-item"><div class="av" style="background:#6366f1">JA</div><div><b>João Alves</b><small>Pode mandar o catálogo?</small></div></div>
+          <div class="wa-item"><div class="av" style="background:#f59e0b">IG</div><div><b>Isabela Gomes</b><small>Entregam em Campinas?</small></div></div>
+          <div class="wa-item"><div class="av" style="background:#14b8a6">FC</div><div><b>Fábio Costa</b><small>Fechado! Manda o Pix 🙌</small></div></div>
+          <div class="wa-item"><div class="av" style="background:#8b5cf6">ET</div><div><b>Elisa Teixeira</b><small>Faz desconto?</small></div></div>
+          <div class="wa-item"><div class="av" style="background:#ef4444">MM</div><div><b>Marcos Mendes</b><small>Bom dia!</small></div></div>
+        </div>
+        <div class="wa-chat">
+          <div class="wa-chat-head"><div class="av" style="background:#ec4899;width:40px;height:40px;font-size:15px">AS</div><b>Ana Souza</b></div>
+          <div class="bubble client" id="s7-m1" style="left:30px;top:100px">Oi! Vi a promoção, ainda tem o kit presente?</div>
+          <div class="bubble me" id="s7-m2" style="right:30px;top:200px">Tem sim, Ana! Separei o último pra você 😉</div>
+          <div class="typing" id="s7-typing" style="left:30px;top:300px"><i></i><i></i><i></i></div>
+          <div class="bubble client" id="s7-m3" style="left:30px;top:300px">Perfeito, vou querer! 🎉</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. Segurança -->
+  <div class="scene" id="s8">
+    <div id="s8-title" class="h1"><span class="word">Envio</span> <span class="word">seguro,</span> <span class="word accent">ritmo</span> <span class="word accent">humano.</span></div>
+    <div id="s8-sub">Proteção para o seu número em cada disparo.</div>
+    <div id="s8-grid">
+      <div class="sec-card" id="s8-c1"><div class="sec-ico">⏱️</div><h3>Intervalos naturais</h3><p>Pausas aleatórias e "digitando..." antes de cada mensagem.</p><div class="sec-bar"><i></i></div></div>
+      <div class="sec-card" id="s8-c2"><div class="sec-ico">📊</div><h3>Limite diário</h3><p>Você define quantos envios por dia. O sistema respeita.</p><div class="sec-bar"><i></i></div></div>
+      <div class="sec-card" id="s8-c3"><div class="sec-ico">🛡️</div><h3>Disjuntor automático</h3><p>Muitas falhas seguidas? O envio para sozinho.</p><div class="sec-bar"><i></i></div></div>
+      <div class="sec-card" id="s8-c4"><div class="sec-ico">🚫</div><h3>Descadastro automático</h3><p>Respondeu "SAIR"? Nunca mais recebe nada.</p><div class="sec-bar"><i></i></div></div>
+    </div>
+  </div>
+
+  <!-- 9. Fechamento -->
+  <div class="scene" id="s9">
+    <div class="ring" id="s9-ring"></div>
+    <div class="logo-icon" id="s9-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg></div>
+    <div id="s9-name" class="h1">Multi<span class="accent">Envio</span></div>
+    <div id="s9-slogan" class="h1"><span class="word">Mais</span> <span class="word">conversas.</span> <span class="word accent">Mais</span> <span class="word accent">vendas.</span></div>
+    <div id="s9-cta"><span class="cta-pill primary" id="s9-c1">💬 (11) 91797-9982</span><span class="cta-pill ghost" id="s9-c2">multienvio.vercel.app</span></div>
+    <div id="s9-small">Fale com a nossa equipe e comece hoje.</div>
+  </div>
+
+  <div id="vignette"></div>
+  <div id="flash"></div>
+</div>
+
+<script>
+// ===== Utilidades de animação =====
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x))
+const prog = (t, a, b) => clamp((t - a) / (b - a))
+const eOut = (x) => 1 - Math.pow(1 - x, 3)
+const eInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2)
+const eBack = (x) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2) }
+const lerp = (a, b, x) => a + (b - a) * x
+const $ = (id) => document.getElementById(id)
+
+// Pseudo-aleatório determinístico (o vídeo sai igual toda vez)
+function rng(seed) { return () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646 } }
+
+// Cenas casadas com a trilha: 100 BPM, 1 compasso = 2,4 s
+const SCENES = [
+  ['s1', 0.0, 4.8], ['s2', 4.8, 9.6], ['s3', 9.6, 16.8], ['s4', 16.8, 24.0],
+  ['s5', 24.0, 31.2], ['s6', 31.2, 38.4], ['s7', 38.4, 43.2], ['s8', 43.2, 48.0], ['s9', 48.0, 57.6]
+]
+const DURATION = 57.6
+
+// Entrada/saída padrão de uma cena: fade + leve zoom/blur na saída
+function sceneEnvelope(id, t, a, b, fin = 0.35, fout = 0.4) {
+  const el = $(id)
+  if (t < a - 0.01 || t > b + 0.01) { el.style.opacity = 0; el.style.visibility = 'hidden'; return null }
+  el.style.visibility = 'visible'
+  const i = eOut(prog(t, a, a + fin))
+  const o = 1 - eInOut(prog(t, b - fout, b))
+  const out = prog(t, b - fout, b)
+  el.style.opacity = Math.min(i, o)
+  el.style.transform = `scale(${1 + out * 0.06})`
+  el.style.filter = out > 0 ? `blur(${out * 10}px)` : 'none'
+  return t - a
+}
+
+// Palavras entrando uma a uma (sobe + desfoca -> nítido)
+function words(container, t, start, stagger = 0.08, dur = 0.55, dist = 50) {
+  const ws = container.querySelectorAll('.word')
+  ws.forEach((w, i) => {
+    const x = eOut(prog(t, start + i * stagger, start + i * stagger + dur))
+    w.style.opacity = x
+    w.style.transform = `translateY(${(1 - x) * dist}px)`
+    w.style.filter = x < 1 ? `blur(${(1 - x) * 12}px)` : 'none'
+  })
+}
+
+function popIn(el, t, start, dur = 0.5, from = 0.6) {
+  const x = prog(t, start, start + dur)
+  const s = lerp(from, 1, eBack(x))
+  el.style.opacity = eOut(Math.min(1, x * 1.6))
+  el.style.transform = `scale(${s})`
+}
+
+function slideIn(el, t, start, dur = 0.6, dx = 0, dy = 40) {
+  const x = eOut(prog(t, start, start + dur))
+  el.style.opacity = x
+  el.style.transform = `translate(${(1 - x) * dx}px, ${(1 - x) * dy}px)`
+}
+
+// ===== Fundo: bolhas de luz + partículas =====
+const canvas = $('bg-canvas')
+const ctx = canvas.getContext('2d')
+const R = rng(42)
+const PARTICLES = Array.from({ length: 90 }, () => ({ x: R() * 1920, y: R() * 1080, r: 0.8 + R() * 2.2, s: 8 + R() * 26, a: 0.15 + R() * 0.5, ph: R() * 6.28 }))
+function drawBackground(t) {
+  ctx.clearRect(0, 0, 1920, 1080)
+  for (const p of PARTICLES) {
+    const y = (p.y - t * p.s + 1080 * 10) % 1080
+    const x = p.x + Math.sin(t * 0.4 + p.ph) * 18
+    ctx.globalAlpha = p.a * (0.6 + 0.4 * Math.sin(t * 1.5 + p.ph))
+    ctx.fillStyle = '#86efac'
+    ctx.beginPath(); ctx.arc(x, y, p.r, 0, 6.283); ctx.fill()
+  }
+  ctx.globalAlpha = 1
+  $('blob1').style.transform = `translate(${1150 + Math.sin(t * 0.25) * 160}px, ${-120 + Math.cos(t * 0.2) * 90}px)`
+  $('blob2').style.transform = `translate(${-200 + Math.cos(t * 0.18) * 140}px, ${380 + Math.sin(t * 0.22) * 120}px)`
+  $('blob3').style.transform = `translate(${700 + Math.sin(t * 0.3 + 1) * 220}px, ${650 + Math.cos(t * 0.27) * 80}px)`
+}
+
+// Janela com "câmera" 3D (gira e aproxima devagar)
+function windowCam(el, t, start, { fromRY = -22, toRY = -8, fromRX = 6, toRX = 3, fromY = 120, scale0 = 0.9, scale1 = 1, drift = 0 } = {}) {
+  const x = eOut(prog(t, start, start + 1.1))
+  const lt = Math.max(0, t - start)
+  el.style.opacity = x
+  el.style.transform = `perspective(2200px) translateY(${(1 - x) * fromY}px) rotateY(${lerp(fromRY, toRY, x) + drift * lt}deg) rotateX(${lerp(fromRX, toRX, x)}deg) scale(${lerp(scale0, scale1, x) + lt * 0.006})`
+}
+
+function render(t) {
+  drawBackground(t)
+
+  // ---------- 1. Gancho ----------
+  let lt = sceneEnvelope('s1', t, 0, 4.8, 0.2, 0.45)
+  if (lt !== null) {
+    words($('s1-l1'), t, 0.25, 0.14, 0.6, 70)
+    words($('s1-l2'), t, 1.35, 0.07, 0.5, 40)
+    document.querySelectorAll('#s1 .notif').forEach((n, i) => {
+      const st = 2.1 + i * 0.16
+      const x = eBack(prog(t, st, st + 0.45))
+      n.style.opacity = eOut(prog(t, st, st + 0.3))
+      n.style.transform = `translateY(${(1 - x) * 40 - Math.max(0, t - st) * 10}px) scale(${lerp(0.7, 1, x)})`
+    })
+    popIn($('s1-counter'), t, 3.35, 0.45, 0.4)
+    $('s1-counter').style.transform += ' translateX(-50%)'
+    $('s1-counter').style.left = '50%'
+    $('s1-counter').style.marginLeft = '0'
+  }
+  // flash de transição para a marca
+  $('flash').style.opacity = Math.max(0, 0.55 - Math.abs(t - 4.8) * 3)
+
+  // ---------- 2. Marca ----------
+  lt = sceneEnvelope('s2', t, 4.8, 9.6, 0.15, 0.4)
+  if (lt !== null) {
+    popIn($('s2-icon'), t, 4.95, 0.7, 0.2)
+    $('s2-icon').style.transform += ` rotate(${(1 - eOut(prog(t, 4.95, 5.7))) * -25}deg)`
+    for (const [id, delay, max] of [['s2-ring1', 5.0, 900], ['s2-ring2', 5.25, 1300]]) {
+      const x = prog(t, delay, delay + 1.4)
+      const size = 190 + eOut(x) * max
+      const r = $(id)
+      r.style.width = r.style.height = size + 'px'
+      r.style.left = 960 - size / 2 + 'px'
+      r.style.top = 345 - size / 2 + 'px'
+      r.style.opacity = x > 0 && x < 1 ? (1 - x) * 0.9 : 0
+    }
+    words($('s2-name'), t, 5.45, 0.06, 0.5, 60)
+    slideIn($('s2-tag'), t, 6.3, 0.7, 0, 30)
+    $('s2-line').style.transform = `scaleX(${eInOut(prog(t, 6.6, 7.4))})`
+  }
+
+  // ---------- 3. Público ----------
+  lt = sceneEnvelope('s3', t, 9.6, 16.8)
+  if (lt !== null) {
+    slideIn($('s3-chip'), t, 9.75, 0.5, -40, 0)
+    words($('s3-title'), t, 9.95, 0.1, 0.55)
+    slideIn($('s3-sub'), t, 10.6, 0.6, 0, 30)
+    popIn($('s3-p1'), t, 11.1); popIn($('s3-p2'), t, 11.3); popIn($('s3-p3'), t, 11.5)
+    windowCam($('s3-win'), t, 9.8, { drift: 0.5 })
+    $('s3-shotwrap').style.transform = `scale(${1240 / 1600})`
+    const hl = prog(t, 12.2, 12.7)
+    $('s3-hl').style.opacity = eOut(hl) * (0.85 + 0.15 * Math.sin(t * 6))
+    $('s3-hl').style.transform = `scale(${lerp(1.15, 1, eOut(hl))})`
+    popIn($('s3-call'), t, 13.1, 0.55, 0.5)
+  }
+
+  // ---------- 4. Modelos ----------
+  lt = sceneEnvelope('s4', t, 16.8, 24.0)
+  if (lt !== null) {
+    slideIn($('s4-chip'), t, 16.95, 0.5, -40, 0)
+    words($('s4-title'), t, 17.15, 0.09, 0.55)
+    slideIn($('s4-sub'), t, 17.8, 0.6, 0, 30)
+    const n = eOut(prog(t, 18.2, 19.8))
+    $('s4-n1').textContent = Math.round(42 * n)
+    $('s4-n2').textContent = Math.round(14 * n)
+    slideIn($('s4-nums'), t, 18.1, 0.5, 0, 30)
+    windowCam($('s4-win'), t, 17.0, { fromRY: 24, toRY: 10, drift: -0.4 })
+    $('s4-shotwrap').style.transform = `scale(${1000 / 1600})`
+    const m = eOut(prog(t, 18.6, 19.4))
+    $('s4-m1').style.opacity = m; $('s4-m2').style.opacity = m
+    $('s4-m1').style.transform = `translateX(${-(t - 16.8) * 120}px)`
+    $('s4-m2').style.transform = `translateX(${-900 + (t - 16.8) * 120}px)`
+  }
+
+  // ---------- 5. Follow-up ----------
+  lt = sceneEnvelope('s5', t, 24.0, 31.2)
+  if (lt !== null) {
+    slideIn($('s5-chip'), t, 24.15, 0.5, -40, 0)
+    words($('s5-title'), t, 24.35, 0.09, 0.55)
+    slideIn($('s5-sub'), t, 25.0, 0.6, 0, 30)
+    $('s5-line').style.transform = `scaleX(${eInOut(prog(t, 25.3, 27.6))})`
+    popIn($('s5-n1'), t, 25.3, 0.5, 0.2); slideIn($('s5-l1'), t, 25.4, 0.5)
+    popIn($('s5-b1'), t, 25.55, 0.5, 0.6)
+    popIn($('s5-n2'), t, 26.4, 0.5, 0.2); slideIn($('s5-l2'), t, 26.5, 0.5)
+    popIn($('s5-b2'), t, 26.65, 0.5, 0.6)
+    popIn($('s5-b3'), t, 27.6, 0.55, 0.5)
+    $('s5-b3').style.transform += ` translateY(${-Math.max(0, t - 28.2) * 4}px)`
+    popIn($('s5-n3'), t, 27.4, 0.5, 0.2); slideIn($('s5-l3'), t, 27.5, 0.5)
+    const dim = eOut(prog(t, 28.3, 28.8))
+    $('s5-n3').style.filter = `grayscale(${dim}) brightness(${1 - dim * 0.4})`
+    $('s5-l3').style.opacity = 1 - dim * 0.55
+    popIn($('s5-stamp'), t, 28.5, 0.5, 0.3)
+    $('s5-stamp').style.transform += ' rotate(-3deg)'
+    popIn($('s5-hours'), t, 29.4, 0.5, 0.5)
+  }
+
+  // ---------- 6. Funil ----------
+  lt = sceneEnvelope('s6', t, 31.2, 38.4)
+  if (lt !== null) {
+    slideIn($('s6-chip'), t, 31.3, 0.5, 0, -20)
+    words($('s6-title'), t, 31.45, 0.1, 0.55)
+    const x = eOut(prog(t, 31.5, 32.8))
+    const drift = Math.max(0, t - 31.5)
+    $('s6-win').style.opacity = x
+    $('s6-win').style.transform = `perspective(2400px) translateY(${(1 - x) * 220}px) rotateX(${lerp(24, 4, x)}deg) scale(${0.96 + drift * 0.004})`
+    $('s6-shotwrap').style.transform = `scale(${1300 / 1600})`
+    popIn($('s6-call1'), t, 33.2, 0.5, 0.5)
+    popIn($('s6-call2'), t, 33.5, 0.5, 0.5)
+    // cartão "voando" de Respondeu para Venda fechada
+    const card = $('s6-card')
+    const c = eInOut(prog(t, 34.6, 35.9))
+    const visible = t > 34.3
+    card.style.opacity = visible ? eOut(prog(t, 34.3, 34.6)) : 0
+    const cx = lerp(437, 933, c), cy = lerp(296, 712, c) - Math.sin(c * Math.PI) * 160
+    card.style.left = cx + 'px'; card.style.top = cy + 'px'
+    card.style.transform = `rotate(${Math.sin(c * Math.PI) * -6}deg) scale(${1 + Math.sin(c * Math.PI) * 0.12})`
+    popIn($('s6-money'), t, 36.0, 0.5, 0.3)
+    $('s6-money').style.left = '1180px'; $('s6-money').style.top = '700px'
+  }
+
+  // ---------- 7. WhatsApp embutido ----------
+  lt = sceneEnvelope('s7', t, 38.4, 43.2)
+  if (lt !== null) {
+    slideIn($('s7-chip'), t, 38.5, 0.5, -40, 0)
+    words($('s7-title'), t, 38.65, 0.08, 0.5)
+    slideIn($('s7-sub'), t, 39.2, 0.6, 0, 30)
+    windowCam($('s7-win'), t, 38.5, { fromRY: 20, toRY: 8, drift: -0.3 })
+    popIn($('s7-m1'), t, 39.5, 0.45, 0.7)
+    popIn($('s7-m2'), t, 40.3, 0.45, 0.7)
+    const typing = t > 41.0 && t < 41.9
+    $('s7-typing').style.opacity = typing ? 1 : 0
+    $('s7-typing').querySelectorAll('i').forEach((d, i) => { d.style.transform = `translateY(${Math.sin(t * 12 - i) * 3}px)` })
+    popIn($('s7-m3'), t, 41.9, 0.45, 0.7)
+  }
+
+  // ---------- 8. Segurança ----------
+  lt = sceneEnvelope('s8', t, 43.2, 48.0)
+  if (lt !== null) {
+    words($('s8-title'), t, 43.35, 0.09, 0.55)
+    slideIn($('s8-sub'), t, 44.0, 0.6, 0, 30)
+    ;['s8-c1', 's8-c2', 's8-c3', 's8-c4'].forEach((id, i) => {
+      const st = 44.3 + i * 0.22
+      slideIn($(id), t, st, 0.6, 0, 80)
+      $(id).querySelector('.sec-bar i').style.transform = `scaleX(${eInOut(prog(t, st + 0.5, st + 1.6))})`
+    })
+  }
+
+  // ---------- 9. Fechamento ----------
+  lt = sceneEnvelope('s9', t, 48.0, 57.6, 0.4, 0.9)
+  if (lt !== null) {
+    popIn($('s9-icon'), t, 48.2, 0.7, 0.2)
+    const rx = prog(t, 48.3, 49.8)
+    const size = 190 + eOut(rx) * 1100
+    const ring = $('s9-ring')
+    ring.style.width = ring.style.height = size + 'px'
+    ring.style.left = 960 - size / 2 + 'px'
+    ring.style.top = 255 - size / 2 + 'px'
+    ring.style.opacity = rx > 0 && rx < 1 ? (1 - rx) * 0.8 : 0
+    $('s9-icon').style.boxShadow = `0 30px 90px rgba(34,197,94,${0.35 + 0.2 * Math.sin(t * 3)}), inset 0 2px 0 rgba(255,255,255,.35)`
+    slideIn($('s9-name'), t, 48.6, 0.7, 0, 40)
+    words($('s9-slogan'), t, 49.4, 0.16, 0.6)
+    popIn($('s9-c1'), t, 50.6, 0.55, 0.6)
+    popIn($('s9-c2'), t, 50.85, 0.55, 0.6)
+    slideIn($('s9-small'), t, 51.3, 0.6, 0, 20)
+  }
+  // fade final para o escuro
+  $('stage').style.filter = t > 56.8 ? `brightness(${1 - prog(t, 56.8, 57.6)})` : 'none'
+}
+
+// Pré-visualização ao abrir o arquivo direto no navegador (o render do vídeo chama render(t))
+window.renderReady = document.fonts.ready.then(() => Promise.all(Array.from(document.images).map((img) => img.complete ? null : new Promise((r) => { img.onload = img.onerror = r })))).then(() => true)
+if (!window.location.search.includes('render')) {
+  const t0 = performance.now()
+  const loop = () => { render(((performance.now() - t0) / 1000) % DURATION); requestAnimationFrame(loop) }
+  window.renderReady.then(loop)
+}
+</script>
+</body>
+</html>

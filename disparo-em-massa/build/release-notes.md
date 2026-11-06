@@ -1,0 +1,7 @@
+- Campanhas com follow-up automático e funil de vendas (quem respondeu muda de coluna sozinho)
+- Assistente de campanhas com modelos prontos por ramo de atuação
+- Prospecção de clientes novos com travas contra bloqueio e números digitados à mão
+- WhatsApp Web dentro do programa, com conversas abertas direto do funil
+- Envio de vários anexos de uma vez
+- Nome do contato e etiquetas nos cartões do funil
+- Tela inicial com resumo do dia e atualização pelo sininho 🔔
