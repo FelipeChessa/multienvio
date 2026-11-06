@@ -129,6 +129,6 @@ async function refreshHome() {
 }
 
 for (const b of document.querySelectorAll('.home-action')) b.addEventListener('click', () => homeAction(b.dataset.action))
-document.getElementById('dispatch-close-btn').addEventListener('click', clearRecipients)
+// (o antigo botão "← Início" do painel de envio virou a aba Início da barra superior — nav.js)
 setInterval(refreshHome, 20000)
 syncHomeVisibility()

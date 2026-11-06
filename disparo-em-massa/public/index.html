@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Disparo em Massa — WhatsApp</title>
+  <title>MultiEnvio</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -12,27 +12,28 @@
 </head>
 <body>
   <header>
-    <div class="brand">
+    <div class="brand" id="brand-home" role="link" tabindex="0" title="Ir para o Início">
       <span class="brand-mark">
         <span class="icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="3" x2="10" y2="14"/><polygon points="21 3 14 21 10 14 3 10 21 3"/></svg>
         </span>
       </span>
       <div class="brand-text">
-        <h1>Disparo em Massa</h1>
+        <h1>MultiEnvio</h1>
       </div>
     </div>
     <!-- Cabeçalho enxuto: navegação principal no centro, status discreto e menu à direita.
          Versão, configurações e ações de conexão ficam em menus — só aparecem quando pedidos
          ou quando exigem ação (atualização pronta, conexão com problema). -->
     <nav class="header-nav">
+      <button id="home-btn" class="nav-btn active" title="Tela inicial">Início</button>
       <button id="whatsapp-btn" class="nav-btn" title="WhatsApp Web dentro do sistema">
-        💬 WhatsApp
+        WhatsApp
         <span id="wa-web-dot" class="nav-dot hidden" title=""></span>
         <span id="wa-web-unread" class="nav-count hidden"></span>
       </button>
       <button id="campaigns-btn" class="nav-btn">Campanhas</button>
-      <button id="prospecting-btn" class="nav-btn" title="Disparo seguro para leads frios (quem não tem seu número)">🎯 Prospecção</button>
+      <button id="prospecting-btn" class="nav-btn" title="Disparo seguro para leads frios (quem não tem seu número)">Prospecção</button>
     </nav>
     <div class="header-actions">
       <!-- Sininho: só aparece quando existe versão nova (baixando ou pronta para instalar) -->
@@ -79,12 +80,12 @@
           <span id="menu-update-dot" class="menu-dot hidden"></span>
         </button>
         <div id="main-menu" class="dropdown hidden" role="menu">
-          <button id="settings-btn" class="dropdown-item" role="menuitem">⚙️ Configurações de envio</button>
-          <button id="products-btn" class="dropdown-item" role="menuitem">🏷️ Produtos</button>
-          <button id="help-btn" class="dropdown-item" role="menuitem">❓ Como usar</button>
+          <button id="settings-btn" class="dropdown-item" role="menuitem">Configurações de envio</button>
+          <button id="products-btn" class="dropdown-item" role="menuitem">Produtos</button>
+          <button id="help-btn" class="dropdown-item" role="menuitem">Como usar</button>
           <div class="dropdown-sep"></div>
           <div class="dropdown-about">
-            Disparo em Massa <span id="version-badge">v...</span>
+            MultiEnvio <span id="version-badge">v...</span>
             <div id="version-detail" class="dropdown-about-detail">Você está na versão mais recente.</div>
           </div>
         </div>
@@ -171,7 +172,7 @@
             <button type="button" class="sidebar-tab hidden" data-tab="coldContacts">Clientes frios</button>
           </div>
           <p class="sidebar-cold-hint">Lista de números que ainda não têm seu contato? Use
-            <a href="#" class="open-prospecting-link">🎯 Prospecção</a> — com as travas contra bloqueio.</p>
+            <a href="#" class="open-prospecting-link">Prospecção</a> — com as travas contra bloqueio.</p>
 
           <input type="text" id="labels-search" class="labels-search hidden" placeholder="Buscar etiqueta..." />
           <input type="text" id="all-contacts-search" class="labels-search hidden" placeholder="Buscar contato por nome ou número..." />
@@ -233,7 +234,6 @@
               <h2 id="dispatch-title">Disparar mensagem</h2>
               <p id="dispatch-count" class="muted"></p>
             </div>
-            <button type="button" id="dispatch-close-btn" class="secondary small" title="Desmarcar os destinatários e voltar à tela inicial">← Início</button>
           </div>
 
           <!-- Tipo de mensagem em cartões que dizem o que o cliente recebe (em vez de um menu com
@@ -672,7 +672,6 @@
   <!-- WhatsApp Web oficial embutido (só no programa instalado — ver electron/main.js) -->
   <div id="whatsapp-panel" class="whatsapp-panel" aria-hidden="true">
     <div class="whatsapp-toolbar">
-      <button type="button" id="whatsapp-close-btn" class="secondary small">&larr; Voltar ao painel</button>
       <button type="button" id="whatsapp-back-campaign-btn" class="secondary small hidden"></button>
       <span id="whatsapp-status" class="muted"></span>
       <button type="button" id="whatsapp-reload-btn" class="secondary small">↻ Recarregar</button>
@@ -686,7 +685,7 @@
     <div class="modal-card campaigns-card">
       <div id="pr-list-view">
         <div class="modal-header">
-          <h2>🎯 Prospecção</h2>
+          <h2>Prospecção</h2>
           <div class="campaigns-header-actions">
             <button type="button" id="pr-new-btn" class="small">+ Nova lista</button>
             <button type="button" class="icon-btn pr-close" title="Fechar">&times;</button>
@@ -977,5 +976,6 @@
   <script src="whatsapp-web.js"></script>
   <script src="prospecting.js"></script>
   <script src="home.js"></script>
+  <script src="nav.js"></script>
 </body>
 </html>

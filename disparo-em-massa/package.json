@@ -1,8 +1,8 @@
 {
   "name": "tabelas-whatsapp",
-  "version": "1.6.0",
-  "description": "Automacao local para envio de mensagens em massa por etiqueta do WhatsApp Business",
-  "author": "Vanessa",
+  "version": "1.6.1",
+  "description": "MultiEnvio",
+  "author": "Chessa.com.br",
   "type": "module",
   "main": "electron/main.js",
   "engines": {
@@ -32,7 +32,7 @@
   },
   "build": {
     "appId": "com.felipechessa.multienvio",
-    "productName": "Disparo em Massa",
+    "productName": "MultiEnvio",
     "copyright": "Copyright © 2024 Felipe Chessa",
     "directories": {
       "output": "dist",
@@ -59,15 +59,15 @@
         }
       ],
       "icon": "build/icon.ico",
-      "artifactName": "Disparo.em.Massa.Setup.${version}.${ext}"
+      "artifactName": "MultiEnvio.Setup.${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Disparo em Massa",
-      "uninstallDisplayName": "Disparo em Massa",
+      "shortcutName": "MultiEnvio",
+      "uninstallDisplayName": "MultiEnvio",
       "license": "build/license.txt",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",

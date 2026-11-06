@@ -10,7 +10,8 @@ import { app, BrowserWindow } from 'electron'
 import { spawn } from 'child_process'
 import fs from 'fs'
 import path from 'path'
-import { fileURLToPath, pathToFileURL } from 'url'
+import http from 'http'
+import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const FFMPEG = path.join(__dirname, '..', '..', 'disparo-em-massa', 'node_modules', 'ffmpeg-static', 'ffmpeg.exe')
@@ -28,7 +29,16 @@ app.whenReady().then(async () => {
     // offscreen: a janela escondida comum não produz quadros, e a captura ficaria esperando
     const win = new BrowserWindow({ width: 1280, height: 720, show: false, webPreferences: { offscreen: true, backgroundThrottling: false } })
     win.webContents.setFrameRate(60)
-    await win.loadURL(pathToFileURL(path.join(__dirname, 'commercial.html')).href + '?render')
+    // serve a pasta por http local: em alguns ambientes o Chromium não abre file:// direto
+    const TYPES = { '.html': 'text/html; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.js': 'text/javascript', '.css': 'text/css' }
+    const server = http.createServer((req, res) => {
+      const file = path.join(__dirname, decodeURIComponent(new URL(req.url, 'http://x').pathname))
+      if (!file.startsWith(__dirname) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); return res.end() }
+      res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' })
+      fs.createReadStream(file).pipe(res)
+    })
+    await new Promise((r) => server.listen(0, '127.0.0.1', r))
+    await win.loadURL(`http://127.0.0.1:${server.address().port}/commercial.html?render`)
     await win.webContents.executeJavaScript('window.renderReady')
 
     const dbg = win.webContents.debugger

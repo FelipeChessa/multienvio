@@ -1,4 +1,4 @@
-Disparo em Massa - WhatsApp Business Automation
+MultiEnvio - Sistema comercial para WhatsApp
 Copyright © 2024 Felipe Chessa
 
 Este software é licenciado, não vendido. O uso está sujeito aos termos

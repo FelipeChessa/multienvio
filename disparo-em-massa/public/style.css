@@ -1029,6 +1029,14 @@ textarea:focus, .field input:focus {
 
 @keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }
 
+/* Campanhas e Prospecção são abas da barra superior: abrem logo abaixo dela (--header-h vem de
+   nav.js), então a barra continua clicável para trocar de tela */
+#campaigns-modal, #prospects-modal { top: var(--header-h, 0px); }
+
+/* logo/nome no topo leva ao Início (nav.js) */
+#brand-home { cursor: pointer; border-radius: 12px; }
+#brand-home:focus-visible { outline: 2px solid rgba(255,255,255,.5); outline-offset: 4px; }
+
 .modal-card {
   background: var(--surface);
   border-radius: var(--radius-lg);

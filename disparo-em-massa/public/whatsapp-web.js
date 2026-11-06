@@ -25,7 +25,7 @@ let waPendingChat = null
 const whatsappNotice = document.getElementById('whatsapp-notice')
 
 // ===== Status do WhatsApp Web no cabeçalho =====
-// Bolinha no botão "💬 WhatsApp" (verde = logado, âmbar = precisa escanear o QR), número de
+// Bolinha no botão "WhatsApp" (verde = logado, âmbar = precisa escanear o QR), número de
 // não lidas (lido do título "(3) WhatsApp" que o próprio WhatsApp Web mantém) e o texto no menu
 // de conexão. Se já foi conectado antes, o WhatsApp Web é carregado em segundo plano ao abrir o
 // programa — assim as não lidas aparecem sem precisar abrir a aba.
@@ -38,10 +38,10 @@ let waStatusTimer = null
 function setWaWebStatus(state, unread = 0) {
   const texts = {
     unavailable: 'Disponível só no programa instalado.',
-    idle: 'Não aberto ainda. Clique em 💬 WhatsApp.',
+    idle: 'Não aberto ainda. Clique em WhatsApp.',
     loading: 'Carregando…',
     on: unread > 0 ? `Conectado · ${unread} conversa(s) não lida(s)` : 'Conectado',
-    off: 'Não conectado: escaneie o QR Code na aba 💬 WhatsApp.'
+    off: 'Não conectado: escaneie o QR Code na aba WhatsApp.'
   }
   const prev = waWebState
   waWebState = state
@@ -133,8 +133,8 @@ function ensureWhatsAppWebview(initialUrl, contactLabel) {
         <h2>WhatsApp não conectado</h2>
         <p>Esta versão de teste não mostra o WhatsApp. Para ver ${what} aqui dentro:</p>
         <ol class="wf-steps">
-          <li>Abra o programa <strong>Disparo em Massa</strong></li>
-          <li>Clique em <strong>💬 WhatsApp</strong>, no topo</li>
+          <li>Abra o programa <strong>MultiEnvio</strong></li>
+          <li>Clique em <strong>WhatsApp</strong>, no topo</li>
           <li>No celular: <strong>Aparelhos conectados → Conectar um aparelho</strong> e escaneie o QR Code</li>
         </ol>
         <a class="wf-alt" href="${initialUrl || WHATSAPP_URL}" target="_blank" rel="noopener noreferrer">Prefiro abrir no navegador ↗</a>
@@ -213,11 +213,10 @@ function openWhatsAppChat(phone, { returnCampaignId, name } = {}) {
   return true
 }
 
+// é uma aba da barra superior: clicar de novo não fecha (para sair, use outra aba ou Início)
 whatsappBtn.addEventListener('click', () => {
-  if (whatsappPanel.classList.contains('open')) closeWhatsAppPanel()
-  else openWhatsAppPanel()
+  if (!whatsappPanel.classList.contains('open')) openWhatsAppPanel()
 })
-document.getElementById('whatsapp-close-btn').addEventListener('click', closeWhatsAppPanel)
 document.getElementById('whatsapp-reload-btn').addEventListener('click', () => {
   if (whatsappWebview) whatsappWebview.reload()
 })

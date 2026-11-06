@@ -1,3 +1,6 @@
+- O programa agora se chama MultiEnvio (seus dados, licença e WhatsApp continuam iguais)
+- Navegação pela barra de cima: Início, WhatsApp, Campanhas e Prospecção; o logo também volta ao Início
+- Correção: nome do fornecedor no instalador (Chessa.com.br)
 - Campanhas com follow-up automático e funil de vendas (quem respondeu muda de coluna sozinho)
 - Assistente de campanhas com modelos prontos por ramo de atuação
 - Prospecção de clientes novos com travas contra bloqueio e números digitados à mão

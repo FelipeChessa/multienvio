@@ -5,7 +5,8 @@
 // app.asar (somente leitura) ou da pasta de instalação (que pode não ser gravável sem admin,
 // dependendo de como foi instalado) — nesse caso o processo principal do Electron
 // (electron/main.js) define ELECTRON_USER_DATA_DIR antes de importar o servidor, apontando
-// para uma pasta de dados do usuário de verdade (ex: %APPDATA%\Disparo em Massa).
+// para uma pasta de dados do usuário de verdade (no programa instalado: %APPDATA%\tabelas-whatsapp,
+// fixada em electron/main.js para não mudar quando o nome do produto muda).
 
 import path from 'path'
 import { fileURLToPath } from 'url'

@@ -17,7 +17,10 @@ const { autoUpdater } = electronUpdaterPkg
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = Number(process.env.PORT || 3210)
-const ICON_PATH = path.join(__dirname, '..', 'build', 'icon.ico')
+// O ícone fica em electron/assets/ porque só electron/, src/ e public/ entram no programa
+// instalado — build/ é só para montar o instalador. Antes ele era lido de build/ e, no programa
+// instalado, o ícone da bandeja (perto do relógio) ficava em branco.
+const ICON_PATH = path.join(__dirname, 'assets', 'icon.ico')
 
 let mainWindow = null
 let tray = null
@@ -36,6 +39,16 @@ const USE_PROJECT_DATA = !app.isPackaged && process.argv.includes('--dados-do-pr
 if (USE_PROJECT_DATA && !process.env.DISPARO_USER_DATA_DIR) {
   app.setPath('userData', path.join(process.env.LOCALAPPDATA || app.getPath('temp'), 'DisparoTeste'))
 }
+
+// Pasta de dados dos clientes (licença, sessão do WhatsApp, campanhas): FIXA em
+// %APPDATA%\tabelas-whatsapp, o nome interno do pacote desde a primeira versão. O nome que
+// aparece para o cliente ("MultiEnvio") pode mudar à vontade sem que ninguém perca os dados.
+if (app.isPackaged && !process.env.DISPARO_USER_DATA_DIR) {
+  app.setPath('userData', path.join(app.getPath('appData'), 'tabelas-whatsapp'))
+}
+app.setName('MultiEnvio')
+// as notificações do Windows aparecem com o nome e o ícone do atalho que o instalador criou
+if (process.platform === 'win32') app.setAppUserModelId('com.felipechessa.multienvio')
 
 const gotLock = app.requestSingleInstanceLock()
 
@@ -187,9 +200,15 @@ function setupWhatsAppWeb() {
 let updateReadyToInstall = false
 
 function createTray() {
-  const trayIcon = nativeImage.createFromPath(ICON_PATH).resize({ width: 32, height: 32 })
+  // .ico com vários tamanhos (16 a 256 px): o Windows escolhe o certo para a escala da tela,
+  // sem ficar borrado. Se faltar, avisa no log em vez de criar um ícone invisível sem explicação.
+  let trayIcon = nativeImage.createFromPath(ICON_PATH)
+  if (trayIcon.isEmpty()) {
+    console.error('[bandeja] ícone não encontrado em', ICON_PATH)
+    trayIcon = nativeImage.createFromPath(path.join(__dirname, 'assets', 'icon.png')).resize({ width: 32, height: 32 })
+  }
   tray = new Tray(trayIcon)
-  tray.setToolTip('Disparo em Massa - WhatsApp')
+  tray.setToolTip('MultiEnvio')
   refreshTrayMenu()
   tray.on('double-click', () => {
     mainWindow.show()
@@ -276,7 +295,7 @@ function setupAutoUpdater() {
     // aviso do Windows (aparece mesmo com o programa só na bandeja); clicar abre a janela
     if (Notification.isSupported()) {
       const n = new Notification({
-        title: `Nova versão do Disparo em Massa (v${info.version})`,
+        title: `Nova versão do MultiEnvio (v${info.version})`,
         body: 'Clique no sininho 🔔 no topo do programa e em "Atualizar agora". Leva alguns segundos.',
         icon: ICON_PATH
       })

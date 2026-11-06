@@ -327,7 +327,7 @@ function renderAudienceStep() {
     // Lead frio (quem não tem seu número) só pela Prospecção, que tem as travas contra bloqueio
     pane.innerHTML = `
       <div class="type-explain">
-        <strong>Lista de números que ainda não têm seu contato?</strong> Use a <strong>🎯 Prospecção</strong>: ela confere os números,
+        <strong>Lista de números que ainda não têm seu contato?</strong> Use a <strong>Prospecção</strong>: ela confere os números,
         varia a mensagem para cada pessoa, envia devagar ao longo dos dias e para sozinha se aparecer sinal de bloqueio.
         Quem responder entra num funil igual ao das campanhas.
         <div style="margin-top:10px"><button type="button" class="small" id="builder-go-prospecting">Abrir Prospecção</button></div>
