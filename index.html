@@ -1594,6 +1594,20 @@
       document.getElementById('version-chip').textContent = 'versão atual: v' + v
     }
     setDownloadVersion(version)
+
+    // Quem chega por anúncio (link com ?utm_source=google / instagram / facebook) leva a origem
+    // na mensagem pronta do WhatsApp — assim dá para saber qual anúncio trouxe cada cliente.
+    ;(function () {
+      var src = (new URLSearchParams(location.search).get('utm_source') || '').toLowerCase()
+      var origem = src === 'google' ? 'Google' : /^(instagram|facebook|meta|ig|fb)$/.test(src) ? 'Instagram/Facebook' : ''
+      if (!origem) return
+      document.querySelectorAll('a[href^="https://wa.me/"]').forEach(function (a) {
+        var u = new URL(a.href)
+        var text = u.searchParams.get('text') || 'Olá! Quero saber mais sobre o app MultiEnvio.'
+        u.searchParams.set('text', text + ' (vim pelo anúncio do ' + origem + ')')
+        a.href = u.toString()
+      })
+    })()
     fetch('https://api.github.com/repos/FelipeChessa/multienvio/releases/latest')
       .then(function (r) { return r.ok ? r.json() : null })
       .then(function (rel) {
