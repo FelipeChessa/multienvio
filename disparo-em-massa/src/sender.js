@@ -3,6 +3,7 @@ import { EventEmitter } from 'events'
 
 import * as store from './db.js'
 import { getSock } from './whatsapp.js'
+import { personalize } from './variables.js'
 
 const jobs = new Map() // jobId -> { emitter, entries: [], done: boolean, summary }
 
@@ -97,13 +98,10 @@ async function sendAlbum(sock, jid, albumFiles, message, delayMinMs, delayMaxMs)
 
 // {{nome}} = nome como está salvo no contato; {{primeiro_nome}} = só a primeira palavra
 // ("Maria da Silva" -> "Maria"), que soa bem mais natural numa saudação. Sem nome salvo (ou
-// quando o "nome" é só um número de telefone), os dois viram "cliente".
-function personalizeMessage(message, contactName) {
-  const cleanName = contactName && /\p{L}/u.test(contactName) ? contactName.trim() : ''
-  const firstName = cleanName ? cleanName.split(/\s+/)[0] : ''
-  return message
-    .replace(/\{\{\s*primeiro_nome\s*\}\}/gi, firstName || 'cliente')
-    .replace(/\{\{\s*nome\s*\}\}/gi, cleanName || 'cliente')
+// quando o "nome" é só um número de telefone), os dois viram "cliente". As colunas da planilha
+// do contato ({{empresa}}, {{cidade}}...) vêm em contact.vars — regra em src/variables.js.
+function personalizeMessage(message, contact) {
+  return personalize(message, contact)
 }
 
 // Vários anexos no tipo "Arquivo/texto": cada arquivo vira uma mensagem, com uma pausa curta e
@@ -265,7 +263,7 @@ function startDispatch({ labelIds, labelName, message, file, files, contacts: ex
       const label = contact.name || contact.jid
       // messageFor(contact): texto próprio por contato (variações da prospecção); senão, o mesmo pra todos
       const baseMessage = typeof messageFor === 'function' ? (messageFor(contact) ?? message) : message
-      const personalizedMessage = personalizeMessage(baseMessage || '', contact.name)
+      const personalizedMessage = personalizeMessage(baseMessage || '', contact)
 
       // Simula digitação antes de enviar — best-effort, não interrompe o envio se falhar.
       if (simulateTyping) {

@@ -13,6 +13,7 @@ import { parseSpreadsheetRows } from './spreadsheet.js'
 import { normalizePhoneCandidates } from './phone.js'
 import { convertWebmToOggOpus } from './audio.js'
 import * as updateState from './updateState.js'
+import { rowVars, variableKeyFromHeader, sanitizeVars, contactVarKeys, findUnknownVariables, unknownVariablesMessage } from './variables.js'
 import scheduledRoutes from './scheduledRoutes.js'
 import { initScheduler } from './scheduler.js'
 import templateRoutes from './templateRoutes.js'
@@ -185,7 +186,9 @@ app.post('/api/cold-contacts/validate', upload.single('file'), async (req, res) 
   const rowInfo = parsed.rows.map((row) => {
     const rawPhone = (row[phoneColumn] || '').trim()
     const name = nameColumn != null ? (row[nameColumn] || '').trim() || null : null
-    return { rawPhone, name, candidates: normalizePhoneCandidates(rawPhone) }
+    // as outras colunas viram variáveis da mensagem ({{empresa}}, {{cidade}}...)
+    const vars = rowVars(parsed.headers, row, { phoneColumn, nameColumn, keepEmpty: true })
+    return { rawPhone, name, vars, candidates: normalizePhoneCandidates(rawPhone) }
   })
 
   const allCandidates = Array.from(new Set(rowInfo.flatMap((r) => r.candidates)))
@@ -231,11 +234,17 @@ app.post('/api/cold-contacts/validate', upload.single('file'), async (req, res) 
       return { rawPhone: info.rawPhone, name: info.name, status: 'opted_out', jid: null }
     }
     validCount += 1
-    return { rawPhone: info.rawPhone, name: info.name, status: 'valid', jid }
+    return { rawPhone: info.rawPhone, name: info.name, vars: info.vars, status: 'valid', jid }
   })
+
+  const variables = parsed.headers
+    .map((h, i) => ({ key: variableKeyFromHeader(h, i), header: h || `Coluna ${i + 1}`, index: i }))
+    .filter((v) => v.index !== phoneColumn && v.index !== nameColumn)
+    .map(({ key, header }) => ({ key, header }))
 
   res.json({
     results,
+    variables,
     summary: { total: results.length, valid: validCount, invalid: invalidCount, unparseable: unparseableCount, optedOut: optedOutCount }
   })
 })
@@ -440,6 +449,15 @@ app.post('/api/dispatch', uploadDispatchFiles, (req, res) => {
     if (!Array.isArray(explicitContacts) || explicitContacts.length === 0) {
       return res.status(400).json({ error: 'Selecione ao menos um contato para disparar.' })
     }
+    // colunas da planilha de cada contato ({{empresa}}...), limpas
+    explicitContacts = explicitContacts.map((c) => ({ ...c, vars: sanitizeVars(c?.vars) }))
+  }
+
+  // variável que não existe para esses contatos sairia como "{{empresa}}" para o cliente
+  {
+    const available = contactVarKeys(explicitContacts)
+    const unknown = findUnknownVariables([message, req.body.pollQuestion], available)
+    if (unknown.length > 0) return res.status(400).json({ error: unknownVariablesMessage(unknown, available) })
   }
 
   let labelName = null
@@ -473,6 +491,11 @@ app.post('/api/dispatch', uploadDispatchFiles, (req, res) => {
     campaignInput = parseCampaignInput(req.body, req.files).input
   } catch (err) {
     return res.status(400).json({ error: err.message })
+  }
+  if (campaignInput) {
+    const available = contactVarKeys(explicitContacts)
+    const unknown = findUnknownVariables(campaignInput.steps.map((st) => st.message), available)
+    if (unknown.length > 0) return res.status(400).json({ error: 'Follow-up: ' + unknownVariablesMessage(unknown, available) })
   }
 
   try {

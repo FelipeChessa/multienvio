@@ -5,6 +5,7 @@ import * as license from './license.js'
 import { prepareAttachments, MAX_ATTACHMENTS } from './attachments.js'
 import { scheduleMessage, cancelScheduledMessage } from './scheduler.js'
 import { parseCampaignInput, persistCampaignInput, MAX_FOLLOWUPS } from './campaigns.js'
+import { sanitizeVars, contactVarKeys, findUnknownVariables, unknownVariablesMessage } from './variables.js'
 
 // Rotas de mensagem agendada, num router separado pra não inchar mais src/server.js. A
 // validação aqui espelha a de POST /api/dispatch (mesmos tipos de mensagem, mesmas regras) —
@@ -101,6 +102,13 @@ router.post('/api/scheduled', uploadFiles, (req, res) => {
     if (!Array.isArray(explicitContacts) || explicitContacts.length === 0) {
       return res.status(400).json({ error: 'Selecione ao menos um contato para agendar.' })
     }
+    explicitContacts = explicitContacts.map((c) => ({ ...c, vars: sanitizeVars(c?.vars) }))
+  }
+
+  {
+    const available = contactVarKeys(explicitContacts)
+    const unknown = findUnknownVariables([message, req.body.pollQuestion], available)
+    if (unknown.length > 0) return res.status(400).json({ error: unknownVariablesMessage(unknown, available) })
   }
 
   let labelName = null
@@ -131,6 +139,11 @@ router.post('/api/scheduled', uploadFiles, (req, res) => {
     campaignInput = parseCampaignInput(req.body, req.files).input
   } catch (err) {
     return res.status(400).json({ error: err.message })
+  }
+  if (campaignInput) {
+    const available = contactVarKeys(explicitContacts)
+    const unknown = findUnknownVariables(campaignInput.steps.map((st) => st.message), available)
+    if (unknown.length > 0) return res.status(400).json({ error: 'Follow-up: ' + unknownVariablesMessage(unknown, available) })
   }
 
   // mesma remuxagem de nota de voz gravada que POST /api/dispatch faz (ver src/audio.js) —

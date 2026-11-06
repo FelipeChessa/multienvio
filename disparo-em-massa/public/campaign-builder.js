@@ -494,6 +494,7 @@ function renderSpreadsheetPane(pane) {
       if (!res.ok) throw new Error(data.error || 'Não consegui conferir os números.')
       sheet.results = data.results
       sheet.summary = data.summary
+      sheet.variables = data.variables || [] // colunas da planilha que viram {{variável}}
       sheet.selected = new Set(data.results.filter((r) => r.status === 'valid').map((r) => r.jid))
     } catch (err) {
       setBuilderError(err.message)
@@ -514,8 +515,19 @@ function audiencePayload() {
   if (builder.audienceType === 'contacts') return { type: 'contacts', contacts: Array.from(builder.contacts.values()) }
   const contacts = builder.sheet.results
     .filter((r) => r.status === 'valid' && builder.sheet.selected.has(r.jid))
-    .map((r) => ({ jid: r.jid, name: r.name || null }))
+    .map((r) => ({ jid: r.jid, name: r.name || null, vars: r.vars || {} }))
   return { type: 'spreadsheet', contacts }
+}
+
+// Colunas da planilha (público "Planilha") que viram variáveis por contato: {{empresa}}...
+function sheetVarKeys() {
+  return builder.audienceType === 'spreadsheet' ? (builder.sheet.variables || []).map((v) => v.key) : []
+}
+
+// Um contato da planilha para a pré-visualização mostrar os valores de verdade das colunas
+function sampleSheetRow() {
+  if (builder.audienceType !== 'spreadsheet' || !builder.sheet.results) return null
+  return builder.sheet.results.find((r) => r.status === 'valid' && builder.sheet.selected.has(r.jid)) || null
 }
 
 // ===== Passo 3: Mensagens =====
@@ -530,28 +542,31 @@ function finalFirstMessage() {
   return text ? `${text}\n\n${OPT_OUT_FOOTER}` : OPT_OUT_FOOTER
 }
 
+// Variáveis usadas nas mensagens que não têm valor: nem da campanha ("Variáveis"), nem
+// colunas da planilha do público. Mesma comparação do servidor (sem acento/maiúscula).
 function missingBuilderVariables() {
-  const defined = new Set(builder.variables.map((v) => v.key))
-  const missing = new Set()
-  for (const text of [builder.message, ...builder.followups.map((f) => f.message)]) {
-    for (const [, key] of String(text || '').matchAll(/\{\{\s*([a-z][a-z0-9_]*)\s*\}\}/gi)) {
-      const k = key.toLowerCase()
-      if (k !== 'nome' && k !== 'primeiro_nome' && !defined.has(k)) missing.add(k)
-    }
-  }
-  return Array.from(missing)
+  const defined = [...builder.variables.map((v) => v.key), ...sheetVarKeys()]
+  return unknownVariablesIn([builder.message, ...builder.followups.map((f) => f.message)], defined)
 }
 
 // Mesmo resultado que o servidor + motor de envio vão produzir pra um contato de exemplo.
 function previewText(text) {
   const vars = variableMap()
-  return String(text || '')
-    .replace(/\{\{\s*primeiro_nome\s*\}\}/gi, SAMPLE_CONTACT_NAME.split(' ')[0])
-    .replace(/\{\{\s*nome\s*\}\}/gi, SAMPLE_CONTACT_NAME)
-    .replace(/\{\{\s*([a-z][a-z0-9_]*)\s*\}\}/gi, (m, key) => {
-      const v = vars[key.toLowerCase()]
-      return v && v.trim() ? v : `⚠️{{${key}}}`
-    })
+  const row = sampleSheetRow()
+  const name = row?.name || SAMPLE_CONTACT_NAME
+  const sheetKeys = sheetVarKeys()
+  return String(text || '').replace(MESSAGE_VAR_RE, (m, raw, fallback) => {
+    const key = normalizeVarKey(raw)
+    if (key === 'primeiro_nome') return name.split(' ')[0]
+    if (key === 'nome') return name
+    const v = vars[key]
+    if (v && v.trim()) return v
+    const cell = row?.vars?.[key]
+    if (cell && String(cell).trim()) return cell
+    if (fallback !== undefined) return fallback // texto reserva
+    if (sheetKeys.includes(key)) return '' // coluna vazia para este contato: o espaço some
+    return `⚠️{{${raw}}}`
+  }).replace(/[ \t]+([,.!?;:])/g, '$1').replace(/[ \t]{2,}/g, ' ')
 }
 
 function formatWhatsappText(text) {
@@ -589,7 +604,8 @@ function renderMessagesStep() {
 
         <h3 class="builder-section-title">Variáveis</h3>
         <p class="field-hint">Valores que você preenche uma vez e entram no texto onde estiver <code>{{chave}}</code>.
-          <code>{{primeiro_nome}}</code> e <code>{{nome}}</code> são automáticos para cada contato.</p>
+          <code>{{primeiro_nome}}</code> e <code>{{nome}}</code> são automáticos para cada contato${sheetVarKeys().length ? ', e as colunas da planilha também (mudam para cada contato)' : ''}.
+          Se algum cliente não tiver o dado, o espaço some sozinho; para outro texto, use <code>{{empresa|sua empresa}}</code>.</p>
         <div id="builder-variables"></div>
         <button type="button" class="secondary small" id="builder-add-variable">+ Nova variável</button>
 
@@ -668,8 +684,12 @@ function renderMessagesStep() {
 function renderBuilderChips() {
   const chipsEl = builderBody.querySelector('#builder-chips')
   if (!chipsEl) return
-  const keys = ['primeiro_nome', 'nome', ...builder.variables.map((v) => v.key).filter(Boolean)]
-  chipsEl.innerHTML = '<span class="muted">Inserir:</span> ' + keys.map((k) => `<button type="button" class="builder-chip" data-key="${escapeHtml(k)}">{{${escapeHtml(k)}}}</button>`).join('')
+  const sheetKeys = sheetVarKeys()
+  const keys = Array.from(new Set(['primeiro_nome', 'nome', ...builder.variables.map((v) => v.key).filter(Boolean), ...sheetKeys]))
+  chipsEl.innerHTML = '<span class="muted">Inserir:</span> ' + keys.map((k) => {
+    const col = sheetKeys.includes(k) ? (builder.sheet.variables || []).find((v) => v.key === k) : null
+    return `<button type="button" class="builder-chip" data-key="${escapeHtml(k)}"${col ? ` title="Coluna da planilha: ${escapeHtml(col.header)} (muda para cada contato)"` : ''}>{{${escapeHtml(k)}}}</button>`
+  }).join('')
   for (const chip of chipsEl.querySelectorAll('.builder-chip')) {
     // mousedown + preventDefault: não tira o foco do campo de texto antes de inserir
     chip.addEventListener('mousedown', (e) => e.preventDefault())
@@ -886,6 +906,10 @@ async function renderReviewStep() {
     }
   }
   if (builder.audienceType === 'spreadsheet') warnings.push('Público de planilha (quem não tem seu contato) tem mais risco de bloqueio. Comece com um lote pequeno.')
+  if (builder.audienceType === 'spreadsheet') {
+    const varsWarn = missingColumnsWarning([builder.message, ...builder.followups.map((f) => f.message)], audiencePayload().contacts)
+    if (varsWarn) warnings.push(varsWarn)
+  }
   if (!/\?\s*$/m.test(builder.message.trim()) && builder.message.trim()) warnings.push('Dica: terminar a 1ª mensagem com uma pergunta aumenta muito a taxa de resposta.')
 
   const windowText = builder.followups.length > 0 ? describeWindow(builder.sendWindow) : '—'

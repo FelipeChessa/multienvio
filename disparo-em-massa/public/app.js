@@ -180,6 +180,7 @@ let selectedContactJids = new Set()
 let coldContactsFile = null
 let coldContactsHeaders = []
 let coldContactsPreviewRows = []
+let coldContactsVariables = [] // [{ key, header }] — colunas da planilha que viram {{variável}}
 let coldContactsValidRows = [] // [{ jid, name, rawPhone }] — só as linhas 'valid' da última validação
 let selectedColdContactJids = new Set()
 let currentProfile = { businessCard: { name: '', phone: '' }, location: { lat: null, lng: null, name: '', address: '' } }
@@ -754,6 +755,7 @@ function updateDispatchPanelForContacts() {
     return { jid, name: c?.name || null }
   })
   dispatchPanel.classList.remove('hidden')
+  renderMessageVars()
   dispatchTitle.textContent = adHocContacts.length === 1
     ? `Disparar: ${adHocContacts[0].name || adHocContacts[0].jid}`
     : `Disparar: ${adHocContacts.length} contatos selecionados`
@@ -894,6 +896,7 @@ ccValidateBtn.addEventListener('click', async () => {
       return
     }
     coldContactsValidRows = data.results.filter((r) => r.status === 'valid')
+    coldContactsVariables = data.variables || []
     selectedColdContactJids = new Set(coldContactsValidRows.map((r) => r.jid))
     renderColdContactsResults(data.summary)
     ccSetStage('results')
@@ -965,8 +968,9 @@ function updateDispatchPanelForColdContacts() {
   }
   adHocContacts = coldContactsValidRows
     .filter((r) => selectedColdContactJids.has(r.jid))
-    .map((r) => ({ jid: r.jid, name: r.name || null }))
+    .map((r) => ({ jid: r.jid, name: r.name || null, vars: r.vars || {} }))
   dispatchPanel.classList.remove('hidden')
+  renderMessageVars()
   dispatchTitle.textContent = `Disparar: ${adHocContacts.length} contato(s) da planilha`
   dispatchCount.textContent = `${adHocContacts.length} contato(s) receberão esta mensagem.`
   progressPanel.classList.add('hidden')
@@ -992,6 +996,7 @@ async function updateDispatchPanelForLabels() {
   }
   dispatchPanel.classList.remove('hidden')
   const selected = lastLabelsFetch.filter((l) => selectedLabelIds.has(l.id))
+  renderMessageVars()
   dispatchTitle.textContent = `Disparar: ${selected.map((l) => l.name).join(', ')}`
   progressPanel.classList.add('hidden')
   resetConfirmState()
@@ -1090,6 +1095,7 @@ failuresResendBtn.addEventListener('click', () => {
   selectedLabelIds.clear()
   renderLabels(lastLabelsFetch)
   dispatchPanel.classList.remove('hidden')
+  renderMessageVars()
   dispatchTitle.textContent = 'Reenviar para contatos selecionados'
   dispatchCount.textContent = `${adHocContacts.length} contato(s) selecionado(s) receberão esta mensagem.`
   progressPanel.classList.add('hidden')
@@ -2309,6 +2315,84 @@ dispatchCancelBtn.addEventListener('click', () => {
 
 // Validação e montagem do FormData compartilhadas entre "Disparar" (agora) e "Programar
 // envio" (mais tarde) — os dois mandam exatamente os mesmos campos, só a rota muda.
+// ===== Variáveis da mensagem ({{nome}}, {{primeiro_nome}} e colunas da planilha) =====
+// Mesma regra do servidor (src/variables.js): o nome é comparado sem acento/maiúscula, e uma
+// variável que não existe para os contatos escolhidos é barrada antes de enviar — senão o
+// cliente receberia "{{empresa}}" escrito na mensagem.
+// {{chave}} ou {{chave|texto reserva}} (o texto reserva vai quando o contato não tem o dado)
+const MESSAGE_VAR_RE = /\{\{\s*([^{}|\n]{1,40}?)\s*(?:\|\s*([^{}\n]{0,80}?)\s*)?\}\}/g
+function normalizeVarKey(text) {
+  return String(text || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 30)
+}
+function unknownVariablesIn(texts, availableKeys) {
+  const known = new Set(['nome', 'primeiro_nome', ...availableKeys.map(normalizeVarKey)])
+  const unknown = new Set()
+  for (const text of texts) {
+    for (const [, raw, fallback] of String(text || '').matchAll(MESSAGE_VAR_RE)) {
+      const key = normalizeVarKey(raw)
+      if (key && fallback === undefined && !known.has(key)) unknown.add(key)
+    }
+  }
+  return Array.from(unknown)
+}
+function unknownVariablesText(unknown) {
+  const extra = availableMessageVars()
+  return `A mensagem usa ${unknown.map((k) => `{{${k}}}`).join(', ')}, mas esse dado não existe para esses contatos. ` +
+    `Variáveis disponíveis: ${['nome', 'primeiro_nome', ...extra].map((k) => `{{${k}}}`).join(', ')}. ` +
+    'Se quiser manter mesmo assim, coloque um texto reserva, ex: {{empresa|sua empresa}}.' +
+    (extra.length === 0 ? ' Para usar outros dados de cada cliente (empresa, cidade...), envie para uma planilha com essas colunas (aba "Clientes frios").' : '')
+}
+// Aviso (não bloqueia): quantos contatos não têm o dado de uma coluna usada sem texto reserva.
+// Para eles o trecho some — o aviso sugere {{coluna|texto}} para a frase ficar natural.
+function missingColumnsWarning(texts, contacts) {
+  const used = new Set()
+  for (const text of texts) {
+    for (const [, raw, fallback] of String(text || '').matchAll(MESSAGE_VAR_RE)) {
+      const key = normalizeVarKey(raw)
+      if (fallback === undefined && key !== 'nome' && key !== 'primeiro_nome') used.add(key)
+    }
+  }
+  const parts = []
+  for (const key of used) {
+    const missing = contacts.filter((c) => c.vars && Object.prototype.hasOwnProperty.call(c.vars, key) && !String(c.vars[key] || '').trim()).length
+    if (missing > 0) parts.push(`${missing} contato(s) sem {{${key}}}`)
+  }
+  if (parts.length === 0) return ''
+  const example = Array.from(used)[0]
+  return `Atenção: ${parts.join(', ')} na planilha — para eles esse trecho some da mensagem. ` +
+    `Para colocar outro texto no lugar, use {{${example}|seu texto}}.`
+}
+
+// colunas da planilha só existem quando o envio é para a planilha ("Clientes frios")
+function availableMessageVars() {
+  return activeContactSource === 'coldContacts' && adHocContacts ? coldContactsVariables.map((v) => v.key) : []
+}
+// botões para inserir as variáveis no texto, logo abaixo da mensagem
+function renderMessageVars() {
+  const el = document.getElementById('message-vars')
+  const extra = availableMessageVars()
+  el.classList.toggle('hidden', extra.length === 0)
+  if (extra.length === 0) { el.innerHTML = ''; return }
+  const keys = ['primeiro_nome', 'nome', ...extra]
+  el.title = 'Se um cliente não tiver o dado na planilha, o espaço some. Para outro texto, use {{empresa|sua empresa}}.'
+  el.innerHTML = '<span class="muted">Inserir:</span> ' + keys.map((k) => {
+    const col = coldContactsVariables.find((v) => v.key === k)
+    return `<button type="button" class="builder-chip" data-key="${escapeHtml(k)}" title="${col ? 'Coluna da planilha: ' + escapeHtml(col.header) : 'Nome do contato'}">{{${escapeHtml(k)}}}</button>`
+  }).join('')
+  for (const chip of el.querySelectorAll('.builder-chip')) {
+    chip.addEventListener('click', () => {
+      const token = `{{${chip.dataset.key}}}`
+      const start = messageInput.selectionStart ?? messageInput.value.length
+      const end = messageInput.selectionEnd ?? messageInput.value.length
+      messageInput.value = messageInput.value.slice(0, start) + token + messageInput.value.slice(end)
+      messageInput.selectionStart = messageInput.selectionEnd = start + token.length
+      messageInput.dispatchEvent(new Event('input'))
+      messageInput.focus()
+    })
+  }
+}
+
 function validateDispatchFields() {
   if (selectedLabelIds.size === 0 && !adHocContacts) {
     return 'Selecione uma etiqueta ou contatos.'
@@ -2331,6 +2415,8 @@ function validateDispatchFields() {
   if (messageType === 'location' && currentProfile.location.lat == null) {
     return 'Configure a localização antes de continuar.'
   }
+  const unknownVars = unknownVariablesIn([message, messageType === 'poll' ? pollQuestionInput.value : ''], availableMessageVars())
+  if (unknownVars.length > 0) return unknownVariablesText(unknownVars)
   if (messageType === 'contact' && !currentProfile.businessCard.name) {
     return 'Configure o cartão de contato antes de continuar.'
   }
@@ -2388,7 +2474,8 @@ dispatchBtn.addEventListener('click', async () => {
       ? `${adHocContacts.length} contato(s) selecionado(s)`
       : `${lastLabelsContactCount} contato(s) da(s) etiqueta(s) "${lastLabelsFetch.filter((l) => selectedLabelIds.has(l.id)).map((l) => l.name).join(', ')}"`
     const campaignNote = isCampaignSelected() ? ' Eles vão entrar na campanha, com follow-up automático para quem não responder.' : ''
-    showNotice('confirm', `Clique em "Confirmar envio" para disparar para ${target}.${campaignNote}`)
+    const varsNote = missingColumnsWarning([messageInput.value], adHocContacts || [])
+    showNotice('confirm', `Clique em "Confirmar envio" para disparar para ${target}.${campaignNote}${varsNote ? ' ' + varsNote : ''}`)
     return
   }
 

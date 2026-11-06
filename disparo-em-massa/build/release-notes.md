@@ -1,10 +1,8 @@
+- Correção: variáveis da planilha ({{empresa}}, {{cidade}}...) agora funcionam no envio comum, nas campanhas, nos follow-ups e nos agendamentos
+- Texto reserva para quem não tem o dado: {{empresa|sua empresa}} — nenhuma mensagem sai com {{ }}
+- Aviso antes de enviar quando algum contato não tem o dado de uma coluna
 - O programa agora se chama MultiEnvio (seus dados, licença e WhatsApp continuam iguais)
 - Navegação pela barra de cima: Início, WhatsApp, Campanhas e Prospecção; o logo também volta ao Início
-- Correção: nome do fornecedor no instalador (Chessa.com.br)
 - Campanhas com follow-up automático e funil de vendas (quem respondeu muda de coluna sozinho)
-- Assistente de campanhas com modelos prontos por ramo de atuação
 - Prospecção de clientes novos com travas contra bloqueio e números digitados à mão
 - WhatsApp Web dentro do programa, com conversas abertas direto do funil
-- Envio de vários anexos de uma vez
-- Nome do contato e etiquetas nos cartões do funil
-- Tela inicial com resumo do dia e atualização pelo sininho 🔔

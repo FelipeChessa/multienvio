@@ -16,6 +16,7 @@
 // - quem recebe entra num funil de campanha (src/campaigns.js): respostas e follow-ups
 //   funcionam igual às campanhas.
 
+import { variableKeyFromHeader } from './variables.js'
 import crypto from 'crypto'
 import * as store from './db.js'
 import * as whatsapp from './whatsapp.js'
@@ -123,11 +124,9 @@ export function analyzeMessages(variants) {
 
 // ===== Triagem da planilha =====
 
+// mesma regra das outras telas (src/variables.js): "Empresa" → {{empresa}}
 export function slugifyHeader(header, index) {
-  const s = String(header || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 30)
-  const key = /^[a-z]/.test(s) ? s : `coluna_${index + 1}`
-  return key === 'nome' || key === 'primeiro_nome' ? `${key}_planilha` : key
+  return variableKeyFromHeader(header, index)
 }
 
 function recentlyProspectedSet(exceptProspectId = null) {

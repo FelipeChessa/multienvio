@@ -3,6 +3,7 @@ import multer from 'multer'
 import * as store from './db.js'
 import * as license from './license.js'
 import * as whatsapp from './whatsapp.js'
+import { sanitizeVars, contactVarKeys, normalizeVarKey, findUnknownVariables, unknownVariablesMessage } from './variables.js'
 import * as campaigns from './campaigns.js'
 import { startDispatch } from './sender.js'
 import { scheduleMessage, cancelScheduledMessage } from './scheduler.js'
@@ -50,7 +51,7 @@ function resolveAudience(audience, { excludeActive }) {
     }
     contacts = audience.contacts
       .filter((c) => c && typeof c.jid === 'string' && c.jid.includes('@'))
-      .map((c) => ({ jid: c.jid, name: c.name ? String(c.name).slice(0, 120) : null }))
+      .map((c) => ({ jid: c.jid, name: c.name ? String(c.name).slice(0, 120) : null, vars: sanitizeVars(c.vars) }))
     origin = audience.type === 'spreadsheet' ? `Planilha (${contacts.length} contatos)` : `${contacts.length} contato(s) selecionado(s)`
   } else {
     throw new Error('Escolha quem vai receber a campanha.')
@@ -117,10 +118,18 @@ router.post('/api/campaigns', uploadCampaignFiles, (req, res) => {
   if (!message && !file) {
     return res.status(400).json({ error: 'Escreva a primeira mensagem ou anexe um arquivo.' })
   }
+  // variáveis por contato (colunas da planilha, como {{empresa}}) não precisam de valor fixo
+  const contactKeys = contactVarKeys(audience.contacts)
   const missing = campaigns.findMissingVariables([message, ...input.steps.map((s) => s.message)], variables)
+    .filter((k) => !contactKeys.includes(normalizeVarKey(k)))
   if (missing.length > 0) {
     return res.status(400).json({ error: `Preencha o valor de: ${missing.map((k) => `{{${k}}}`).join(', ')}.` })
   }
+  const unknown = findUnknownVariables(
+    [message, ...input.steps.map((s) => s.message)].map((t) => campaigns.applyVariables(t, variables)),
+    contactKeys
+  )
+  if (unknown.length > 0) return res.status(400).json({ error: unknownVariablesMessage(unknown, contactKeys) })
 
   const labels = store.listLabels()
   const applyLabelId = req.body.applyLabelId || null

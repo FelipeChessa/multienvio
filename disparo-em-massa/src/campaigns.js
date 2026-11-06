@@ -116,12 +116,16 @@ const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
 // Variáveis da campanha ({{cupom}}, {{link}}...) — um valor fixo, igual para todos os
 // contatos, trocado no texto antes de enviar. {{nome}}/{{primeiro_nome}} ficam de fora daqui:
 // são por contato e quem troca é o motor de envio (src/sender.js).
+// Aceita também o texto reserva: {{cupom|sem cupom}}. O que não tiver valor aqui fica como está
+// para o motor de envio (src/variables.js) resolver por contato ou usar o texto reserva.
+const CAMPAIGN_VAR_RE = /\{\{\s*([a-z][a-z0-9_]*)\s*(\|[^{}\n]*)?\}\}/gi
 export function applyVariables(text, variables) {
   if (!text || !variables) return text || ''
-  return text.replace(/\{\{\s*([a-z][a-z0-9_]*)\s*\}\}/gi, (match, key) => {
+  return text.replace(CAMPAIGN_VAR_RE, (match, key) => {
     const k = key.toLowerCase()
     if (RESERVED_VARIABLES.has(k)) return match
-    return Object.prototype.hasOwnProperty.call(variables, k) ? variables[k] : match
+    const v = Object.prototype.hasOwnProperty.call(variables, k) ? String(variables[k] ?? '').trim() : ''
+    return v || match
   })
 }
 
@@ -151,8 +155,9 @@ export function parseVariables(raw) {
 export function findMissingVariables(texts, variables) {
   const missing = new Set()
   for (const text of texts) {
-    for (const [, key] of String(text || '').matchAll(/\{\{\s*([a-z][a-z0-9_]*)\s*\}\}/gi)) {
+    for (const [, key, fallback] of String(text || '').matchAll(CAMPAIGN_VAR_RE)) {
       const k = key.toLowerCase()
+      if (fallback) continue // tem texto reserva: não falta nada
       if (!RESERVED_VARIABLES.has(k) && !Object.prototype.hasOwnProperty.call(variables || {}, k)) missing.add(k)
     }
   }
@@ -264,6 +269,8 @@ export function initialDispatchHooks(campaignId, expectedCount = null) {
       const entry = {
         jid: contact.jid,
         name: contact.name || null,
+        // colunas da planilha do contato ({{empresa}}...), para os follow-ups também
+        vars: contact.vars && typeof contact.vars === 'object' ? contact.vars : {},
         keys: [whatsapp.normalizeJid(contact.jid)].filter(Boolean),
         stage: 'waiting',
         followupsSent: 0,
@@ -425,7 +432,7 @@ function startFollowupBatch(campaign, stepIndex, entries) {
   runningFollowup = { campaignId: campaign.id, stepIndex }
   try {
     startDispatch({
-      contacts: entries.map((e) => ({ jid: e.jid, name: e.name })),
+      contacts: entries.map((e) => ({ jid: e.jid, name: e.name, vars: e.vars || {} })),
       labelName: `Campanha "${campaign.name}" — follow-up ${stepIndex + 1}`,
       message: applyVariables(step.message, campaign.variables),
       file,
