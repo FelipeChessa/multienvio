@@ -271,7 +271,15 @@ function setScreen(name) {
 function isLicenseLocked() {
   return document.body.classList.contains('license-locked')
 }
+let licenseSeenLocked = false
 function setLicenseLock(locked) {
+  if (locked) {
+    licenseSeenLocked = true
+  } else if (licenseSeenLocked) {
+    // acabou de ativar ou destravar: recarrega para buscar os dados que a API recusou antes
+    location.reload()
+    return
+  }
   document.body.classList.toggle('license-locked', locked)
   if (locked && typeof applyLicenseLock === 'function') applyLicenseLock()
 }
@@ -292,6 +300,11 @@ async function pollStatus() {
     if (data.status === 'unlicensed') {
       setConnectionChip('error', 'Não ativado', 'Programa ainda não ativado.')
       setScreen('unlicensed')
+      // diz por que travou (revogada, vencida, sem internet); primeira ativação não mostra nada
+      const reasonEl = document.getElementById('license-reason')
+      const showReason = !!data.reason && data.reason !== 'Nenhuma licença ativada.'
+      reasonEl.textContent = showReason ? data.reason : ''
+      reasonEl.classList.toggle('hidden', !showReason)
     } else if (data.status === 'connected') {
       setConnectionChip('ok', 'Conectado', 'Conectado e pronto para enviar.')
       if (lastLabelsFetch.length === 0) {
@@ -1310,6 +1323,7 @@ async function refreshStats() {
   } catch {
     return // informativo — não trava o resto da tela
   }
+  if (!d || d.error) return
   const ago = (ms) => {
     if (!ms) return ''
     const min = Math.round((Date.now() - ms) / 60000)
@@ -2166,6 +2180,7 @@ function renderProfileSummaries() {
 async function refreshProfile() {
   try {
     const res = await fetch('/api/messaging-profile')
+    if (!res.ok) return // sem licença: a tela recarrega depois da ativação
     currentProfile = await res.json()
   } catch (err) {
     // perfil é usado só quando o tipo de mensagem exigir — não bloqueia o resto da tela

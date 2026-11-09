@@ -1,6 +1,5 @@
-- Correção importante: todos os módulos agora exigem licença ativa
-- Atualizações passam a ser instaladas automaticamente; o programa espera terminar qualquer envio em andamento
-- Variáveis da planilha ({{empresa}}, {{cidade}}...) no envio comum, nas campanhas, nos follow-ups e nos agendamentos
-- Texto reserva para quem não tem o dado: {{empresa|sua empresa}}
-- O programa agora se chama MultiEnvio (seus dados, licença e WhatsApp continuam iguais)
-- Navegação pela barra de cima: Início, WhatsApp, Campanhas e Prospecção
+- Licença conferida online periodicamente; sem internet o programa continua funcionando
+- Correção: a tela carrega completa logo depois de ativar a chave
+- Todos os módulos exigem licença ativa
+- Atualizações instaladas automaticamente, depois de terminar qualquer envio em andamento
+- Variáveis da planilha ({{empresa}}, {{cidade}}...) em todos os envios, com texto reserva: {{empresa|sua empresa}}

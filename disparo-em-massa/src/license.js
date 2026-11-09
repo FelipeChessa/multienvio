@@ -22,6 +22,20 @@ const PUBLIC_KEY = crypto.createPublicKey(`-----BEGIN PUBLIC KEY-----
 MCowBQYDK2VwAyEAz0gFUiYAWxgjt6fe2ocMxVXRvsoYOhv6dr/TlGWzU3E=
 -----END PUBLIC KEY-----`)
 
+// Verificação online: a chave é conferida no servidor ao abrir o programa e a cada 6 horas, para
+// que uma chave revogada pare de funcionar. Só uma resposta explícita do servidor trava na hora;
+// sem internet ou com o servidor fora do ar, o programa continua liberado por OFFLINE_GRACE_DAYS.
+const OFFLINE_GRACE_DAYS = 7
+const OFFLINE_GRACE_MS = OFFLINE_GRACE_DAYS * 24 * 60 * 60 * 1000
+const CHECK_OK_INTERVAL_MS = 6 * 60 * 60 * 1000
+const CHECK_RETRY_MS = 5 * 60 * 1000
+const CHECK_BLOCKED_RETRY_MS = 30 * 60 * 1000
+const SUPPORT = 'Fale com o suporte pelo WhatsApp (11) 99287-6042.'
+const BLOCK_MESSAGES = {
+  revoked: `Esta licença foi desativada. ${SUPPORT}`,
+  other_device: `Esta licença está ativa em outro computador. ${SUPPORT}`
+}
+
 function base64UrlEncode(buf) {
   return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
@@ -80,21 +94,27 @@ function getDeviceId() {
   return id
 }
 
-function getStoredLicense() {
+function readLicenseFile() {
   if (!fs.existsSync(licenseFile)) return null
   try {
-    const stored = JSON.parse(fs.readFileSync(licenseFile, 'utf8'))
-    return stored.key || null
+    return JSON.parse(fs.readFileSync(licenseFile, 'utf8'))
   } catch {
     return null
   }
 }
 
 function getStatus() {
-  const key = getStoredLicense()
+  const stored = readLicenseFile()
+  const key = stored?.key
   if (!key) return { activated: false, error: 'Nenhuma licença ativada.' }
   const result = verifyLicenseKey(key)
   if (!result.valid) return { activated: false, error: result.error }
+  const blocked = stored.check?.blocked
+  if (blocked) return { activated: false, error: BLOCK_MESSAGES[blocked] || BLOCK_MESSAGES.revoked }
+  // valor absoluto: atrasar o relógio do computador não estende a tolerância
+  if (stored.check?.lastOkAt && Math.abs(Date.now() - stored.check.lastOkAt) > OFFLINE_GRACE_MS) {
+    return { activated: false, error: `Não foi possível confirmar sua licença nos últimos ${OFFLINE_GRACE_DAYS} dias. Conecte o computador à internet: o programa libera sozinho em alguns minutos.` }
+  }
   return { activated: true, customer: result.payload.customer, expiresAt: result.payload.expiresAt || null }
 }
 
@@ -125,7 +145,7 @@ async function activate(licenseKey) {
   }
 
   fs.mkdirSync(path.dirname(licenseFile), { recursive: true })
-  fs.writeFileSync(licenseFile, JSON.stringify({ key: licenseKey.trim() }, null, 2))
+  fs.writeFileSync(licenseFile, JSON.stringify({ key: licenseKey.trim(), check: { lastOkAt: Date.now() } }, null, 2))
   return { customer: result.payload.customer, expiresAt: result.payload.expiresAt || null }
 }
 
@@ -133,4 +153,58 @@ function isActivated() {
   return getStatus().activated
 }
 
-export { getStatus, activate, isActivated, verifyLicenseKey }
+function saveCheck(key, check) {
+  const stored = readLicenseFile()
+  if (stored?.key !== key) return // a chave foi trocada enquanto a verificação rodava
+  fs.writeFileSync(licenseFile, JSON.stringify({ ...stored, check }, null, 2))
+}
+
+// Devolve 'ok', 'blocked', 'offline' ou 'skipped'.
+async function checkOnline() {
+  const stored = readLicenseFile()
+  const key = stored?.key
+  if (!ACTIVATION_SERVER_URL || !key || !verifyLicenseKey(key).valid) return 'skipped'
+
+  let data = null
+  try {
+    const response = await fetch(`${ACTIVATION_SERVER_URL}/license-check`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, deviceId: getDeviceId() }),
+      signal: AbortSignal.timeout(15000)
+    })
+    data = await response.json()
+  } catch {
+    data = null
+  }
+
+  if (data?.ok === true) {
+    saveCheck(key, { lastOkAt: Date.now() })
+    return 'ok'
+  }
+  if (data?.reason && BLOCK_MESSAGES[data.reason]) {
+    saveCheck(key, { ...stored.check, blocked: data.reason })
+    return 'blocked'
+  }
+  // internet, servidor fora do ar ou resposta inesperada: não trava; só começa a contar a tolerância
+  if (!stored.check?.lastOkAt) saveCheck(key, { ...stored.check, lastOkAt: Date.now() })
+  return 'offline'
+}
+
+// Verifica em seguida e depois sozinho, para sempre. onChecked: chamado ao fim de cada verificação.
+function startOnlineChecks(onChecked) {
+  const run = async () => {
+    let result = 'offline'
+    try {
+      result = await checkOnline()
+      onChecked?.(result)
+    } catch (err) {
+      console.error('Falha ao verificar a licença:', err.message)
+    }
+    const next = result === 'blocked' ? CHECK_BLOCKED_RETRY_MS : result === 'offline' ? CHECK_RETRY_MS : CHECK_OK_INTERVAL_MS
+    setTimeout(run, next)
+  }
+  setTimeout(run, 3000)
+}
+
+export { getStatus, activate, isActivated, verifyLicenseKey, checkOnline, startOnlineChecks }

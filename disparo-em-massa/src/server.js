@@ -90,7 +90,7 @@ app.post('/api/license/activate', async (req, res) => {
 
 app.get('/api/status', (req, res) => {
   if (!license.isActivated()) {
-    return res.json({ status: 'unlicensed', qrDataUrl: null })
+    return res.json({ status: 'unlicensed', qrDataUrl: null, reason: license.getStatus().error })
   }
   res.json(whatsapp.getStatus())
 })
@@ -622,3 +622,8 @@ if (license.isActivated()) {
 } else {
   console.log('Licença não ativada — aguardando ativação pela interface web.')
 }
+
+// confere a chave no servidor; se ela voltar a valer (ex: reset no painel), reconecta o WhatsApp
+license.startOnlineChecks(() => {
+  if (license.isActivated()) startWhatsappOnce()
+})
