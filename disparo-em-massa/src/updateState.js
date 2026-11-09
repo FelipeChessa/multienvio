@@ -45,7 +45,7 @@ export function setBusyCheck(fn) {
 }
 
 export function getState() {
-  return { ...state }
+  return { ...state, busy: !!busyCheck() }
 }
 
 export function setState(patch) {
@@ -55,6 +55,28 @@ export function setState(patch) {
 export function registerHandlers({ onCheck, onInstall }) {
   checkHandler = onCheck
   installHandler = onInstall
+}
+
+// Atualização obrigatória: instala assim que não houver envio em andamento, sem depender de
+// ninguém clicar. Se a instalação falhar, tenta de novo em 1 minuto.
+let installTimer = null
+export function installWhenIdle({ delayMs = 5000, retryMs = 15000 } = {}) {
+  clearTimeout(installTimer)
+  const attempt = () => {
+    if (!installHandler) return
+    if (busyCheck()) {
+      installTimer = setTimeout(attempt, retryMs)
+      return
+    }
+    try {
+      setState({ installing: true })
+      installHandler()
+    } catch (err) {
+      setState({ installing: false, error: err.message })
+      installTimer = setTimeout(attempt, 60000)
+    }
+  }
+  installTimer = setTimeout(attempt, delayMs)
 }
 
 export function requestCheck() {

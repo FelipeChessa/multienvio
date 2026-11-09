@@ -49,6 +49,16 @@ function goHome() {
   else window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+// Licença inválida ou vencida com o programa aberto: fecha tudo e tira o WhatsApp embutido da
+// memória (o tutorial "Como usar" pode continuar aberto).
+function applyLicenseLock() {
+  leaveSections()
+  destroyWhatsAppWebview()
+  document.querySelectorAll('.modal-overlay').forEach((m) => {
+    if (m.id !== 'tutorial-modal') m.classList.add('hidden')
+  })
+}
+
 navHomeBtn.addEventListener('click', goHome)
 // antes de cada seção abrir (pelo próprio clique dela), fecha as outras
 for (const [name, s] of Object.entries(navSections)) {

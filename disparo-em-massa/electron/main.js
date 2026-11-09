@@ -24,6 +24,7 @@ const ICON_PATH = path.join(__dirname, 'assets', 'icon.ico')
 
 let mainWindow = null
 let tray = null
+let licenseModule = null // carregado depois que a pasta de dados estiver definida
 
 // Só para desenvolvimento/testes: roda o app com outra pasta de dados (auth/, data/, sessão do
 // WhatsApp Web), sem misturar com a instalação de verdade do usuário.
@@ -71,6 +72,7 @@ if (!gotLock) {
     // Files), então usamos a pasta de dados do usuário de verdade do Windows
     if (!USE_PROJECT_DATA) process.env.ELECTRON_USER_DATA_DIR = app.getPath('userData')
     await import('../src/server.js')
+    licenseModule = await import('../src/license.js')
     setupWhatsAppWeb()
     createWindow()
     createTray()
@@ -108,7 +110,8 @@ function createWindow() {
   // A única <webview> permitida é a do WhatsApp Web, na sessão própria dela, sem nenhum
   // acesso a Node — mesmo que algo na página tente criar outra apontando pra outro lugar.
   mainWindow.webContents.on('will-attach-webview', (event, webPreferences, params) => {
-    if (!isWhatsAppUrl(params.src) || params.partition !== WHATSAPP_PARTITION) {
+    // sem licença válida o WhatsApp embutido não abre, mesmo que a tela tente
+    if (!licenseModule?.isActivated() || !isWhatsAppUrl(params.src) || params.partition !== WHATSAPP_PARTITION) {
       event.preventDefault()
       return
     }
@@ -272,7 +275,8 @@ function setupAutoUpdater() {
   autoUpdater.on('update-not-available', () => updateState.setState({ checking: false, updateAvailable: false, latestVersion: null }))
   autoUpdater.on('error', (err) => {
     console.error('[autoUpdater] erro:', err.message)
-    updateState.setState({ checking: false, error: err.message })
+    // falhou (sem internet, GitHub fora): libera o programa e tenta de novo na próxima checagem
+    updateState.setState({ checking: false, error: err.message, updateAvailable: !!updateState.getState().downloaded })
   })
   autoUpdater.on('update-available', (info) => {
     console.log('[autoUpdater] atualização disponível:', info.version)
@@ -295,8 +299,8 @@ function setupAutoUpdater() {
     // aviso do Windows (aparece mesmo com o programa só na bandeja); clicar abre a janela
     if (Notification.isSupported()) {
       const n = new Notification({
-        title: `Nova versão do MultiEnvio (v${info.version})`,
-        body: 'Clique no sininho 🔔 no topo do programa e em "Atualizar agora". Leva alguns segundos.',
+        title: `Atualizando o MultiEnvio (v${info.version})`,
+        body: 'O programa vai reiniciar sozinho, assim que não houver envio em andamento.',
         icon: ICON_PATH
       })
       n.on('click', () => {
@@ -306,9 +310,10 @@ function setupAutoUpdater() {
       })
       n.show()
     }
+    updateState.installWhenIdle()
   })
 
   const check = () => autoUpdater.checkForUpdates().catch((err) => console.error('[autoUpdater] falha ao checar atualização:', err.message))
   check()
-  setInterval(check, 4 * 60 * 60 * 1000) // o app fica rodando na bandeja por dias — reconfere periodicamente
+  setInterval(check, 30 * 60 * 1000) // o app fica rodando na bandeja por dias — reconfere periodicamente
 }

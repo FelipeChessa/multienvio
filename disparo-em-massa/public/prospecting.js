@@ -55,6 +55,7 @@ function prStopRefresh() {
 }
 
 async function openProspecting() {
+  if (isLicenseLocked()) return
   closeCampaignsModal?.()
   prModal.classList.remove('hidden')
   await showProspectList()

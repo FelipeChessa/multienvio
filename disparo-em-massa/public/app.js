@@ -266,6 +266,16 @@ function setScreen(name) {
   mainScreen.classList.toggle('hidden', name !== 'main')
 }
 
+// Sem licença os módulos ficam travados: a barra some e os painéis abertos fecham (nav.js).
+// O servidor também recusa tudo — isto aqui é a parte visível da mesma regra.
+function isLicenseLocked() {
+  return document.body.classList.contains('license-locked')
+}
+function setLicenseLock(locked) {
+  document.body.classList.toggle('license-locked', locked)
+  if (locked && typeof applyLicenseLock === 'function') applyLicenseLock()
+}
+
 function updateConnectionButtons(status) {
   const canDisconnect = status === 'connected' || status === 'qr' || status === 'connecting'
   disconnectBtn.classList.toggle('hidden', !canDisconnect)
@@ -276,6 +286,7 @@ async function pollStatus() {
   try {
     const res = await fetch('/api/status')
     const data = await res.json()
+    setLicenseLock(data.status === 'unlicensed')
     updateConnectionButtons(data.status)
 
     if (data.status === 'unlicensed') {
@@ -337,7 +348,7 @@ async function pollAppVersion() {
     renderUpdateBell(data)
     // enquanto baixa, atualiza a barra de progresso mais rápido que o ciclo normal de 30 s
     clearTimeout(updateFastPoll)
-    if (data.updateAvailable && !data.downloaded) updateFastPoll = setTimeout(pollAppVersion, 3000)
+    if (data.updateAvailable) updateFastPoll = setTimeout(pollAppVersion, 3000)
     if (data.updateAvailable) {
       versionDetail.textContent = data.downloaded
         ? `Nova versão v${data.latestVersion} pronta: clique no sininho 🔔 para atualizar.`
@@ -354,7 +365,22 @@ async function pollAppVersion() {
 // quando termina, "Atualizar agora" fecha o programa, instala e abre de novo já atualizado.
 let updateInstalling = false
 let updateFastPoll = null
+// Atualização é obrigatória: cobre o programa enquanto baixa e instala. Só espera se houver um
+// envio em andamento (o sininho avisa); quando o envio acaba, esta tela entra e o programa reinicia.
+function renderUpdateRequired(data) {
+  const el = document.getElementById('update-required')
+  const show = !!data.updateAvailable && !data.busy
+  el.classList.toggle('hidden', !show)
+  if (!show) return
+  const progress = Number(data.progress) || 0
+  document.getElementById('update-required-text').textContent = data.downloaded
+    ? `Instalando a versão ${data.latestVersion}…`
+    : `Baixando a versão ${data.latestVersion}… ${progress}%`
+  document.getElementById('update-required-bar').style.width = `${data.downloaded ? 100 : Math.max(4, progress)}%`
+}
+
 function renderUpdateBell(data) {
+  renderUpdateRequired(data)
   const wrap = document.getElementById('update-wrap')
   wrap.classList.toggle('hidden', !data.updateAvailable)
   if (!data.updateAvailable) return
@@ -376,9 +402,9 @@ function renderUpdateBell(data) {
 
   if (updateInstalling) return
   document.getElementById('update-hint').textContent = ready
-    ? 'O programa fecha, atualiza e abre de novo sozinho. Leva alguns segundos.'
+    ? 'Atualização obrigatória: será instalada sozinha assim que o envio terminar.'
     : `Baixando em segundo plano… ${Number(data.progress) || 0}%. Pode continuar usando.`
-  updateNowBtn.disabled = !ready
+  updateNowBtn.disabled = !ready || !!data.busy
   updateNowBtn.textContent = 'Atualizar agora'
 }
 

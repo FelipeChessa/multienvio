@@ -4,6 +4,7 @@ import { EventEmitter } from 'events'
 import * as store from './db.js'
 import { getSock } from './whatsapp.js'
 import { personalize } from './variables.js'
+import { isActivated } from './license.js'
 
 const jobs = new Map() // jobId -> { emitter, entries: [], done: boolean, summary }
 
@@ -141,6 +142,8 @@ function isBusy() {
 function startDispatch({ labelIds, labelName, message, file, files, contacts: explicitContacts, messageType, asVoiceNote, pollQuestion, pollOptions, simulateTyping, skipBlocked, markAsRead, applyLabelId, removeLabelId, albumFiles, shouldSend, onResult, onFinish, messageFor, pacing }) {
   // `files` (vários anexos) é o novo; `file` (um só) continua aceito por quem já chamava assim
   const attachments = Array.isArray(files) && files.length > 0 ? files : (file ? [file] : [])
+  // ponto único por onde passa todo envio: disparo, agendamento, follow-up e prospecção
+  if (!isActivated()) throw new Error('Licença não ativada.')
   if (activeJobId) {
     throw new Error('Já existe um disparo em andamento. Aguarde ele terminar antes de iniciar outro.')
   }

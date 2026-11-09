@@ -10,7 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+<!-- começa travado: só libera os módulos depois que o servidor confirma a licença (app.js) -->
+<body class="license-locked">
   <header>
     <div class="brand" id="brand-home" role="link" tabindex="0" title="Ir para o Início">
       <span class="brand-mark">
@@ -943,6 +944,16 @@
       <div class="preview-phone">
         <div id="preview-bubble" class="preview-bubble"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Atualização obrigatória: cobre o programa inteiro até instalar (app.js, renderUpdateRequired) -->
+  <div id="update-required" class="update-required hidden" role="alertdialog" aria-modal="true" aria-labelledby="update-required-title">
+    <div class="update-required-card">
+      <h2 id="update-required-title">Atualização obrigatória</h2>
+      <p id="update-required-text">Preparando a atualização…</p>
+      <div class="update-progress"><i id="update-required-bar"></i></div>
+      <p class="update-required-note">O MultiEnvio vai fechar e abrir de novo sozinho. Não é preciso fazer nada.</p>
     </div>
   </div>
 

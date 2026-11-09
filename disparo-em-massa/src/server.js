@@ -50,6 +50,15 @@ function startWhatsappOnce() {
 const app = express()
 app.use(express.json())
 app.use(express.static(path.join(__dirname, '..', 'public')))
+
+// Licença: TODA a API fica fechada sem chave válida. A lista é do que pode funcionar sem chave
+// (ativar e atualizar o programa) — assim, rota ou módulo novo já nasce protegido.
+const LICENSE_FREE_API = new Set(['/license/status', '/license/activate', '/status', '/app-version', '/app-version/check', '/app-version/install'])
+app.use('/api', (req, res, next) => {
+  if (LICENSE_FREE_API.has(req.path) || license.isActivated()) return next()
+  res.status(403).json({ error: 'Licença não ativada.', code: 'unlicensed' })
+})
+
 app.use(scheduledRoutes)
 app.use(templateRoutes)
 app.use(productRoutes)

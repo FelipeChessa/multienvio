@@ -123,7 +123,22 @@ function updatePendingChat(prevState) {
   }
 }
 
+function destroyWhatsAppWebview() {
+  if (!whatsappWebview) return
+  whatsappWebview.remove()
+  whatsappWebview = null
+  whatsappHost.innerHTML = ''
+  clearInterval(waStatusTimer)
+  waStatusTimer = null
+  waPendingChat = null
+  setWaWebStatus('idle')
+}
+
 function ensureWhatsAppWebview(initialUrl, contactLabel) {
+  if (isLicenseLocked()) {
+    setWaWebStatus('idle')
+    return null
+  }
   if (!IS_ELECTRON) {
     // No navegador o WhatsApp Web não pode ser embutido (o próprio WhatsApp bloqueia). Mesmo
     // assim não joga a pessoa pra fora: explica aqui dentro e só abre outra aba se ela pedir.
@@ -165,6 +180,7 @@ function ensureWhatsAppWebview(initialUrl, contactLabel) {
 }
 
 function openWhatsAppPanel({ url, returnCampaignId, contactLabel } = {}) {
+  if (isLicenseLocked()) return
   positionWhatsAppPanel()
   whatsappReturnCampaignId = returnCampaignId || null
   whatsappBackCampaignBtn.classList.toggle('hidden', !whatsappReturnCampaignId)

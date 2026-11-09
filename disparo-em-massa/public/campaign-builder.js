@@ -58,6 +58,7 @@ function newBuilderState(defaultWindow) {
 }
 
 async function openCampaignBuilder() {
+  if (isLicenseLocked()) return
   stopCampaignRefresh()
   let defaultWindow = { days: [1, 2, 3, 4, 5, 6], start: '09:00', end: '19:00' }
   try {

@@ -1037,6 +1037,25 @@ textarea:focus, .field input:focus {
 #brand-home { cursor: pointer; border-radius: 12px; }
 #brand-home:focus-visible { outline: 2px solid rgba(255,255,255,.5); outline-offset: 4px; }
 
+/* sem licença: só a ativação fica disponível */
+body.license-locked .header-nav,
+body.license-locked #settings-btn,
+body.license-locked #products-btn { display: none; }
+
+/* atualização obrigatória: cobre tudo, inclusive o WhatsApp embutido e as janelas abertas */
+.update-required {
+  position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center;
+  padding: 24px; background: rgba(15, 23, 42, .78); backdrop-filter: blur(4px);
+}
+.update-required.hidden { display: none; }
+.update-required-card {
+  width: 100%; max-width: 420px; padding: 28px; text-align: center; background: var(--surface);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+}
+.update-required-card h2 { margin: 0 0 8px; font-size: 20px; }
+.update-required-card p { margin: 0; color: var(--ink-soft); font-size: 14px; }
+.update-required-card .update-required-note { margin-top: 12px; color: var(--muted); font-size: 12.5px; }
+
 .modal-card {
   background: var(--surface);
   border-radius: var(--radius-lg);

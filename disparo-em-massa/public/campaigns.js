@@ -232,6 +232,7 @@ function stopCampaignRefresh() {
 }
 
 async function openCampaignsModal() {
+  if (isLicenseLocked()) return
   campaignsModal.classList.remove('hidden')
   showCampaignList()
 }
@@ -335,6 +336,7 @@ function buildScheduledCampaignCard(c) {
 }
 
 async function openCampaignBoard(id) {
+  if (isLicenseLocked()) return
   stopCampaignRefresh()
   openNoteJids = new Set()
   campaignBoardSearch.value = ''

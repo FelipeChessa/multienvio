@@ -1,8 +1,6 @@
-- Correção: variáveis da planilha ({{empresa}}, {{cidade}}...) agora funcionam no envio comum, nas campanhas, nos follow-ups e nos agendamentos
-- Texto reserva para quem não tem o dado: {{empresa|sua empresa}} — nenhuma mensagem sai com {{ }}
-- Aviso antes de enviar quando algum contato não tem o dado de uma coluna
+- Correção importante: todos os módulos agora exigem licença ativa
+- Atualizações passam a ser instaladas automaticamente; o programa espera terminar qualquer envio em andamento
+- Variáveis da planilha ({{empresa}}, {{cidade}}...) no envio comum, nas campanhas, nos follow-ups e nos agendamentos
+- Texto reserva para quem não tem o dado: {{empresa|sua empresa}}
 - O programa agora se chama MultiEnvio (seus dados, licença e WhatsApp continuam iguais)
-- Navegação pela barra de cima: Início, WhatsApp, Campanhas e Prospecção; o logo também volta ao Início
-- Campanhas com follow-up automático e funil de vendas (quem respondeu muda de coluna sozinho)
-- Prospecção de clientes novos com travas contra bloqueio e números digitados à mão
-- WhatsApp Web dentro do programa, com conversas abertas direto do funil
+- Navegação pela barra de cima: Início, WhatsApp, Campanhas e Prospecção
