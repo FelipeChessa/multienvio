@@ -26,10 +26,10 @@ export default async function handler(req, res) {
   if (existing.revoked) return res.status(200).json({ ok: false, reason: 'revoked' })
   if (existing.deviceId !== deviceId) return res.status(200).json({ ok: false, reason: 'other_device' })
 
-  // o programa confere a cada poucos minutos: só regrava o "visto por último" de 30 em 30 minutos
+  // o programa confere a cada poucos minutos: só regrava o "último uso" de 10 em 10 minutos
   // para não gastar uma escrita no banco a cada consulta
   const lastSeen = existing.lastSeenAt ? new Date(existing.lastSeenAt).getTime() : 0
-  if (!(Date.now() - lastSeen < 30 * 60 * 1000)) {
+  if (!(Date.now() - lastSeen < 10 * 60 * 1000)) {
     await redis.set(redisKey, { ...existing, lastSeenAt: new Date().toISOString() })
   }
   res.status(200).json({ ok: true, registered: true })

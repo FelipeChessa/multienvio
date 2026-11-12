@@ -148,7 +148,7 @@
                 <th>Computador</th>
                 <th class="sortable" data-sort="since">Desde</th>
                 <th class="sortable" data-sort="expires">Expira em</th>
-                <th class="sortable" data-sort="seen" title="Última vez que o programa conferiu a licença (só versão 1.6.4 ou mais nova)">Visto por último</th>
+                <th class="sortable" data-sort="seen" title="Última vez que o programa do cliente esteve aberto e conferiu a licença (versão 1.6.4 ou mais nova). Precisão de uns 10 minutos.">Último uso</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -364,14 +364,16 @@
       const daysLeft = info.expiresAt ? Math.ceil((new Date(info.expiresAt).getTime() - Date.now()) / DAY) : null
       const expiresSub = daysLeft === null ? '' : daysLeft >= 0 ? (daysLeft === 0 ? 'vence hoje' : 'faltam ' + daysLeft + (daysLeft === 1 ? ' dia' : ' dias')) : ''
       const seen = timeAgo(info.lastSeenAt)
-      const online = info.lastSeenAt && Date.now() - new Date(info.lastSeenAt).getTime() < 45 * 60000
+      const online = info.lastSeenAt && Date.now() - new Date(info.lastSeenAt).getTime() < 20 * 60000
       tr.innerHTML =
         '<td><strong>' + escapeHtml(info.customer || '-') + '</strong></td>' +
         '<td><span class="mono" title="' + escapeHtml(info.deviceId || '') + '">' + escapeHtml((info.deviceId || '-').slice(0, 13)) + (info.deviceId ? '…' : '') + '</span></td>' +
         '<td>' + fmtDate(info.firstActivatedAt) + '</td>' +
         '<td>' + (info.expiresAt ? fmtDate(info.expiresAt) : 'Vitalícia') + (expiresSub ? '<span class="sub">' + expiresSub + '</span>' : '') + '</td>' +
         '<td title="' + escapeHtml(info.lastSeenAt ? new Date(info.lastSeenAt).toLocaleString('pt-BR') : 'Nunca conferiu: programa antigo (até 1.6.3) ou fechado desde a ativação') + '">' +
-          '<span class="dot' + (online ? ' on' : '') + '"></span>' + (seen || '—') + '</td>' +
+          (info.lastSeenAt
+            ? '<span class="dot' + (online ? ' on' : '') + '"></span>' + new Date(info.lastSeenAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '<span class="sub">' + (online ? 'usando agora' : seen) + '</span>'
+            : '<span class="dot"></span>Nunca<span class="sub">versão antiga ou não abriu</span>') + '</td>' +
         '<td><span class="status-badge ' + status + '">' + STATUS_LABELS[status] + '</span>' +
           (info.revokedAt ? '<span class="sub">em ' + fmtDate(info.revokedAt) + '</span>' : '') + '</td>' +
         '<td class="actions"></td>'
