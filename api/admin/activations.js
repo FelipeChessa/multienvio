@@ -22,10 +22,13 @@ export default async function handler(req, res) {
     const licenseKey = redisKey.replace('activation:', '')
     const activation = await redis.get(redisKey)
     const expiresAt = verifySignature(licenseKey)?.expiresAt || null
+    // dados de uso enviados pelo programa (api/license-check.js), quando houver
+    const usage = await redis.get(`usage:${licenseKey}`)
     result[licenseKey] = {
       ...activation,
       expiresAt,
-      status: computeStatus(expiresAt, activation)
+      status: computeStatus(expiresAt, activation),
+      usage: usage || null
     }
   }
   res.status(200).json(result)

@@ -83,13 +83,35 @@
   th .arrow { font-size: 10px; margin-left: 3px; }
   tbody tr:hover td { background: var(--surface-alt); }
   td.actions { display: flex; gap: 6px; justify-content: flex-end; }
-  .sub { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .sub { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; white-space: normal; max-width: 210px; }
   .mono { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 11.5px; }
   .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; background: #cbd5e1; vertical-align: middle; }
   .dot.on { background: var(--brand-light); }
   .status-badge.vencendo { background: #fff7ed; color: #c2410c; }
   .btn-ghost { background: transparent; color: var(--ink-soft); border: 1px solid transparent; padding: 6px 10px; font-size: 12px; }
   .btn-ghost:hover { border-color: var(--border); background: var(--surface); }
+  .sub.risk { color: var(--danger); font-weight: 700; }
+  .sub.locked { color: var(--brand-dark); font-weight: 600; }
+  .sub.old { color: #c2410c; font-weight: 600; }
+  .muted { color: var(--muted); }
+  tr.row-main { cursor: pointer; }
+  tr.row-main.open td { background: var(--surface-alt); border-bottom-color: transparent; }
+  tr.row-detail > td { background: var(--surface-alt); padding: 4px 14px 18px; white-space: normal; }
+  .det-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-top: 6px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .stat .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .02em; }
+  .stat .v { font-family: var(--font-heading); font-size: 18px; font-weight: 800; margin-top: 2px; }
+  .stat .s { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .det-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .chart { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .chart h4 { margin: 0 0 6px; font-size: 12px; color: var(--ink-soft); }
+  .chart svg { width: 100%; height: 70px; display: block; }
+  .chart .axis { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+  .det-foot { margin-top: 10px; font-size: 12px; color: var(--ink-soft); line-height: 1.6; }
+  .det-foot b { color: var(--ink); }
+  .det-errors { margin: 4px 0 0; padding-left: 18px; font-size: 11.5px; color: var(--danger); }
+  .details-empty { font-size: 12.5px; color: var(--muted); padding: 10px 0; }
+  @media (max-width: 900px) { .det-charts { grid-template-columns: 1fr; } }
   .gate { max-width: 380px; margin: 60px auto; text-align: center; }
   .hidden { display: none !important; }
 </style>
@@ -149,6 +171,8 @@
                 <th class="sortable" data-sort="since">Desde</th>
                 <th class="sortable" data-sort="expires">Expira em</th>
                 <th class="sortable" data-sort="seen" title="Última vez que o programa do cliente esteve aberto e conferiu a licença (versão 1.6.4 ou mais nova). Precisão de uns 10 minutos.">Último uso</th>
+                <th class="sortable" data-sort="version" title="Versão do programa informada na última conferência">Versão</th>
+                <th class="sortable" data-sort="sends" title="Mensagens enviadas nos últimos 7 dias (versão 1.6.7 ou mais nova)">Envios 7 dias</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -278,9 +302,11 @@
     { id: 'ativa', label: 'Ativas' },
     { id: 'vencendo', label: 'Vencem em 7 dias' },
     { id: 'expirada', label: 'Expiradas' },
-    { id: 'revogada', label: 'Revogadas' }
+    { id: 'revogada', label: 'Revogadas' },
+    { id: 'risco', label: '⚠ Risco' },
+    { id: 'parados', label: 'Parados há 3+ dias' }
   ]
-  const actState = { rows: [], filter: 'todas', search: '', sort: 'since', dir: -1 }
+  const actState = { rows: [], filter: 'todas', search: '', sort: 'since', dir: -1, open: new Set() }
   const actSearch = document.getElementById('act-search')
   const actChips = document.getElementById('act-chips')
   const actCount = document.getElementById('act-count')
@@ -290,6 +316,45 @@
     const base = info.status || (info.revoked ? 'revogada' : 'ativa')
     if (base === 'ativa' && info.expiresAt && new Date(info.expiresAt).getTime() - Date.now() < 7 * DAY) return 'vencendo'
     return base
+  }
+
+  // versão mais recente publicada (para marcar quem está desatualizado)
+  let latestVersion = null
+  window.fetch('https://api.github.com/repos/FelipeChessa/multienvio/releases/latest')
+    .then((r) => r.json())
+    .then((d) => { latestVersion = (d.tag_name || '').replace(/^v/, '') || null; if (actState.rows.length) renderActivations() })
+    .catch(() => {})
+
+  function cmpVer(a, b) {
+    const pa = String(a).split('.').map(Number)
+    const pb = String(b).split('.').map(Number)
+    for (let i = 0; i < 3; i++) if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0)
+    return 0
+  }
+  const appVersionOf = (info) => info.usage?.appVersion || info.lastCheck?.appVersion || null
+  const sends7 = (info) => (info.usage?.days ? info.usage.days.slice(-7).reduce((n, d) => n + (d.sent || 0), 0) : null)
+  const fmtDateTime = (iso) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+
+  // Chave revogada ou vencida: o programa do cliente travou mesmo?
+  //  - locked: conferiu DEPOIS da revogação/vencimento e recebeu a recusa (prova de bloqueio)
+  //  - closed: versão 1.6.4+ que ainda não abriu desde então — trava sozinha assim que abrir
+  //  - risk:   nenhuma conferência depois e versão antiga ou desconhecida (até 1.6.3 não confere
+  //            nada no servidor e não dá para bloquear de longe)
+  function lockInfo(info, status) {
+    if (status !== 'revogada' && status !== 'expirada') return null
+    const since = status === 'revogada' ? info.revokedAt : info.expiresAt
+    const lc = info.lastCheck
+    if (lc && (lc.result === 'revoked' || lc.result === 'expired') && (!since || new Date(lc.at) >= new Date(since))) return { kind: 'locked', at: lc.at }
+    const v = appVersionOf(info)
+    if (v && cmpVer(v, '1.6.4') >= 0) return { kind: 'closed' }
+    return { kind: 'risk' }
+  }
+
+  // ativa, mas sem usar o programa há 3 dias ou mais (ou nunca usou desde a ativação)
+  function isIdle(info, status) {
+    if (status !== 'ativa' && status !== 'vencendo') return false
+    const ref = info.lastSeenAt || info.firstActivatedAt
+    return !!ref && Date.now() - new Date(ref).getTime() > 3 * DAY
   }
 
   function timeAgo(iso) {
@@ -309,6 +374,11 @@
 
   function sortValue(row) {
     const i = row.info
+    if (actState.sort === 'version') {
+      const v = appVersionOf(i)
+      return v ? v.split('.').map((n) => n.padStart(4, '0')).join('.') : ''
+    }
+    if (actState.sort === 'sends') return sends7(i) ?? -1
     if (actState.sort === 'customer') return (i.customer || '').toLocaleLowerCase('pt-BR')
     if (actState.sort === 'expires') return i.expiresAt ? new Date(i.expiresAt).getTime() : Infinity
     if (actState.sort === 'seen') return i.lastSeenAt ? new Date(i.lastSeenAt).getTime() : 0
@@ -316,10 +386,12 @@
   }
 
   function renderChips() {
-    const counts = { todas: actState.rows.length, ativa: 0, vencendo: 0, expirada: 0, revogada: 0 }
+    const counts = { todas: actState.rows.length, ativa: 0, vencendo: 0, expirada: 0, revogada: 0, risco: 0, parados: 0 }
     for (const r of actState.rows) {
       counts[r.status]++
       if (r.status === 'vencendo') counts.ativa++
+      if (r.lock?.kind === 'risk') counts.risco++
+      if (r.idle) counts.parados++
     }
     actChips.innerHTML = ''
     for (const f of FILTERS) {
@@ -342,7 +414,13 @@
 
     const q = actState.search.trim().toLocaleLowerCase('pt-BR')
     const rows = actState.rows
-      .filter((r) => actState.filter === 'todas' || r.status === actState.filter || (actState.filter === 'ativa' && r.status === 'vencendo'))
+      .filter((r) => {
+        const f = actState.filter
+        if (f === 'todas') return true
+        if (f === 'risco') return r.lock?.kind === 'risk'
+        if (f === 'parados') return r.idle
+        return r.status === f || (f === 'ativa' && r.status === 'vencendo')
+      })
       .filter((r) => !q || [r.info.customer, r.info.deviceId, r.key].some((v) => (v || '').toLocaleLowerCase('pt-BR').includes(q)))
       .sort((a, b) => {
         const va = sortValue(a)
@@ -355,12 +433,22 @@
       : 'Mostrando ' + rows.length + ' de ' + actState.rows.length
     activationsBody.innerHTML = ''
     if (rows.length === 0) {
-      activationsBody.innerHTML = '<tr><td colspan="7" class="empty">Nenhuma ativação com esse filtro.</td></tr>'
+      activationsBody.innerHTML = '<tr><td colspan="9" class="empty">Nenhuma ativação com esse filtro.</td></tr>'
       return
     }
 
-    for (const { key, info, status } of rows) {
+    for (const { key, info, status, lock } of rows) {
       const tr = document.createElement('tr')
+      tr.className = 'row-main' + (actState.open.has(key) ? ' open' : '')
+      const version = appVersionOf(info)
+      const outdated = version && latestVersion && cmpVer(version, latestVersion) < 0
+      const s7 = sends7(info)
+      const failed7 = info.usage?.days ? info.usage.days.slice(-7).reduce((n, d) => n + (d.failed || 0), 0) : 0
+      let lockSub = ''
+      if (lock?.kind === 'locked') lockSub = '<span class="sub locked">✓ travado — conferiu ' + fmtDateTime(lock.at) + '</span>'
+      else if (lock?.kind === 'closed') lockSub = '<span class="sub">versão nova: trava ao abrir</span>'
+      else if (lock?.kind === 'risk') lockSub = '<span class="sub risk" title="Nenhuma conferência depois da ' + (status === 'revogada' ? 'revogação' : 'expiração') + '. Versão antiga (até 1.6.3) continua funcionando até o cliente atualizar.">⚠ sem prova de bloqueio</span>'
+      const otherSub = info.otherDeviceAt ? '<span class="sub risk">outro PC tentou usar ' + timeAgo(info.otherDeviceAt) + '</span>' : ''
       const daysLeft = info.expiresAt ? Math.ceil((new Date(info.expiresAt).getTime() - Date.now()) / DAY) : null
       const expiresSub = daysLeft === null ? '' : daysLeft >= 0 ? (daysLeft === 0 ? 'vence hoje' : 'faltam ' + daysLeft + (daysLeft === 1 ? ' dia' : ' dias')) : ''
       const seen = timeAgo(info.lastSeenAt)
@@ -374,25 +462,31 @@
           (info.lastSeenAt
             ? '<span class="dot' + (online ? ' on' : '') + '"></span>' + new Date(info.lastSeenAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) + '<span class="sub">' + (online ? 'usando agora' : seen) + '</span>'
             : '<span class="dot"></span>Nunca<span class="sub">versão antiga ou não abriu</span>') + '</td>' +
+        '<td>' + (version
+          ? escapeHtml(version) + (outdated ? '<span class="sub old">desatualizada</span>' : latestVersion ? '<span class="sub">atual</span>' : '')
+          : '<span class="muted">—</span><span class="sub" title="Programa na versão 1.6.3 ou anterior (não informa a versão) ou nunca aberto desde a ativação">antiga ou não abriu</span>') + '</td>' +
+        '<td>' + (s7 === null ? '<span class="muted">—</span>' : s7 + (s7 + failed7 > 0 ? '<span class="sub">' + Math.round((failed7 / (s7 + failed7)) * 100) + '% de falha</span>' : '')) + '</td>' +
         '<td><span class="status-badge ' + status + '">' + STATUS_LABELS[status] + '</span>' +
-          (info.revokedAt ? '<span class="sub">em ' + fmtDate(info.revokedAt) + '</span>' : '') + '</td>' +
+          (info.revokedAt ? '<span class="sub">em ' + fmtDate(info.revokedAt) + '</span>' : '') + lockSub + otherSub + '</td>' +
         '<td class="actions"></td>'
       const actionsCell = tr.querySelector('.actions')
 
       const copyBtn = document.createElement('button')
       copyBtn.className = 'btn-ghost'
-      copyBtn.textContent = 'Copiar chave'
+      copyBtn.textContent = 'Copiar'
+copyBtn.title = 'Copiar a chave de licença'
       copyBtn.addEventListener('click', async () => {
         await navigator.clipboard.writeText(key)
         copyBtn.textContent = 'Copiada ✓'
-        setTimeout(() => { copyBtn.textContent = 'Copiar chave' }, 1500)
+        setTimeout(() => { copyBtn.textContent = 'Copiar' }, 1500)
       })
       actionsCell.appendChild(copyBtn)
 
       // reset apaga o registro: libera para outro computador e também desfaz uma revogação
       const resetBtn = document.createElement('button')
       resetBtn.className = 'btn-secondary'
-      resetBtn.textContent = info.revoked ? 'Reativar' : 'Liberar p/ outro PC'
+      resetBtn.textContent = info.revoked ? 'Reativar' : 'Liberar PC'
+      resetBtn.title = info.revoked ? 'Desfaz a revogação' : 'Libera a chave para ser ativada em outro computador'
       resetBtn.addEventListener('click', () => {
         const msg = info.revoked
           ? 'Reativar a chave de "' + (info.customer || '-') + '"? O programa do cliente volta a funcionar na próxima conferência.'
@@ -413,14 +507,122 @@
         actionsCell.appendChild(revokeBtn)
       }
 
+      // clicar na linha (fora dos botões) abre os detalhes de uso
+      tr.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return
+        if (actState.open.has(key)) actState.open.delete(key)
+        else actState.open.add(key)
+        renderActivations()
+      })
       activationsBody.appendChild(tr)
+
+      if (actState.open.has(key)) {
+        const det = document.createElement('tr')
+        det.className = 'row-detail'
+        det.innerHTML = '<td colspan="9">' + renderDetails(info) + '</td>'
+        activationsBody.appendChild(det)
+      }
     }
+  }
+
+  // ----- detalhes de uso (dados enviados pelo programa, versão 1.6.7 ou mais nova) -----
+  const SCREEN_LABELS = { whatsapp: 'WhatsApp', dispatch: 'Disparo', campaigns: 'Campanhas', prospects: 'Prospecção', settings: 'Configurações', products: 'Produtos', profile: 'Perfil de envio', tutorial: 'Como usar' }
+  const WA_LABELS = { connected: 'Conectado', qr: 'Aguardando QR code', connecting: 'Conectando', disconnected: 'Desconectado', logged_out: 'Desconectado do celular', unlicensed: 'Sem licença' }
+
+  function hours(min) {
+    if (!min) return '0 min'
+    if (min < 60) return min + ' min'
+    const h = Math.floor(min / 60)
+    const m = min % 60
+    return h + ' h' + (m ? ' ' + m + ' min' : '')
+  }
+  const num = (n) => (n === null || n === undefined ? '—' : Number(n).toLocaleString('pt-BR'))
+
+  function stat(k, v, sub) {
+    return '<div class="stat"><div class="k">' + k + '</div><div class="v">' + v + '</div>' + (sub ? '<div class="s">' + sub + '</div>' : '') + '</div>'
+  }
+
+  function barChart(title, days, field, color, fmt) {
+    const max = Math.max(1, ...days.map((d) => d[field] || 0))
+    const w = 300
+    const h = 70
+    const bw = w / days.length
+    const bars = days.map((d, i) => {
+      const v = d[field] || 0
+      const bh = v ? Math.max(2, (v / max) * (h - 4)) : 0
+      const label = d.d.split('-').reverse().slice(0, 2).join('/') + ': ' + fmt(v)
+      return '<rect x="' + (i * bw + 1).toFixed(1) + '" y="' + (h - bh).toFixed(1) + '" width="' + (bw - 2).toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="1.5" fill="' + color + '"><title>' + label + '</title></rect>'
+    }).join('')
+    const first = days[0]?.d.split('-').reverse().slice(0, 2).join('/') || ''
+    return '<div class="chart"><h4>' + title + ' <span class="muted">(máx. ' + fmt(max) + ')</span></h4>' +
+      '<svg viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none">' + bars + '</svg>' +
+      '<div class="axis"><span>' + first + '</span><span>hoje</span></div></div>'
+  }
+
+  // "Windows_NT 10.0.26100" -> "Windows 11 (build 26100)"
+  function osName(os) {
+    const m = /Windows_NT 10\.0\.(\d+)/.exec(os || '')
+    if (!m) return os || '—'
+    return (Number(m[1]) >= 22000 ? 'Windows 11' : 'Windows 10') + ' (build ' + m[1] + ')'
+  }
+
+  function renderDetails(info) {
+    const u = info.usage
+    if (!u) {
+      return '<div class="details-empty">Sem dados de uso ainda. Eles chegam com o programa na versão 1.6.7 ou mais nova, aberto e com internet' +
+        (info.lastCheck ? ' — última conferência em ' + fmtDateTime(info.lastCheck.at) + ' (versão ' + escapeHtml(info.lastCheck.appVersion || '?') + ').' : '.') + '</div>'
+    }
+    const days = u.days || []
+    const sum = (k) => days.reduce((n, d) => n + (d[k] || 0), 0)
+    const sent30 = sum('sent')
+    const failed30 = sum('failed')
+    const usedDays = days.filter((d) => d.activeMin || d.sent || d.opens).length
+    const c = u.counts || {}
+    const t = u.totals || {}
+    const wa = u.whatsapp || {}
+    const screens = Object.entries(u.screens30 || {}).sort((a, b) => b[1] - a[1])
+      .map(([k, n]) => (SCREEN_LABELS[k] || escapeHtml(k)) + ' <b>' + n + '</b>').join(' · ')
+    const sys = u.system || {}
+
+    let html = '<div class="det-grid">' +
+      stat('Envios (30 dias)', num(sent30), failed30 ? num(failed30) + ' falhas (' + Math.round((failed30 / (sent30 + failed30)) * 100) + '%)' : 'sem falhas') +
+      stat('Envios (total)', num(t.sent), 'desde ' + (u.firstSeenAt ? fmtDate(u.firstSeenAt) : '—')) +
+      stat('Uso ativo (30 dias)', hours(sum('activeMin')), usedDays + ' de 30 dias com uso') +
+      stat('Programa aberto', num(sum('opens')) + 'x', 'nos últimos 30 dias') +
+      stat('WhatsApp', WA_LABELS[wa.status] || escapeHtml(wa.status || '—'), wa.lastConnectedAt ? 'conectado por último ' + timeAgo(wa.lastConnectedAt) : 'nunca conectou') +
+      stat('WhatsApp conectado', hours(sum('waMin')), 'nos últimos 30 dias') +
+      stat('Contatos', num(c.contacts), num(c.labels) + ' etiquetas') +
+      stat('Campanhas', num(c.campaigns), num(c.campaignsActive) + ' ativas') +
+      stat('Prospecções', num(c.prospects), num(c.scheduledPending) + ' envios agendados') +
+      stat('Modelos e produtos', num(c.templates) + ' / ' + num(c.products), num(c.optOuts) + ' descadastrados') +
+      '</div>'
+
+    html += '<div class="det-charts">' +
+      barChart('Envios por dia', days, 'sent', '#16a34a', (v) => num(v)) +
+      barChart('Tempo de uso por dia', days, 'activeMin', '#2563eb', hours) +
+      '</div>'
+
+    html += '<div class="det-foot">' +
+      '<b>Telas mais abertas (30 dias):</b> ' + (screens || '<span class="muted">nenhuma registrada</span>') + '<br>' +
+      '<b>Computador:</b> ' + escapeHtml(osName(sys.os)) + ' · ' + (sys.memGb ? sys.memGb + ' GB de memória' : '') + (sys.cpus ? ' · ' + sys.cpus + ' núcleos' : '') +
+      ' · versão ' + escapeHtml(u.appVersion || '—') + '<br>' +
+      '<b>Dados recebidos:</b> ' + (u.receivedAt ? fmtDateTime(u.receivedAt) + ' (' + timeAgo(u.receivedAt) + ')' : '—') +
+      ' · <b>Erros (30 dias):</b> ' + num(u.errors30 || 0)
+    if (u.lastErrors?.length) {
+      html += '<ul class="det-errors">' + u.lastErrors.slice().reverse().map((e) =>
+        '<li>' + fmtDateTime(e.at) + ' (' + escapeHtml(e.source || '') + '): ' + escapeHtml(e.msg || '') + '</li>').join('') + '</ul>'
+    }
+    html += '</div>'
+    return html
   }
 
   async function loadActivations() {
     try {
       const data = await apiFetch('/api/admin/activations')
-      actState.rows = Object.entries(data).map(([key, info]) => ({ key, info, status: rowStatus(info) }))
+      actState.rows = Object.entries(data).map(([key, info]) => {
+        const status = rowStatus(info)
+        return { key, info, status, lock: lockInfo(info, status), idle: isIdle(info, status) }
+      })
       if (actState.rows.length === 0) {
         activationsTable.classList.add('hidden')
         activationsEmpty.classList.remove('hidden')
