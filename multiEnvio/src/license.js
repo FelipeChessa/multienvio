@@ -11,7 +11,7 @@ const deviceIdFile = path.join(DATA_DIR, 'device-id.json')
 // ambiente ACTIVATION_SERVER_URL (útil pra testar local sem mexer no código). Deixando vazio,
 // a ativação funciona só localmente, sem checar reuso — é o modo antigo, usado como fallback
 // enquanto o servidor não estiver no ar.
-const DEFAULT_ACTIVATION_SERVER_URL = 'https://disparo-em-massa-releases.vercel.app/api'
+const DEFAULT_ACTIVATION_SERVER_URL = 'https://multienvio.vercel.app/api'
 const ACTIVATION_SERVER_URL = process.env.ACTIVATION_SERVER_URL || DEFAULT_ACTIVATION_SERVER_URL || null
 
 // Chave pública usada só para VALIDAR licenças — gerar novas licenças exige a chave
@@ -22,14 +22,16 @@ const PUBLIC_KEY = crypto.createPublicKey(`-----BEGIN PUBLIC KEY-----
 MCowBQYDK2VwAyEAz0gFUiYAWxgjt6fe2ocMxVXRvsoYOhv6dr/TlGWzU3E=
 -----END PUBLIC KEY-----`)
 
-// Verificação online: a chave é conferida no servidor ao abrir o programa e a cada 6 horas, para
-// que uma chave revogada pare de funcionar. Só uma resposta explícita do servidor trava na hora;
-// sem internet ou com o servidor fora do ar, o programa continua liberado por OFFLINE_GRACE_DAYS.
-const OFFLINE_GRACE_DAYS = 7
-const OFFLINE_GRACE_MS = OFFLINE_GRACE_DAYS * 24 * 60 * 60 * 1000
-const CHECK_OK_INTERVAL_MS = 6 * 60 * 60 * 1000
-const CHECK_RETRY_MS = 5 * 60 * 1000
-const CHECK_BLOCKED_RETRY_MS = 30 * 60 * 1000
+// Verificação online: a chave é conferida no servidor ao abrir o programa e a cada
+// CHECK_OK_INTERVAL_MS, para que uma chave revogada pare de funcionar em poucos minutos.
+// Resposta "revogada" ou "outro computador" trava na hora. Sem resposta do servidor (sem
+// internet, ou o endereço bloqueado de propósito), trava quando passar OFFLINE_GRACE_MS desde a
+// última confirmação — e destrava sozinho na primeira confirmação depois disso.
+const CHECK_OK_INTERVAL_MS = 5 * 60 * 1000
+const CHECK_RETRY_MS = 20 * 1000
+const CHECK_BLOCKED_RETRY_MS = 2 * 60 * 1000
+const CHECK_TIMEOUT_MS = 15 * 1000
+const OFFLINE_GRACE_MS = 10 * 60 * 1000
 const SUPPORT = 'Fale com o suporte pelo WhatsApp (11) 99287-6042.'
 const BLOCK_MESSAGES = {
   revoked: `Esta licença foi desativada. ${SUPPORT}`,
@@ -103,17 +105,40 @@ function readLicenseFile() {
   }
 }
 
+// Estado da verificação desta sessão. Vale o que está em memória: mexer no license.json com o
+// programa aberto não muda nada. O arquivo só leva o resultado de uma abertura para a outra.
+const session = { key: null, lastOkAt: null, blocked: null, failedSinceOk: false, inFlight: null, lastAttemptAt: 0 }
+
+function syncSession(stored) {
+  if (session.key === stored.key) return
+  session.key = stored.key
+  session.lastOkAt = stored.check?.lastOkAt || null
+  session.blocked = stored.check?.blocked || null
+  session.failedSinceOk = false
+  session.lastAttemptAt = 0
+}
+
+// valor absoluto: atrasar o relógio do computador não estende a tolerância
+function isStale() {
+  return !session.lastOkAt || Math.abs(Date.now() - session.lastOkAt) > OFFLINE_GRACE_MS
+}
+
 function getStatus() {
   const stored = readLicenseFile()
   const key = stored?.key
   if (!key) return { activated: false, error: 'Nenhuma licença ativada.' }
   const result = verifyLicenseKey(key)
   if (!result.valid) return { activated: false, error: result.error }
-  const blocked = stored.check?.blocked
-  if (blocked) return { activated: false, error: BLOCK_MESSAGES[blocked] || BLOCK_MESSAGES.revoked }
-  // valor absoluto: atrasar o relógio do computador não estende a tolerância
-  if (stored.check?.lastOkAt && Math.abs(Date.now() - stored.check.lastOkAt) > OFFLINE_GRACE_MS) {
-    return { activated: false, error: `Não foi possível confirmar sua licença nos últimos ${OFFLINE_GRACE_DAYS} dias. Conecte o computador à internet: o programa libera sozinho em alguns minutos.` }
+  syncSession(stored)
+  if (session.blocked) return { activated: false, error: BLOCK_MESSAGES[session.blocked] || BLOCK_MESSAGES.revoked }
+  if (ACTIVATION_SERVER_URL && isStale()) {
+    // ficou tempo demais sem confirmar (acabou de abrir, voltou do modo de espera): confere agora
+    if (!session.inFlight && Date.now() - session.lastAttemptAt > CHECK_RETRY_MS) checkOnline().catch(() => {})
+    // só trava depois que uma tentativa falhar: quem abre o programa ou acorda o computador
+    // não vê a tela de bloqueio piscar enquanto a conferência roda
+    if (session.failedSinceOk) {
+      return { activated: false, error: 'Não foi possível confirmar sua licença com o servidor. Verifique a internet do computador: o programa libera sozinho assim que a conexão voltar.' }
+    }
   }
   return { activated: true, customer: result.payload.customer, expiresAt: result.payload.expiresAt || null }
 }
@@ -146,6 +171,7 @@ async function activate(licenseKey) {
 
   fs.mkdirSync(path.dirname(licenseFile), { recursive: true })
   fs.writeFileSync(licenseFile, JSON.stringify({ key: licenseKey.trim(), check: { lastOkAt: Date.now() } }, null, 2))
+  session.key = null // chave nova: a sessão recomeça do arquivo recém-gravado
   return { customer: result.payload.customer, expiresAt: result.payload.expiresAt || null }
 }
 
@@ -153,17 +179,33 @@ function isActivated() {
   return getStatus().activated
 }
 
-function saveCheck(key, check) {
+function saveCheck(key) {
   const stored = readLicenseFile()
-  if (stored?.key !== key) return // a chave foi trocada enquanto a verificação rodava
-  fs.writeFileSync(licenseFile, JSON.stringify({ ...stored, check }, null, 2))
+  if (stored?.key !== key || session.key !== key) return // a chave foi trocada enquanto a verificação rodava
+  const check = {}
+  if (session.lastOkAt) check.lastOkAt = session.lastOkAt
+  if (session.blocked) check.blocked = session.blocked
+  try {
+    fs.writeFileSync(licenseFile, JSON.stringify({ ...stored, check }, null, 2))
+  } catch (err) {
+    console.error('Falha ao gravar a verificação da licença:', err.message)
+  }
 }
 
-// Devolve 'ok', 'blocked', 'offline' ou 'skipped'.
-async function checkOnline() {
+// Devolve 'ok', 'blocked', 'offline' ou 'skipped'. Chamadas ao mesmo tempo dividem a mesma consulta.
+function checkOnline() {
+  if (!session.inFlight) {
+    session.inFlight = runCheck().finally(() => { session.inFlight = null })
+  }
+  return session.inFlight
+}
+
+async function runCheck() {
   const stored = readLicenseFile()
   const key = stored?.key
   if (!ACTIVATION_SERVER_URL || !key || !verifyLicenseKey(key).valid) return 'skipped'
+  syncSession(stored)
+  session.lastAttemptAt = Date.now()
 
   let data = null
   try {
@@ -171,23 +213,29 @@ async function checkOnline() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key, deviceId: getDeviceId() }),
-      signal: AbortSignal.timeout(15000)
+      signal: AbortSignal.timeout(CHECK_TIMEOUT_MS)
     })
     data = await response.json()
   } catch {
     data = null
   }
+  if (session.key !== key) return 'skipped' // a chave foi trocada enquanto a verificação rodava
 
   if (data?.ok === true) {
-    saveCheck(key, { lastOkAt: Date.now() })
+    session.lastOkAt = Date.now()
+    session.blocked = null
+    session.failedSinceOk = false
+    saveCheck(key)
     return 'ok'
   }
   if (data?.reason && BLOCK_MESSAGES[data.reason]) {
-    saveCheck(key, { ...stored.check, blocked: data.reason })
+    session.blocked = data.reason
+    saveCheck(key)
     return 'blocked'
   }
-  // internet, servidor fora do ar ou resposta inesperada: não trava; só começa a contar a tolerância
-  if (!stored.check?.lastOkAt) saveCheck(key, { ...stored.check, lastOkAt: Date.now() })
+  // sem internet, servidor fora do ar ou resposta inesperada: não trava na hora; trava se isso
+  // durar mais que OFFLINE_GRACE_MS desde a última confirmação (getStatus)
+  session.failedSinceOk = true
   return 'offline'
 }
 
@@ -204,7 +252,7 @@ function startOnlineChecks(onChecked) {
     const next = result === 'blocked' ? CHECK_BLOCKED_RETRY_MS : result === 'offline' ? CHECK_RETRY_MS : CHECK_OK_INTERVAL_MS
     setTimeout(run, next)
   }
-  setTimeout(run, 3000)
+  run()
 }
 
 export { getStatus, activate, isActivated, verifyLicenseKey, checkOnline, startOnlineChecks }

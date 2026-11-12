@@ -1,8 +1,10 @@
 // POST /api/admin/revoke?token=SEU_ADMIN_TOKEN  body: { "key": "..." }
-// Bloqueia uma chave (ex: cliente pediu reembolso). Ela para de ativar em qualquer computador.
+// Bloqueia uma chave (ex: cliente pediu reembolso). Ela para de ativar em qualquer computador, e
+// o programa onde ela já está ativa trava na próxima conferência (api/license-check.js, a cada
+// 5 minutos). Funciona também com chave que nunca foi ativada: o registro é criado já revogado.
 
 import { redis } from '../../lib/redis.js'
-import { requireAdmin } from '../../lib/verify.js'
+import { requireAdmin, verifySignature } from '../../lib/verify.js'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método não permitido.' })
@@ -12,9 +14,11 @@ export default async function handler(req, res) {
   const redisKey = `activation:${(key || '').trim()}`
   const existing = await redis.get(redisKey)
   if (!existing) {
-    return res.status(404).json({ error: 'Chave não encontrada (ainda não foi ativada por ninguém).' })
+    const payload = verifySignature(key)
+    if (!payload) return res.status(400).json({ error: 'Chave inválida.' })
+    await redis.set(redisKey, { customer: payload.customer, revoked: true, revokedAt: new Date().toISOString() })
+    return res.status(200).json({ ok: true })
   }
-  existing.revoked = true
-  await redis.set(redisKey, existing)
+  await redis.set(redisKey, { ...existing, revoked: true, revokedAt: new Date().toISOString() })
   res.status(200).json({ ok: true })
 }

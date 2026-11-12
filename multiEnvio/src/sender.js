@@ -239,6 +239,21 @@ function startDispatch({ labelIds, labelName, message, file, files, contacts: ex
     let consecutiveFailures = 0
 
     for (const contact of dispatchContacts) {
+      // licença revogada (ou sem confirmar) no meio do disparo: para na hora, sem mandar o resto
+      if (!isActivated()) {
+        emit({
+          type: 'aborted',
+          reason: 'license',
+          message: 'Licença desativada. O restante não foi enviado.',
+          sent,
+          failed,
+          total: dispatchContacts.length
+        })
+        job.summary = { sent, failed, total: dispatchContacts.length, aborted: true, reason: 'license' }
+        finish()
+        return
+      }
+
       if (settings.dailyLimit > 0 && store.countSendsInWindow(24).total >= settings.dailyLimit) {
         emit({
           type: 'aborted',

@@ -310,10 +310,16 @@ function setupAutoUpdater() {
       })
       n.show()
     }
-    updateState.installWhenIdle()
+    updateState.installWhenIdle({ delayMs: 1500 })
   })
 
-  const check = () => autoUpdater.checkForUpdates().catch((err) => console.error('[autoUpdater] falha ao checar atualização:', err.message))
+  // Atualização é obrigatória e imediata: confere ao abrir e a cada minuto (o GitHub não tem
+  // como avisar o programa). Com uma atualização já em andamento não confere de novo, para
+  // não zerar a barra de progresso.
+  const check = () => {
+    if (updateState.getState().updateAvailable) return
+    autoUpdater.checkForUpdates().catch((err) => console.error('[autoUpdater] falha ao checar atualização:', err.message))
+  }
   check()
-  setInterval(check, 30 * 60 * 1000) // o app fica rodando na bandeja por dias — reconfere periodicamente
+  setInterval(check, 60 * 1000)
 }

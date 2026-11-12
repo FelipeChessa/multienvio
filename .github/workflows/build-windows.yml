@@ -28,11 +28,11 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: disparo-em-massa/package-lock.json
+          cache-dependency-path: multiEnvio/package-lock.json
 
       - name: Install dependencies
         run: npm ci
-        working-directory: ./disparo-em-massa
+        working-directory: ./multiEnvio
 
       - name: Build and publish Windows installer
         # electron-builder já publica direto no GitHub Release quando roda numa tag com
@@ -40,7 +40,7 @@ jobs:
         # latest.yml, os três arquivos que o electron-updater precisa pra funcionar. Um passo
         # manual de release separado ficaria sem o latest.yml/blockmap e quebraria o auto-update.
         run: npx electron-builder --win --publish always
-        working-directory: ./disparo-em-massa
+        working-directory: ./multiEnvio
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -49,5 +49,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
-          path: disparo-em-massa/dist/*.exe
+          path: multiEnvio/dist/*.exe
           retention-days: 7
