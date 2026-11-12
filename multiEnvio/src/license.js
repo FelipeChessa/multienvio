@@ -4,6 +4,13 @@ import path from 'path'
 import { DATA_DIR } from './paths.js'
 
 const licenseFile = path.join(DATA_DIR, 'license.json')
+// versão do programa, informada em cada conferência (o painel mostra quem ainda não atualizou)
+let APP_VERSION = null
+try {
+  APP_VERSION = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version
+} catch {
+  APP_VERSION = null
+}
 const deviceIdFile = path.join(DATA_DIR, 'device-id.json')
 
 // endereço do servidor de ativação (impede a mesma chave de ser usada em dois computadores).
@@ -35,6 +42,13 @@ const OFFLINE_GRACE_MS = 10 * 60 * 1000
 // conferência a cada ação (confirmNow): no máximo uma consulta a cada 30 s, esperando até 4 s
 const CONFIRM_MAX_AGE_MS = 30 * 1000
 const CONFIRM_WAIT_MS = 4 * 1000
+// dados de uso (usage.js) vão junto com a conferência, no máximo a cada 9 minutos
+const USAGE_EVERY_MS = 9 * 60 * 1000
+let usageProvider = null
+let lastUsageSentAt = 0
+function setUsageProvider(fn) {
+  usageProvider = fn
+}
 const SUPPORT = 'Fale com o suporte pelo WhatsApp (11) 99287-6042.'
 const BLOCK_MESSAGES = {
   revoked: `Esta licença foi desativada. ${SUPPORT}`,
@@ -206,19 +220,31 @@ function checkOnline() {
 async function runCheck() {
   const stored = readLicenseFile()
   const key = stored?.key
-  if (!ACTIVATION_SERVER_URL || !key || !verifyLicenseKey(key).valid) return 'skipped'
+  // chave vencida também conversa com o servidor (só para o painel saber que o programa travou);
+  // chave falsa ou corrompida, não
+  if (!ACTIVATION_SERVER_URL || !key || !verifyLicenseKey(key).payload) return 'skipped'
   syncSession(stored)
   session.lastAttemptAt = Date.now()
+
+  let usagePayload
+  if (usageProvider && Date.now() - lastUsageSentAt > USAGE_EVERY_MS) {
+    try {
+      usagePayload = usageProvider()
+    } catch (err) {
+      console.error('Falha ao montar os dados de uso:', err.message)
+    }
+  }
 
   let data = null
   try {
     const response = await fetch(`${ACTIVATION_SERVER_URL}/license-check`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key, deviceId: getDeviceId() }),
+      body: JSON.stringify({ key, deviceId: getDeviceId(), appVersion: APP_VERSION, usage: usagePayload }),
       signal: AbortSignal.timeout(CHECK_TIMEOUT_MS)
     })
     data = await response.json()
+    if (usagePayload && data?.ok === true) lastUsageSentAt = Date.now()
   } catch {
     data = null
   }
@@ -231,6 +257,8 @@ async function runCheck() {
     saveCheck(key)
     return 'ok'
   }
+  // vencida: quem trava é a própria data da chave (getStatus); aqui só espaça as conferências
+  if (data?.reason === 'expired') return 'blocked'
   if (data?.reason && BLOCK_MESSAGES[data.reason]) {
     session.blocked = data.reason
     saveCheck(key)
@@ -272,4 +300,4 @@ function startOnlineChecks(onChecked) {
   run()
 }
 
-export { getStatus, activate, isActivated, verifyLicenseKey, checkOnline, confirmNow, startOnlineChecks }
+export { getStatus, activate, isActivated, verifyLicenseKey, checkOnline, confirmNow, startOnlineChecks, setUsageProvider }

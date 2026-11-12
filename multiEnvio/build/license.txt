@@ -9,5 +9,11 @@ Serviço do WhatsApp. Use por sua conta e risco. O autor não se
 responsabiliza por bloqueios, banimentos ou quaisquer consequências
 decorrentes do uso deste software.
 
+Verificação de licença e dados de uso: o programa confere a licença pela
+internet e envia dados de uso em forma de contagens (versão, quantidade de
+envios, tempo de uso, telas abertas, status da conexão e erros técnicos),
+para suporte, prevenção de uso indevido e melhoria do produto. Não são
+enviados o conteúdo das mensagens nem nomes ou números dos contatos.
+
 Para suporte ou dúvidas sobre licenciamento, consulte a documentação
 oficial ou entre em contato através dos canais oficiais.

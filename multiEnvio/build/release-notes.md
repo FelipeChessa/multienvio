@@ -1,3 +1,4 @@
+- Informações de uso enviadas ao suporte (só contagens, nunca mensagens ou contatos)
 - Licença conferida a cada ação no programa e a cada 5 minutos: chave desativada trava na hora
 - Atualizações novas começam a ser instaladas em até 1 minuto
 - Correção: a tela carrega completa logo depois de ativar a chave

@@ -8,6 +8,7 @@ import multer from 'multer'
 import * as whatsapp from './whatsapp.js'
 import * as store from './db.js'
 import * as license from './license.js'
+import * as usage from './usage.js'
 import { startDispatch, subscribeToJob, isBusy } from './sender.js'
 import { parseSpreadsheetRows } from './spreadsheet.js'
 import { normalizePhoneCandidates } from './phone.js'
@@ -61,6 +62,12 @@ app.use('/api', async (req, res, next) => {
   if (req.method !== 'GET') await license.confirmNow()
   if (license.isActivated()) return next()
   res.status(403).json({ error: license.getStatus().error || 'Licença não ativada.', code: 'unlicensed' })
+})
+
+// dados de uso: a tela informa uma vez por minuto se a pessoa estava usando e quais telas abriu
+app.post('/api/usage/ping', (req, res) => {
+  usage.recordPing(req.body)
+  res.json({ ok: true })
 })
 
 // chamado pela tela a cada clique (troca de aba, abrir o WhatsApp, menus): a conferência em si
@@ -632,6 +639,7 @@ if (license.isActivated()) {
 }
 
 // confere a chave no servidor; se ela voltar a valer (ex: reset no painel), reconecta o WhatsApp
+license.setUsageProvider(usage.getUsageSnapshot)
 license.startOnlineChecks(() => {
   if (license.isActivated()) startWhatsappOnce()
 })
