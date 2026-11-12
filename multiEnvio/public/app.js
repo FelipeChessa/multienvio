@@ -284,6 +284,26 @@ function setLicenseLock(locked) {
   if (locked && typeof applyLicenseLock === 'function') applyLicenseLock()
 }
 
+// Licença conferida a cada ação: qualquer clique na tela (botão, aba, menu, abrir o WhatsApp)
+// pede uma conferência — no máximo uma a cada 20 s, e o servidor local só consulta a internet de
+// 30 em 30 s. Qualquer resposta "sem licença" (dessa conferência ou de qualquer outra ação) trava
+// a tela no mesmo instante, sem esperar a próxima checagem de status.
+const nativeFetch = window.fetch.bind(window)
+window.fetch = async (...args) => {
+  const res = await nativeFetch(...args)
+  if (res.status === 403) {
+    res.clone().json().then((d) => { if (d?.code === 'unlicensed') pollStatus() }).catch(() => {})
+  }
+  return res
+}
+let lastLicenseConfirm = 0
+function confirmLicense() {
+  if (isLicenseLocked() || Date.now() - lastLicenseConfirm < 20000) return
+  lastLicenseConfirm = Date.now()
+  fetch('/api/license/confirm', { method: 'POST' }).catch(() => {})
+}
+document.addEventListener('click', confirmLicense, true)
+
 function updateConnectionButtons(status) {
   const canDisconnect = status === 'connected' || status === 'qr' || status === 'connecting'
   disconnectBtn.classList.toggle('hidden', !canDisconnect)

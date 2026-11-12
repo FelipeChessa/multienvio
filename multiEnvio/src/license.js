@@ -32,6 +32,9 @@ const CHECK_RETRY_MS = 20 * 1000
 const CHECK_BLOCKED_RETRY_MS = 2 * 60 * 1000
 const CHECK_TIMEOUT_MS = 15 * 1000
 const OFFLINE_GRACE_MS = 10 * 60 * 1000
+// conferência a cada ação (confirmNow): no máximo uma consulta a cada 30 s, esperando até 4 s
+const CONFIRM_MAX_AGE_MS = 30 * 1000
+const CONFIRM_WAIT_MS = 4 * 1000
 const SUPPORT = 'Fale com o suporte pelo WhatsApp (11) 99287-6042.'
 const BLOCK_MESSAGES = {
   revoked: `Esta licença foi desativada. ${SUPPORT}`,
@@ -239,6 +242,20 @@ async function runCheck() {
   return 'offline'
 }
 
+// Conferência na hora, antes de cada ação da pessoa (server.js) e durante os disparos (sender.js):
+// só consulta o servidor se a última tentativa tiver mais de maxAgeMs, e espera no máximo waitMs —
+// se o servidor demorar, a ação segue e a conferência termina sozinha em segundo plano (e trava
+// tudo assim que responder "revogada"). Nunca lança erro.
+async function confirmNow({ maxAgeMs = CONFIRM_MAX_AGE_MS, waitMs = CONFIRM_WAIT_MS } = {}) {
+  if (!session.inFlight && Date.now() - session.lastAttemptAt < maxAgeMs) return
+  let timer
+  await Promise.race([
+    checkOnline().catch(() => {}),
+    new Promise((resolve) => { timer = setTimeout(resolve, waitMs) })
+  ])
+  clearTimeout(timer)
+}
+
 // Verifica em seguida e depois sozinho, para sempre. onChecked: chamado ao fim de cada verificação.
 function startOnlineChecks(onChecked) {
   const run = async () => {
@@ -255,4 +272,4 @@ function startOnlineChecks(onChecked) {
   run()
 }
 
-export { getStatus, activate, isActivated, verifyLicenseKey, checkOnline, startOnlineChecks }
+export { getStatus, activate, isActivated, verifyLicenseKey, checkOnline, confirmNow, startOnlineChecks }

@@ -4,7 +4,7 @@ import { EventEmitter } from 'events'
 import * as store from './db.js'
 import { getSock } from './whatsapp.js'
 import { personalize } from './variables.js'
-import { isActivated } from './license.js'
+import { isActivated, confirmNow } from './license.js'
 
 const jobs = new Map() // jobId -> { emitter, entries: [], done: boolean, summary }
 
@@ -197,6 +197,8 @@ function startDispatch({ labelIds, labelName, message, file, files, contacts: ex
   }
 
   ;(async () => {
+    // disparo automático (agendado, campanha, follow-up) não passa por clique: confere aqui
+    await confirmNow()
     const sock = getSock()
 
     // Filtra bloqueados ANTES de emitir o evento "start" — precisa do await de
@@ -239,7 +241,9 @@ function startDispatch({ labelIds, labelName, message, file, files, contacts: ex
     let consecutiveFailures = 0
 
     for (const contact of dispatchContacts) {
-      // licença revogada (ou sem confirmar) no meio do disparo: para na hora, sem mandar o resto
+      // licença revogada (ou sem confirmar) no meio do disparo: para na hora, sem mandar o resto.
+      // Confere no servidor no máximo uma vez por minuto (os outros contatos usam o resultado guardado).
+      await confirmNow({ maxAgeMs: 60 * 1000, waitMs: 3000 })
       if (!isActivated()) {
         emit({
           type: 'aborted',

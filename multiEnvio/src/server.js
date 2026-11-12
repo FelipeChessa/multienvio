@@ -54,10 +54,18 @@ app.use(express.static(path.join(__dirname, '..', 'public')))
 // Licença: TODA a API fica fechada sem chave válida. A lista é do que pode funcionar sem chave
 // (ativar e atualizar o programa) — assim, rota ou módulo novo já nasce protegido.
 const LICENSE_FREE_API = new Set(['/license/status', '/license/activate', '/status', '/app-version', '/app-version/check', '/app-version/install'])
-app.use('/api', (req, res, next) => {
-  if (LICENSE_FREE_API.has(req.path) || license.isActivated()) return next()
-  res.status(403).json({ error: 'Licença não ativada.', code: 'unlicensed' })
+app.use('/api', async (req, res, next) => {
+  if (LICENSE_FREE_API.has(req.path)) return next()
+  // ação da pessoa (enviar, salvar, criar etiqueta, apagar...): confere a chave no servidor
+  // ANTES de executar — chave revogada é recusada na hora, sem esperar a conferência periódica
+  if (req.method !== 'GET') await license.confirmNow()
+  if (license.isActivated()) return next()
+  res.status(403).json({ error: license.getStatus().error || 'Licença não ativada.', code: 'unlicensed' })
 })
+
+// chamado pela tela a cada clique (troca de aba, abrir o WhatsApp, menus): a conferência em si
+// acontece no portão logo acima; aqui só responde que está tudo certo
+app.post('/api/license/confirm', (req, res) => res.json({ ok: true }))
 
 app.use(scheduledRoutes)
 app.use(templateRoutes)
