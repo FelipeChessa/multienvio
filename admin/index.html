@@ -26,7 +26,9 @@
   header nav { display: flex; gap: 6px; }
   header nav a { color: #cbd5e1; text-decoration: none; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 8px; }
   header nav a.active, header nav a:hover { background: rgba(255,255,255,.1); color: white; }
-  main { max-width: 760px; margin: 0 auto; padding: 24px 20px 60px; }
+  /* usa a tela inteira: a tabela de ativações tem muitas colunas */
+  main { max-width: 1440px; margin: 0 auto; padding: 24px 32px 60px; }
+  .card-form { max-width: 760px; }
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 2px rgba(15,23,42,.06); }
   .card h2 { font-size: 16px; margin: 0 0 16px; }
   label { display: block; font-weight: 600; font-size: 13px; color: var(--ink-soft); margin: 12px 0 6px; }
@@ -92,7 +94,7 @@
     </section>
 
     <div id="panel" class="hidden">
-      <section class="card">
+      <section class="card card-form">
         <h2>Gerar nova chave de licença</h2>
         <label for="customer-name">Nome do cliente</label>
         <input type="text" id="customer-name" placeholder="Ex: Padaria do João" />
