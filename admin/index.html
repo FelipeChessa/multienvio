@@ -33,7 +33,7 @@
   .card h2 { font-size: 16px; margin: 0 0 16px; }
   label { display: block; font-weight: 600; font-size: 13px; color: var(--ink-soft); margin: 12px 0 6px; }
   label:first-child { margin-top: 0; }
-  input[type="text"], input[type="password"], input[type="number"] {
+  input[type="text"], input[type="password"], input[type="number"], input[type="search"], select {
     width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
     font-family: var(--font-body); font-size: 14px;
   }
@@ -66,6 +66,30 @@
   .status-badge.ativa { background: #f0fdf4; color: var(--brand-dark); }
   .status-badge.expirada { background: var(--warning-bg); color: var(--warning); }
   .status-badge.revogada { background: var(--danger-bg); color: var(--danger); }
+  /* filtros da tabela de ativações */
+  .act-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .act-head h2 { margin: 0; }
+  .act-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .act-filters input[type="search"] { flex: 1 1 280px; max-width: 420px; margin: 0; }
+  .act-filters select { width: auto; margin: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--surface-alt); color: var(--ink-soft); border: 1px solid var(--border); padding: 6px 12px; font-size: 12.5px; border-radius: 999px; }
+  .chip b { font-weight: 800; margin-left: 4px; color: var(--muted); }
+  .chip.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .chip.active b { color: #cbd5e1; }
+  .act-count { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: var(--ink); }
+  th .arrow { font-size: 10px; margin-left: 3px; }
+  tbody tr:hover td { background: var(--surface-alt); }
+  td.actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .sub { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .mono { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 11.5px; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; background: #cbd5e1; vertical-align: middle; }
+  .dot.on { background: var(--brand-light); }
+  .status-badge.vencendo { background: #fff7ed; color: #c2410c; }
+  .btn-ghost { background: transparent; color: var(--ink-soft); border: 1px solid transparent; padding: 6px 10px; font-size: 12px; }
+  .btn-ghost:hover { border-color: var(--border); background: var(--surface); }
   .gate { max-width: 380px; margin: 60px auto; text-align: center; }
   .hidden { display: none !important; }
 </style>
@@ -106,15 +130,28 @@
       </section>
 
       <section class="card">
-        <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div class="act-head">
           <h2>Ativações</h2>
           <button class="btn-secondary" id="refresh-btn">Atualizar</button>
         </div>
+        <div class="act-filters">
+          <input type="search" id="act-search" placeholder="Buscar por cliente, computador ou chave…" autocomplete="off">
+          <div class="chips" id="act-chips"></div>
+        </div>
+        <p class="act-count" id="act-count"></p>
         <p id="activations-empty" class="empty hidden">Nenhuma ativação registrada ainda.</p>
         <div style="overflow-x:auto;">
           <table id="activations-table" class="hidden">
             <thead>
-              <tr><th>Cliente</th><th>Dispositivo</th><th>Desde</th><th>Expira em</th><th>Status</th><th></th></tr>
+              <tr>
+                <th class="sortable" data-sort="customer">Cliente</th>
+                <th>Computador</th>
+                <th class="sortable" data-sort="since">Desde</th>
+                <th class="sortable" data-sort="expires">Expira em</th>
+                <th class="sortable" data-sort="seen" title="Última vez que o programa conferiu a licença (só versão 1.6.4 ou mais nova)">Visto por último</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
             </thead>
             <tbody id="activations-body"></tbody>
           </table>
@@ -233,55 +270,178 @@
   const activationsTable = document.getElementById('activations-table')
   const activationsBody = document.getElementById('activations-body')
 
+  // ----- Ativações: busca, filtro por status e ordenação, tudo na tela (sem recarregar) -----
+  const DAY = 24 * 60 * 60 * 1000
+  const STATUS_LABELS = { ativa: 'Ativa', vencendo: 'Vence logo', expirada: 'Expirada', revogada: 'Revogada' }
+  const FILTERS = [
+    { id: 'todas', label: 'Todas' },
+    { id: 'ativa', label: 'Ativas' },
+    { id: 'vencendo', label: 'Vencem em 7 dias' },
+    { id: 'expirada', label: 'Expiradas' },
+    { id: 'revogada', label: 'Revogadas' }
+  ]
+  const actState = { rows: [], filter: 'todas', search: '', sort: 'since', dir: -1 }
+  const actSearch = document.getElementById('act-search')
+  const actChips = document.getElementById('act-chips')
+  const actCount = document.getElementById('act-count')
+
+  // "vencendo": ativa e expira nos próximos 7 dias (entra também no filtro "Ativas")
+  function rowStatus(info) {
+    const base = info.status || (info.revoked ? 'revogada' : 'ativa')
+    if (base === 'ativa' && info.expiresAt && new Date(info.expiresAt).getTime() - Date.now() < 7 * DAY) return 'vencendo'
+    return base
+  }
+
+  function timeAgo(iso) {
+    if (!iso) return null
+    const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000)
+    if (min < 1) return 'agora'
+    if (min < 60) return 'há ' + min + ' min'
+    const h = Math.round(min / 60)
+    if (h < 24) return 'há ' + h + ' h'
+    const d = Math.round(h / 24)
+    return 'há ' + d + (d === 1 ? ' dia' : ' dias')
+  }
+
+  function fmtDate(iso) {
+    return iso ? new Date(iso).toLocaleDateString('pt-BR') : '-'
+  }
+
+  function sortValue(row) {
+    const i = row.info
+    if (actState.sort === 'customer') return (i.customer || '').toLocaleLowerCase('pt-BR')
+    if (actState.sort === 'expires') return i.expiresAt ? new Date(i.expiresAt).getTime() : Infinity
+    if (actState.sort === 'seen') return i.lastSeenAt ? new Date(i.lastSeenAt).getTime() : 0
+    return i.firstActivatedAt ? new Date(i.firstActivatedAt).getTime() : 0
+  }
+
+  function renderChips() {
+    const counts = { todas: actState.rows.length, ativa: 0, vencendo: 0, expirada: 0, revogada: 0 }
+    for (const r of actState.rows) {
+      counts[r.status]++
+      if (r.status === 'vencendo') counts.ativa++
+    }
+    actChips.innerHTML = ''
+    for (const f of FILTERS) {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.className = 'chip' + (actState.filter === f.id ? ' active' : '')
+      b.innerHTML = escapeHtml(f.label) + '<b>' + counts[f.id] + '</b>'
+      b.addEventListener('click', () => { actState.filter = f.id; renderActivations() })
+      actChips.appendChild(b)
+    }
+  }
+
+  function renderActivations() {
+    renderChips()
+    document.querySelectorAll('th.sortable').forEach((th) => {
+      const on = th.dataset.sort === actState.sort
+      th.querySelector('.arrow')?.remove()
+      if (on) th.insertAdjacentHTML('beforeend', '<span class="arrow">' + (actState.dir > 0 ? '▲' : '▼') + '</span>')
+    })
+
+    const q = actState.search.trim().toLocaleLowerCase('pt-BR')
+    const rows = actState.rows
+      .filter((r) => actState.filter === 'todas' || r.status === actState.filter || (actState.filter === 'ativa' && r.status === 'vencendo'))
+      .filter((r) => !q || [r.info.customer, r.info.deviceId, r.key].some((v) => (v || '').toLocaleLowerCase('pt-BR').includes(q)))
+      .sort((a, b) => {
+        const va = sortValue(a)
+        const vb = sortValue(b)
+        return (va < vb ? -1 : va > vb ? 1 : 0) * actState.dir
+      })
+
+    actCount.textContent = rows.length === actState.rows.length
+      ? actState.rows.length + ' ativações'
+      : 'Mostrando ' + rows.length + ' de ' + actState.rows.length
+    activationsBody.innerHTML = ''
+    if (rows.length === 0) {
+      activationsBody.innerHTML = '<tr><td colspan="7" class="empty">Nenhuma ativação com esse filtro.</td></tr>'
+      return
+    }
+
+    for (const { key, info, status } of rows) {
+      const tr = document.createElement('tr')
+      const daysLeft = info.expiresAt ? Math.ceil((new Date(info.expiresAt).getTime() - Date.now()) / DAY) : null
+      const expiresSub = daysLeft === null ? '' : daysLeft >= 0 ? (daysLeft === 0 ? 'vence hoje' : 'faltam ' + daysLeft + (daysLeft === 1 ? ' dia' : ' dias')) : ''
+      const seen = timeAgo(info.lastSeenAt)
+      const online = info.lastSeenAt && Date.now() - new Date(info.lastSeenAt).getTime() < 45 * 60000
+      tr.innerHTML =
+        '<td><strong>' + escapeHtml(info.customer || '-') + '</strong></td>' +
+        '<td><span class="mono" title="' + escapeHtml(info.deviceId || '') + '">' + escapeHtml((info.deviceId || '-').slice(0, 13)) + (info.deviceId ? '…' : '') + '</span></td>' +
+        '<td>' + fmtDate(info.firstActivatedAt) + '</td>' +
+        '<td>' + (info.expiresAt ? fmtDate(info.expiresAt) : 'Vitalícia') + (expiresSub ? '<span class="sub">' + expiresSub + '</span>' : '') + '</td>' +
+        '<td title="' + escapeHtml(info.lastSeenAt ? new Date(info.lastSeenAt).toLocaleString('pt-BR') : 'Nunca conferiu: programa antigo (até 1.6.3) ou fechado desde a ativação') + '">' +
+          '<span class="dot' + (online ? ' on' : '') + '"></span>' + (seen || '—') + '</td>' +
+        '<td><span class="status-badge ' + status + '">' + STATUS_LABELS[status] + '</span>' +
+          (info.revokedAt ? '<span class="sub">em ' + fmtDate(info.revokedAt) + '</span>' : '') + '</td>' +
+        '<td class="actions"></td>'
+      const actionsCell = tr.querySelector('.actions')
+
+      const copyBtn = document.createElement('button')
+      copyBtn.className = 'btn-ghost'
+      copyBtn.textContent = 'Copiar chave'
+      copyBtn.addEventListener('click', async () => {
+        await navigator.clipboard.writeText(key)
+        copyBtn.textContent = 'Copiada ✓'
+        setTimeout(() => { copyBtn.textContent = 'Copiar chave' }, 1500)
+      })
+      actionsCell.appendChild(copyBtn)
+
+      // reset apaga o registro: libera para outro computador e também desfaz uma revogação
+      const resetBtn = document.createElement('button')
+      resetBtn.className = 'btn-secondary'
+      resetBtn.textContent = info.revoked ? 'Reativar' : 'Liberar p/ outro PC'
+      resetBtn.addEventListener('click', () => {
+        const msg = info.revoked
+          ? 'Reativar a chave de "' + (info.customer || '-') + '"? O programa do cliente volta a funcionar na próxima conferência.'
+          : 'Liberar a chave de "' + (info.customer || '-') + '" para outro computador? O computador atual trava assim que outro ativar.'
+        if (confirm(msg)) doAction('/api/admin/reset', key, resetBtn)
+      })
+      actionsCell.appendChild(resetBtn)
+
+      if (!info.revoked) {
+        const revokeBtn = document.createElement('button')
+        revokeBtn.className = 'btn-danger'
+        revokeBtn.textContent = 'Revogar'
+        revokeBtn.addEventListener('click', () => {
+          if (confirm('Revogar a chave de "' + (info.customer || '-') + '"? O programa do cliente trava no próximo clique ou em até 5 minutos.')) {
+            doAction('/api/admin/revoke', key, revokeBtn)
+          }
+        })
+        actionsCell.appendChild(revokeBtn)
+      }
+
+      activationsBody.appendChild(tr)
+    }
+  }
+
   async function loadActivations() {
     try {
       const data = await apiFetch('/api/admin/activations')
-      const entries = Object.entries(data)
-      if (entries.length === 0) {
+      actState.rows = Object.entries(data).map(([key, info]) => ({ key, info, status: rowStatus(info) }))
+      if (actState.rows.length === 0) {
         activationsTable.classList.add('hidden')
         activationsEmpty.classList.remove('hidden')
+        actCount.textContent = ''
+        actChips.innerHTML = ''
         return
       }
       activationsEmpty.classList.add('hidden')
       activationsTable.classList.remove('hidden')
-      activationsBody.innerHTML = ''
-      entries
-        .sort((a, b) => new Date(b[1].firstActivatedAt) - new Date(a[1].firstActivatedAt))
-        .forEach(([key, info]) => {
-          const tr = document.createElement('tr')
-          const date = info.firstActivatedAt ? new Date(info.firstActivatedAt).toLocaleDateString('pt-BR') : '-'
-          const expiraEm = info.expiresAt ? new Date(info.expiresAt).toLocaleDateString('pt-BR') : 'Vitalícia'
-          const status = info.status || (info.revoked ? 'revogada' : 'ativa')
-          const statusLabel = { ativa: 'Ativa', expirada: 'Expirada', revogada: 'Revogada' }[status] || status
-          tr.innerHTML =
-            '<td>' + escapeHtml(info.customer || '-') + '</td>' +
-            '<td>' + escapeHtml((info.deviceId || '').slice(0, 12)) + '...</td>' +
-            '<td>' + date + '</td>' +
-            '<td>' + expiraEm + '</td>' +
-            '<td><span class="status-badge ' + status + '">' + statusLabel + '</span></td>' +
-            '<td class="actions"></td>'
-          const actionsCell = tr.querySelector('.actions')
-
-          const resetBtn = document.createElement('button')
-          resetBtn.className = 'btn-secondary'
-          resetBtn.textContent = 'Liberar p/ outro PC'
-          resetBtn.addEventListener('click', () => doAction('/api/admin/reset', key, resetBtn))
-          actionsCell.appendChild(resetBtn)
-
-          if (!info.revoked) {
-            const revokeBtn = document.createElement('button')
-            revokeBtn.className = 'btn-danger'
-            revokeBtn.textContent = 'Revogar'
-            revokeBtn.addEventListener('click', () => doAction('/api/admin/revoke', key, revokeBtn))
-            actionsCell.appendChild(revokeBtn)
-          }
-
-          activationsBody.appendChild(tr)
-        })
+      renderActivations()
     } catch (err) {
       // painel informativo — silencioso se der erro pontual
     }
   }
+
+  actSearch.addEventListener('input', () => { actState.search = actSearch.value; renderActivations() })
+  document.querySelectorAll('th.sortable').forEach((th) => {
+    th.addEventListener('click', () => {
+      if (actState.sort === th.dataset.sort) actState.dir *= -1
+      else { actState.sort = th.dataset.sort; actState.dir = th.dataset.sort === 'customer' || th.dataset.sort === 'expires' ? 1 : -1 }
+      renderActivations()
+    })
+  })
 
   async function doAction(path, key, btn) {
     btn.disabled = true
